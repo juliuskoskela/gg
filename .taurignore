@@ -11,3 +11,6 @@ app/
 e2e/
 dist/
 .taste-skill/
+
+# the optional editor bridge and syntax runtime are owned by Vite.
+demo/

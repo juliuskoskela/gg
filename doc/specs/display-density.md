@@ -35,3 +35,11 @@ Controller tests cover malformed preferences, unavailable storage, bounds, in-fl
 ## Appearance
 
 The top-right repository actions menu offers a Light/Dark toggle. Its label names the current appearance and the action it will perform. A valid `gg.ui.theme` preference takes priority over repository `theme_override`, then the system color scheme. The same effective theme drives the shell and syntax-highlighted diff. Storage failure keeps the choice in memory; storage events synchronize other windows. Changing appearance does not write repository configuration.
+
+## Whole-file diff context
+
+The diff tools offer **Show whole file** beside layout and wrapping (inside the tools popover on narrow readers). It keeps additions and deletions highlighted while showing unchanged lines through the beginning and end of the file. The preference persists as `gg.diff-full-context`; compact, three-line context remains the default.
+
+Full context is fetched only for the selected file, against the same exact revision set as the compact diff. Cache keys distinguish both modes, and stale responses cannot replace a newer selection. The renderer marks data complete only after that query resolves, avoiding partial-patch hydration errors. Binary files keep their existing unsupported-text notice; conflicts keep their marker view.
+
+Hunk commands always use the original compact hunks. Expanding the reading context must not merge or otherwise change the operands offered by partial-file operations. This display toggle is independent of the experimental Neovim File mode and does not make the diff editable.

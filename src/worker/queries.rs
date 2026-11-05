@@ -368,7 +368,7 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
     let mut changes = Vec::new();
     let tree_diff = parent_tree.diff_stream(&final_tree, &EverythingMatcher);
     let conflict_labels = Diff::new(parent_tree.labels(), final_tree.labels());
-    format_tree_changes(ws, &mut changes, tree_diff, conflict_labels).await?;
+    format_tree_changes(ws, &mut changes, tree_diff, conflict_labels, 3).await?;
 
     let mut conflicts = Vec::new();
     for (path, entry) in final_tree.entries() {
@@ -642,6 +642,7 @@ pub async fn query_revision_diff(
     ws: &WorkspaceSession<'_>,
     set: RevSet,
     path: crate::messages::TreePath,
+    full_context: bool,
 ) -> Result<RevisionDiffResult> {
     let commits = resolve_exact_set(ws, &set)?;
     let Some((commits, set)) = commits else {
@@ -658,6 +659,7 @@ pub async fn query_revision_diff(
         &mut changes,
         parent_tree.diff_stream(&final_tree, &matcher),
         Diff::new(parent_tree.labels(), final_tree.labels()),
+        if full_context { usize::MAX } else { 3 },
     )
     .await?;
     let mut conflict = None;
@@ -732,6 +734,7 @@ async fn format_tree_changes(
     changes: &mut Vec<RevChange>,
     mut tree_diff: TreeDiffStream<'_>,
     conflict_labels: Diff<&ConflictLabels>,
+    context_lines: usize,
 ) -> Result<()> {
     let store = ws.repo().store();
 
@@ -756,7 +759,7 @@ async fn format_tree_changes(
             conflicts::materialize_tree_value(store, &path, after.clone(), conflict_labels.after);
         let (before_value, after_value) = try_join!(before_future, after_future)?;
 
-        let hunks = get_value_hunks(3, &path, before_value, after_value).await?;
+        let hunks = get_value_hunks(context_lines, &path, before_value, after_value).await?;
 
         changes.push(RevChange {
             path: ws.format_path(path)?,
@@ -1109,6 +1112,24 @@ mod binary_hunk_tests {
             copy_id: CopyId::placeholder(),
             reader: Box::pin(futures_util::io::Cursor::new(bytes.to_vec())),
         })
+    }
+
+    #[test]
+    fn whole_file_context_keeps_prefix_suffix_and_separated_changes() -> Result<()> {
+        let left: String = (0..80).map(|i| format!("line {i}\n")).collect();
+        let right = left
+            .replace("line 20\n", "changed 20\n")
+            .replace("line 60\n", "changed 60\n");
+        let compact = get_unified_hunks(3, left.as_bytes(), right.as_bytes())?;
+        let full = get_unified_hunks(usize::MAX, left.as_bytes(), right.as_bytes())?;
+        assert_eq!(compact.len(), 2);
+        assert_eq!(full.len(), 1);
+        let lines = &full[0].lines.lines;
+        assert_eq!(lines.first().map(String::as_str), Some(" line 0\n"));
+        assert_eq!(lines.last().map(String::as_str), Some(" line 79\n"));
+        assert!(lines.iter().any(|line| line == "-line 20\n"));
+        assert!(lines.iter().any(|line| line == "+changed 60\n"));
+        Ok(())
     }
 
     #[tokio::test]
