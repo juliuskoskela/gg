@@ -35,6 +35,22 @@ describe("repository toolbar and commands", () => {
         expect(calls[1]).toMatchObject({ args: { mutation: { refspec: { remote_name: "upstream" } } } });
     });
 
+    it("switches appearance from the menu and keeps the menu open", async () => {
+        let { default: Toolbar } = await import("./RepositoryToolbar.svelte");
+        let { repoConfigEvent } = await import("../stores");
+        let { themePreference } = await import("../display/theme");
+        repoConfigEvent.set({ ...workspace, theme_override: "light" });
+        themePreference.sync(null);
+        let { container, getByRole } = render(Toolbar, { props: { target: false, onRefresh: () => {} } });
+        container.querySelector<HTMLElement>(".history-actions")!.style.display = "flex";
+        await fireEvent.click(getByRole("button", { name: "More repository actions" }));
+        await fireEvent.click(getByRole("button", { name: "Theme: light. Switch to dark theme" }));
+        expect(getByRole("button", { name: "Theme: dark. Switch to light theme" })).toBeTruthy();
+        expect(localStorage.getItem("gg.ui.theme")).toBe("dark");
+        localStorage.removeItem("gg.ui.theme");
+        themePreference.sync(null);
+    });
+
     it("exposes native repository actions and opens recent workspaces", async () => {
         let { default: Toolbar } = await import("./RepositoryToolbar.svelte");
         let { repoConfigEvent, repoStatusEvent } = await import("../stores");

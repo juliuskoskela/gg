@@ -31,3 +31,7 @@ Linux and Windows use the in-app repository menu and command palette instead of 
 Observed in the Linux GTK/WebKit native app on a 3840×2160 monitor at 100% compositor scale: application zoom at 150%, matching 1.5 WebView device scale, working Ctrl-minus/Ctrl-equals, persisted 150% after reload, and no document overflow. Native screenshots are retained locally under `.taste-skill/studio/scaling/`.
 
 Controller tests cover malformed preferences, unavailable storage, bounds, in-flight updates, failed apply/recovery, native command availability and shortcut matching. Windows, macOS, mixed-DPI monitor transitions and physical screen-reader use require platform follow-up; Linux observations do not establish those results.
+
+## Appearance
+
+The top-right repository actions menu offers a Light/Dark toggle. Its label names the current appearance and the action it will perform. A valid `gg.ui.theme` preference takes priority over repository `theme_override`, then the system color scheme. The same effective theme drives the shell and syntax-highlighted diff. Storage failure keeps the choice in memory; storage events synchronize other windows. Changing appearance does not write repository configuration.

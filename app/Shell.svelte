@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { effectiveTheme } from "./display/theme";
     import { selectionRecovery } from "./revision/recovery";
     import type { RevisionSelectionResult } from "./messages/RevisionSelectionResult";
     import { loadRevisionSummary, clearRevisionDiffCache, revisionIdentity } from "./revision/data";
@@ -311,7 +312,7 @@
 <OperationFeedback />
 
 <Zone operand={{ type: "Repository" }} alwaysTarget let:target>
-    <div id="shell" use:autoHideScrollbars class={$repoConfigEvent?.type == "Workspace" ? $repoConfigEvent.theme_override : ""}>
+    <div id="shell" use:autoHideScrollbars class={$effectiveTheme}>
         {#if $repoConfigEvent.type == "Initial"}
             <TitlebarInset>
                 <Pane>
