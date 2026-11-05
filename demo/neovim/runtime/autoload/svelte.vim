@@ -71,7 +71,7 @@ function! svelte#GetSyntaxList(config_syntax)
   return syntax_list
 endfunction
 
-" Since svelte#Log and svelte#GetConfig are always called
+" Since svelte#Log and svelte#GetConfig are always called 
 " in syntax and indent files,
 " this file will be sourced when opening the first svelte file
 if exists('##CursorMoved') && exists('*OnChangeSvelteSubtype')

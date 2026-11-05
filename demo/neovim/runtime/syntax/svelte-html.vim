@@ -25,26 +25,26 @@ syntax match htmlAttrEqual '\v\=' containedin=htmlAttr
 
 syntax match svelteAttr
       \ '\(\S\)\@<!\w\+:[^=>[:blank:]]\+\(="[^"]*"\|={[^}]*}\)\?'
-      \ containedin=htmlTag
+      \ containedin=htmlTag 
       \ contains=svelteKey,svelteValue
 syntax match svelteValue contained '{[^}]*}'
 syntax match svelteKey contained '\w\+:[^=>[:blank:]]\+'
 
-syntax region svelteExpression
+syntax region svelteExpression 
       \ containedin=htmlH.*,htmlItalic
       \ matchgroup=svelteBrace
       \ start="{"
       \ end="}\(}\|;\)\@!"
 
 " Multiple lines expressions are supposed to end with '}}', ')}' or ']}'
-syntax region svelteExpression
+syntax region svelteExpression 
       \ containedin=svelteValue,htmlValue,htmlAttr
       \ contains=@simpleJavascriptExpression
       \ matchgroup=svelteBrace
       \ start="{"
       \ end="\(}\)\@<=}\|\()\)\@<=}\|\(]\)\@<=}"
 
-syntax region svelteExpression
+syntax region svelteExpression 
       \ containedin=htmlSvelteTemplate,svelteValue,htmlString,htmlArg,htmlTag,htmlAttr,htmlValue,htmlAttr
       \ contains=@simpleJavascriptExpression,svelteAtTags
       \ matchgroup=svelteBrace
@@ -77,15 +77,15 @@ syntax region svelteBlockEnd
 
 syntax keyword svelteBlockKeyword if else each await then catch as key snippet
 
-syntax cluster simpleJavascriptExpression
+syntax cluster simpleJavascriptExpression 
       \contains=\CjavaScript.*
-silent! syntax cluster simpleJavascriptExpression
+silent! syntax cluster simpleJavascriptExpression 
       \contains=@typescriptExpression,typescriptProp
 
 " Redefine JavaScript syntax
-syntax region javaScriptStringS
+syntax region javaScriptStringS	
       \ start=+'+ skip=+\\\\\|\\'+ end=+'\|$+	contained
-syntax region javaScriptStringD
+syntax region javaScriptStringD	
       \ start=+"+ skip=+\\\\\|\\"+ end=+"\|$+	contained
 syntax region javaScriptTemplateString
       \ start=+`+ skip=+\\`+ end=+`+ contained

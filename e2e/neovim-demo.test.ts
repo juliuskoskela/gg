@@ -71,7 +71,7 @@ describe.skipIf(!available)("Neovim development demo", () => {
         }));
         await ctx.page.goto(`${url}/?inspect=@&file=Demo.svelte`);
         await ctx.page.getByRole("button", { name: "File", exact: true }).click();
-        await expect.poll(() => language).toBe("svelte");
+        await expect.poll(() => ({ language, warnings }), { timeout: 10000 }).toEqual({ language: "svelte", warnings: [] });
         let screen = ctx.page.locator(".screen-text");
         await expect.poll(() => screen.textContent()).toContain("Highlighted Svelte");
         await expect.poll(() => grid.rows.some(row => row.slice(4).some(cell => cell.text.trim() && grid.highlights.get(cell.hl)?.foreground !== undefined && grid.highlights.get(cell.hl)?.foreground !== grid.foreground))).toBe(true);

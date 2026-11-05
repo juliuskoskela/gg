@@ -178,12 +178,12 @@ execute 'syntax match htmlSvelteTemplate fold'
       \ 'contains=@HTMLSyntax'
 " @html, @debug, @render tag in one line
 syntax match htmlSvelteTemplate fold
-      \ +{@\(html\|debug\|render\)[^}]*}+
+      \ +{@\(html\|debug\|render\)[^}]*}+ 
       \ contains=@HTMLSyntax
 " Control blocks like {#if ...}, {#each ...}
 syntax region htmlSvelteTemplate fold
-      \ start=+{#[-a-zA-Z0-9]\+[^}]*}+
-      \ end=+^{/[-a-zA-Z0-9]\+}+
+      \ start=+{#[-a-zA-Z0-9]\+[^}]*}+ 
+      \ end=+^{/[-a-zA-Z0-9]\+}+ 
       \ keepend contains=@HTMLSyntax
 
 " Blocks <script>, <style> and <template lang="..."> by config. Name like
@@ -258,11 +258,11 @@ for [s:tag, s:syntax] in [['template', 'pug'], ['script', 'coffee'],
   endif
 endfor
 
-syntax region svelteTag
+syntax region svelteTag 
       \ start=+^<[^/]+ end=+>+  skip=+></+
       \ contained contains=htmlTagN,htmlString,htmlArg fold
-syntax region svelteTag
-      \ start=+^</+ end=+>+
+syntax region svelteTag 
+      \ start=+^</+ end=+>+ 
       \ contained contains=htmlTagN,htmlString,htmlArg
 syntax keyword svelteKeyword $ contained
 
@@ -289,42 +289,42 @@ if has('patch-7.4.1142') && exists('*execute')
 endif
 
 " Style
-" Redefine (less|sass)Definition to highlight <style> correctly and
+" Redefine (less|sass)Definition to highlight <style> correctly and 
 " enable emmet-vim css type.
 if svelte#Has(s:syntax_list, 'less')
   silent! syntax clear lessDefinition
-  syntax region cssLessDefinition matchgroup=cssBraces
+  syntax region cssLessDefinition matchgroup=cssBraces 
         \ contains=@LessSyntax,cssLessDefinition
         \ contained containedin=cssLessSvelteStyle
-        \ start="{" end="}"
+        \ start="{" end="}" 
 endif
 
 if svelte#Has(s:syntax_list, 'sass') || svelte#Has(s:syntax_list, 'scss')
   silent! syntax clear sassDefinition
-  syntax region cssSassDefinition matchgroup=cssBraces
+  syntax region cssSassDefinition matchgroup=cssBraces 
         \ contains=@SassSyntax,cssSassDefinition
         \ contained containedin=cssScssSvelteStyle,cssSassSvelteStyle
-        \ start="{" end="}"
+        \ start="{" end="}" 
 endif
 
 if svelte#Has(s:syntax_list, 'stylus')
   silent! syntax clear stylusDefinition
-  syntax region cssStylusDefinition matchgroup=cssBraces
+  syntax region cssStylusDefinition matchgroup=cssBraces 
         \ contains=@StylusSyntax,cssStylusDefinition
         \ contained containedin=cssStylusSvelteStyle
-        \ start="{" end="}"
+        \ start="{" end="}" 
 endif
 
 " Avoid css syntax interference
 silent! syntax clear cssUnitDecorators
 " Have to use a different name
-syntax match cssUnitDecorators2
+syntax match cssUnitDecorators2 
       \ /\(#\|-\|+\|%\|mm\|cm\|in\|pt\|pc\|em\|ex\|px\|ch\|rem\|vh\|vw\|vmin\|vmax\|dpi\|dppx\|dpcm\|Hz\|kHz\|s\|ms\|deg\|grad\|rad\)\ze\(;\|$\)/
       \ contained
       \ containedin=cssAttrRegion,sassCssAttribute,lessCssAttribute
 
 silent! syntax clear cssKeyFrameProp
-syn match cssKeyFrameProp2 /\d*%\|from\|to/
+syn match cssKeyFrameProp2 /\d*%\|from\|to/ 
       \ contained nextgroup=cssDefinition
       \ containedin=cssAttrRegion,sassCssAttribute,lessCssAttribute
 
@@ -334,7 +334,7 @@ silent! syntax clear htmlHead
 
 " JavaScript
 " Number with minus
-syntax match javaScriptNumber '\v<-?\d+L?>|0[xX][0-9a-fA-F]+>'
+syntax match javaScriptNumber '\v<-?\d+L?>|0[xX][0-9a-fA-F]+>' 
       \ containedin=@javascriptSvelteScript display
 
 " TypeScript
