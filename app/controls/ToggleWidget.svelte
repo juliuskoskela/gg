@@ -4,8 +4,10 @@
 
     export let tip: string = "";
     export let checked: boolean;
+    export let isStatic = false;
     export let safe: boolean = false;
     export let secondary: boolean = false;
+    export let primary: boolean = false;
     export let disabled: boolean = false;
     export let on: string;
     export let off: string;
@@ -20,93 +22,26 @@
 </script>
 
 <button
-    {disabled}
+    type="button"
+    disabled={isDisabled}
+    aria-pressed={checked}
+    class:static={isStatic}
     class:safe
     class:secondary
+    class:primary
     class:checked
     on:click={toggle}
     on:dragenter={dragOverWidget}
     on:dragover={dragOverWidget}
-    title={isDisabled ? "" : tip}>
+    title={tip}
+    aria-label={tip || undefined}>
     <Icon name={checked ? on : off} />
 </button>
 
 <style>
-    button {
-        height: 24px;
-        font-size: 16px;
-        padding: 1px 3px;
-
-        outline: none;
-        margin: 0;
-        border-width: 1px;
-        border-radius: 3px;
-        border-color: var(--ctp-overlay0);
-        box-shadow: 2px 2px var(--ctp-overlay0);
-
-        background: var(--ctp-flamingo);
-        color: black;
-
-        font-family: var(--stack-industrial);
-        display: flex;
-        align-items: center;
-
-        cursor: pointer;
-    }
-
-    button:not(:disabled) {
-        &:hover {
-            background: var(--ctp-maroon);
-        }
-        &:focus-visible {
-            border-color: var(--ctp-lavender);
-            border-width: 2px;
-            padding: 0px 2px;
-            text-decoration: underline;
-        }
-        &:active {
-            margin: 1px 0px 0px 1px;
-            padding: 1px 2px 0px 3px;
-            box-shadow: 1px 1px var(--ctp-overlay0);
-            &:focus-visible {
-                padding: 1px 1px 0px 2px;
-            }
-        }
-    }
-
-    button.checked:not(:disabled) {
-        margin: 1px 0px 0px 1px;
-        padding: 1px 2px 0px 3px;
-        box-shadow: 1px 1px var(--ctp-overlay0);
-        &:focus-visible {
-            padding: 1px 1px 0px 2px;
-        }
-    }
-
-    button.safe {
-        background: var(--ctp-sapphire);
-        &:hover {
-            background: var(--ctp-teal);
-        }
-        &:active {
-            border-right-color: var(--ctp-teal);
-            border-bottom-color: var(--ctp-teal);
-        }
-    }
-
-    button.secondary {
-        background: var(--ctp-surface2);
-        &:hover {
-            background: var(--ctp-overlay2);
-        }
-        &:active {
-            border-right-color: var(--ctp-overlay2);
-            border-bottom-color: var(--ctp-overlay2);
-        }
-    }
-
-    button:disabled {
-        background: var(--ctp-mantle);
-        color: var(--ctp-overlay2);
-    }
+    @import "./action.css";
+    @import "./action-primary.css";
+    button.checked:not(:disabled) { background: var(--selection-bg); border-color: var(--border); color: var(--selection-text); }
+    @media (hover: hover) { button.checked:not(:disabled):hover { background: var(--selection-hover); border-color: var(--control); } }
+    button.checked:not(:disabled):active { background: var(--control-pressed); }
 </style>

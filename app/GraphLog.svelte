@@ -11,6 +11,7 @@
 </script>
 
 <script lang="ts">
+    import { revisionRowHeight } from "./graphLayout";
     import type { LogRow } from "./messages/LogRow.js";
     import GraphLine from "./GraphLine.svelte";
     import GraphNode from "./GraphNode.svelte";
@@ -20,9 +21,10 @@
         default: { row: EnhancedRow | null };
     }
 
-    const columnWidth = 18;
-    const rowHeight = 30;
+    let columnWidth = 18;
+    let rowHeight = revisionRowHeight;
     export let containerHeight: number;
+    export let endInset = 0;
     export let containerWidth: number;
     export let scrollTop: number;
     export let rows: (EnhancedRow | null)[];
@@ -77,7 +79,7 @@
         return sortLines(result);
     }
 
-    $: graphHeight = Math.max(containerHeight, rows.length * rowHeight);
+    $: graphHeight = Math.max(containerHeight, rows.length * rowHeight + endInset);
     $: visibleRows = Math.ceil(containerHeight / rowHeight) + 1;
     $: startIndex = Math.floor(Math.max(scrollTop, 0) / rowHeight);
     $: endIndex = startIndex + visibleRows;
@@ -110,8 +112,6 @@
 
 <style>
     svg {
-        stroke: var(--ctp-text);
-        fill: var(--ctp-text);
         overflow: hidden;
     }
 

@@ -1,79 +1,25 @@
 <script lang="ts">
-    export let label: string = "Working...";
+    export let label: string = "Working…";
     export let value: number | undefined = undefined;
 </script>
 
 <div class="progress-bar">
     {#if value !== undefined}
-        <progress {value} max={100}></progress>
+        <progress aria-label={label} {value} max={100}></progress>
     {:else}
-        <progress></progress>
+        <progress aria-label={label}></progress>
     {/if}
     <p class="progress-label">{label}</p>
 </div>
 
 <style>
-    .progress-bar {
-        display: grid;
-        grid-template-areas: "overlap";
-        align-items: center;
-        justify-items: center;
-    }
-
-    .progress-bar > * {
-        grid-area: 1/2/1/2;
-    }
-
-    .progress-label {
-        margin: 0;
-        color: black;
-        font-size: 16px;
-    }
-
-    progress {
-        min-width: 600px;
-        height: 24px;
-        appearance: none;
-
-        background: var(--ctp-flamingo);
-
-        border-width: 1px;
-        border-radius: 3px;
-        border-color: var(--ctp-overlay0);
-        box-shadow: 2px 2px var(--ctp-text);
-    }
-
-    progress::-webkit-progress-bar {
-        background: transparent;
-        border-radius: 3px;
-    }
-
-    progress:indeterminate {
-        animation: progress-indeterminate 2s infinite linear;
-        background: linear-gradient(90deg, var(--ctp-flamingo) 25%, var(--ctp-maroon) 50%, var(--ctp-flamingo) 75%);
-        background-size: 200% 100%;
-    }
-
-    progress::-webkit-progress-value {
-        background: var(--ctp-maroon);
-        border-radius: 3px;
-    }
-
-    progress::-moz-progress-bar {
-        background: var(--ctp-maroon);
-        border-radius: 3px;
-    }
-
-    progress:indeterminate::-moz-progress-bar {
-        background: transparent;
-    }
-
-    @keyframes progress-indeterminate {
-        0% {
-            background-position: 200% 0;
-        }
-        100% {
-            background-position: -200% 0;
-        }
-    }
+    .progress-bar { display: grid; gap: 12px; width: 100%; min-width: 0; }
+    .progress-label { font-size: var(--type-ui); color: var(--text); }
+    progress { width: min(460px, 100%); height: 6px; appearance: none; border: 0; border-radius: 4px; overflow: hidden; background: var(--active); }
+    progress::-webkit-progress-bar { background: var(--active); border-radius: 4px; }
+    progress::-webkit-progress-value { background: var(--control); border-radius: 4px; }
+    progress::-moz-progress-bar { background: var(--control); border-radius: 4px; }
+    progress:indeterminate { animation: working 1.5s ease-in-out infinite alternate; background: var(--control); }
+    @keyframes working { from { opacity: .45; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { progress:indeterminate { animation: none; } }
 </style>

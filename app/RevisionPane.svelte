@@ -1,515 +1,141 @@
 <script lang="ts">
-    import type { RevsResult } from "./messages/RevsResult";
-    import { get } from "svelte/store";
-    import { ignoreToggled, changeSelectEvent, descriptionDraft, dragOverWidget } from "./stores";
-    import ChangeObject from "./objects/ChangeObject.svelte";
-    import HunkObject from "./objects/HunkObject.svelte";
-    import RevisionObject from "./objects/RevisionObject.svelte";
-    import RevisionMutator from "./mutators/RevisionMutator";
-    import ActionWidget from "./controls/ActionWidget.svelte";
-    import Icon from "./controls/Icon.svelte";
-    import IdSpan from "./controls/IdSpan.svelte";
-    import Pane from "./shell/Pane.svelte";
-    import ToggleWidget from "./controls/ToggleWidget.svelte";
-    import Zone from "./objects/Zone.svelte";
-    import { onEvent } from "./ipc";
-    import AuthorSpan from "./controls/AuthorSpan.svelte";
-    import ListWidget, { type List } from "./controls/ListWidget.svelte";
-    import SetSpan from "./controls/SetSpan.svelte";
+    import { repositoryScope } from "./workspace/repository";
+    import { onDestroy, tick } from "svelte";
+    import { setCommandOperand } from "./commands/context";
+    import { executeOperandCommand } from "./commands/registry";
+    import { revisionIdentity, type RevisionDetail } from "./revision/data";
     import type { RevChange } from "./messages/RevChange";
-    import TimestampSpan from "./controls/TimestampSpan.svelte";
-    import TimestampRangeSpan from "./controls/TimestampRangeSpan.svelte";
+    import { hasModal, fileTreeVisible, fileTreeWidth, mobileFilesVisible, changeSelectEvent, revisionReviewState, repoConfigEvent, ignoreToggled } from "./stores";
+    import ActionWidget from "./controls/ActionWidget.svelte";
+    import RevisionActions from "./RevisionActions.svelte";
+    import FilesToggle from "./shell/FilesToggle.svelte";
+    import RevisionHeading from "./revision/RevisionHeading.svelte";
+    import RevisionFiles from "./revision/RevisionFiles.svelte";
+    import RevisionOverviewPanel from "./revision/RevisionOverviewPanel.svelte";
+    import { revisionModules } from "./revision/modules";
+    import { onEvent } from "./ipc";
+    import RevisionMutator from "./mutators/RevisionMutator";
 
-    export let revs: Extract<RevsResult, { type: "Detail" }>;
-
-    const CONTEXT = 3;
-
-    // headers are in descendant-first order
-    $: singleton = revs.set.from.commit.hex == revs.set.to.commit.hex;
-    $: newest = revs.headers[0];
-    $: oldest = revs.headers[revs.headers.length - 1];
-    $: newestImmutable = newest.is_immutable && !$ignoreToggled;
-    $: oldestImmutable = oldest.is_immutable && !$ignoreToggled;
-
+    export let revs: RevisionDetail;
+    export let integrated = false;
+    export let focused = false;
+    export let requestedPath: string | null = null;
+    export let onFileSelected: (path: string) => void = () => {};
+    let section: "files" | "details" = "files";
+    let viewportWidth = 1440;
+    let workspaceWidth = 800;
+    let resizingFiles = false;
+    $: maxFilesWidth = Math.max(180, Math.floor(Math.min(workspaceWidth * 0.6, workspaceWidth - 284)));
+    $: filesWidth = Math.max(180, Math.min(maxFilesWidth, Number.isFinite($fileTreeWidth) ? $fileTreeWidth : 200));
+    let selectedModule = "changes";
+    let selectedPath = "";
+    let previousKey = "";
+    $: syntheticChanges = [...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path));
+    $: reviewKey = revisionIdentity(revs, repositoryScope($repoConfigEvent));
+    $: if (reviewKey !== previousKey) {
+        let saved = revisionReviewState.get(reviewKey);
+        selectedPath = syntheticChanges.find(change => change.path.repo_path === (saved?.path ?? selectedPath))?.path.repo_path ?? syntheticChanges[0]?.path.repo_path ?? "";
+        previousKey = reviewKey;
+    }
+    $: if ($changeSelectEvent && syntheticChanges.includes($changeSelectEvent) && $changeSelectEvent.path.repo_path !== selectedPath) selectFile($changeSelectEvent);
+    $: if (reviewKey) revisionReviewState.set(reviewKey, { path: selectedPath, scrollTop: revisionReviewState.get(reviewKey)?.scrollTop ?? 0 });
+    $: if (requestedPath && requestedPath !== selectedPath) selectedPath = requestedPath;
+    $: overlayFiles = viewportWidth < (focused ? 880 : 768);
+    $: filesVisible = overlayFiles ? $mobileFilesVisible : $fileTreeVisible;
+    $: if (!overlayFiles) mobileFilesVisible.set(false);
+    $: context = { revs, focused, changes: syntheticChanges, selectedPath, onSelectFile: selectFile, onRequestFiles: showFiles };
+    $: modules = $revisionModules.filter(module => !module.available || module.available(context));
+    $: activeModule = modules.find(module => module.id === selectedModule) ?? modules[0];
     $: mutator = new RevisionMutator(revs.headers, $ignoreToggled);
-
-    // debounce for change detection
-    $: changeKey = revs.headers.map((h) => `${h.id.change.hex}/${h.id.change.offset ?? ""}`).join(",");
-    $: incomingDescription = revs.headers[revs.headers.length - 1].description.lines.join("\n");
-
-    // editable description for single-revision mode, stored for the current chid
-    let editableDescription = "";
-    let baselineDescription = "";
-    let lastChangeKey: string | null = null;
-    $: {
-        if (changeKey !== lastChangeKey) {
-            let draft = get(descriptionDraft); // $ would reenter when saving
-            editableDescription = draft?.changeKey === changeKey ? draft.text : incomingDescription;
-        } else if (editableDescription === baselineDescription) {
-            editableDescription = incomingDescription;
-        }
-        lastChangeKey = changeKey;
-        baselineDescription = incomingDescription;
+    onEvent<string>("gg://menu/revision", event => executeOperandCommand(revs.headers.length === 1 ? { type: "Revision", header: revs.headers[0] } : { type: "Revisions", headers: revs.headers }, event));
+    function resizeFiles(width: number) {
+        fileTreeWidth.set(Math.max(180, Math.min(maxFilesWidth, width)));
     }
-    $: descriptionChanged = editableDescription !== baselineDescription;
-    $: descriptionDraft.set(descriptionChanged ? { changeKey, text: editableDescription } : null);
-    let resetAuthor = false;
-    function updateDescription() {
-        mutator.onDescribe(editableDescription, resetAuthor);
+    function moveFilesSplitter(event: PointerEvent) {
+        if (!resizingFiles) return;
+        let container = (event.currentTarget as HTMLElement).parentElement!;
+        let bounds = container.getBoundingClientRect();
+        resizeFiles(getComputedStyle(container).direction === "rtl" ? event.clientX - bounds.left : bounds.right - event.clientX);
     }
-
-    // grouped authors for range mode
-    $: firstTimestamp = new Date(
-        Math.min(...revs.headers.map((h) => new Date(h.author.timestamp).getTime())),
-    ).toISOString();
-    $: lastTimestamp = new Date(
-        Math.max(...revs.headers.map((h) => new Date(h.author.timestamp).getTime())),
-    ).toISOString();
-    $: authors = [...new Map(revs.headers.map((h) => [h.author.email, h.author])).values()];
-
-    // conflicts are excluded from line counts - their "hunk" is materialised markers, not a real diff
-    $: diffStat = formatDiffStat(revs.changes, revs.changes.length + revs.conflicts.length);
-
-    let syntheticChanges = revs.changes
-        .concat(
-            revs.conflicts.map((conflict) => ({
-                kind: "None",
-                path: conflict.path,
-                has_conflict: true,
-                hunks: [conflict.hunk],
-            })),
-        )
-        .sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path));
-
-    let unset = true;
-    let selectedChange = $changeSelectEvent;
-    for (let change of syntheticChanges) {
-        if (selectedChange?.path?.repo_path === change.path.repo_path) {
-            unset = false;
-        }
+    function filesSplitterKeydown(event: KeyboardEvent) {
+        let direction = getComputedStyle(event.currentTarget as HTMLElement).direction === "rtl" ? -1 : 1;
+        if (event.key === "ArrowLeft") resizeFiles(filesWidth + 24 * direction);
+        else if (event.key === "ArrowRight") resizeFiles(filesWidth - 24 * direction);
+        else if (event.key === "Home") resizeFiles(180);
+        else if (event.key === "End") resizeFiles(maxFilesWidth);
+        else return;
+        event.preventDefault();
     }
-    if (unset) {
-        changeSelectEvent.set(syntheticChanges[0]);
+    function selectFile(change: RevChange) {
+        selectedPath = change.path.repo_path;
+        setCommandOperand({ type: "Change", headers: revs.headers, path: change.path, hunk: null });
+        onFileSelected(selectedPath);
+        changeSelectEvent.set(change);
+        if (overlayFiles && $mobileFilesVisible) hideFiles(false);
     }
-
-    let list: List = {
-        getSize() {
-            return syntheticChanges.length;
-        },
-        getSelection() {
-            let index =
-                syntheticChanges.findIndex((row) => row.path.repo_path == $changeSelectEvent?.path.repo_path) ?? -1;
-            return { from: index, to: index };
-        },
-        selectRow(row: number) {
-            $changeSelectEvent = syntheticChanges[row];
-        },
-        extendSelection(row: number) {
-            $changeSelectEvent = syntheticChanges[row];
-        },
-        editRow(row: number) {},
-    };
-
-    onEvent<string>("gg://menu/revision", (event) => mutator.handle(event));
-
-    function minLines(change: RevChange): number {
-        // let total = 0;
-        // for (let hunk of change.hunks) {
-        //     total += Math.min(hunk.lines.lines.length, CONTEXT * 2 + 1) + 1;
-        // }
-        // return total;
-        let max = 0;
-        for (let hunk of change.hunks) {
-            max = Math.max(hunk.lines.lines.length, max);
-        }
-        return Math.min(max, CONTEXT * 2 + 1);
+    function showFiles() {
+        if (overlayFiles) mobileFilesVisible.set(true);
+        else fileTreeVisible.set(true);
     }
-
-    function formatDiffStat(changes: RevChange[], fileCount: number): string {
-        let insertions = 0;
-        let deletions = 0;
-        for (let change of changes) {
-            for (let hunk of change.hunks) {
-                for (let line of hunk.lines.lines) {
-                    if (line.startsWith("+")) {
-                        insertions++;
-                    } else if (line.startsWith("-")) {
-                        deletions++;
-                    }
-                }
-            }
-        }
-
-        let parts = [`${fileCount} ${fileCount == 1 ? "file" : "files"} changed`];
-        if (insertions > 0) {
-            parts.push(`${insertions} ${insertions == 1 ? "insertion" : "insertions"}(+)`);
-        }
-        if (deletions > 0) {
-            parts.push(`${deletions} ${deletions == 1 ? "deletion" : "deletions"}(-)`);
-        }
-        return parts.join(", ");
+    function hideFiles(restoreTrigger = true) {
+        if (overlayFiles) mobileFilesVisible.set(false);
+        else fileTreeVisible.set(false);
+        tick().then(() => document.querySelector<HTMLElement>(restoreTrigger ? '[aria-controls="changed-files"]' : '.diff-scroll')?.focus({ preventScroll: true }));
     }
-
-    function lineColour(line: string): string | null {
-        if (line.startsWith("+")) {
-            return "add";
-        } else if (line.startsWith("-")) {
-            return "remove";
-        } else {
-            return null;
-        }
-    }
+    onDestroy(() => mobileFilesVisible.set(false));
 </script>
 
-<Pane titlebar>
-    <h2 slot="header" class="header">
-        <span class="title">
-            {#if singleton}
-                <IdSpan selectable id={newest.id.change} /> | <IdSpan selectable id={newest.id.commit} />
-                {#if newest.is_working_copy}
-                    | Working copy
-                {/if}
-            {:else}
-                <SetSpan selectable set={revs.set} /> | {revs.headers.length} revisions
-            {/if}
-            {#if revs.headers.some((header) => header.is_immutable)}
-                | Immutable
-            {/if}
-        </span>
-
-        <div class="checkout-commands">
-            {#if singleton}
-                <ActionWidget
-                    tip="make working copy"
-                    onClick={mutator.onEdit}
-                    disabled={newestImmutable || newest.is_working_copy}>
-                    <Icon name="edit-2" /> Edit
-                </ActionWidget>
-            {/if}
-
-            <ActionWidget tip="create a child" onClick={mutator.onNewChild}>
-                <Icon name="edit" /> New
-            </ActionWidget>
-        </div>
-    </h2>
-
-    <div slot="body" class="body">
-        {#if !singleton}
-            <!-- prettier-ignore -->
-            <div class="description-list">{#each revs.headers as header, i}{#if i > 0}<hr class="description-divider" />{/if}<div class="description-row">{header.description.lines.join("\n")}</div>{/each}</div>
-        {:else}
-            <textarea
-                class="description"
-                spellcheck="false"
-                disabled={newestImmutable}
-                bind:value={editableDescription}
-                on:dragenter={dragOverWidget}
-                on:dragover={dragOverWidget}
-                on:keydown={(ev) => {
-                    if (descriptionChanged && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) {
-                        updateDescription();
-                    }
-                }}></textarea>
-        {/if}
-
-        <div class="signature-commands">
-            {#if singleton}
-                <span>Author:</span>
-                <AuthorSpan author={newest.author} />
-                <TimestampSpan timestamp={newest.author.timestamp} />
-
-                <ToggleWidget
-                    safe
-                    secondary
-                    tip="reset author"
-                    bind:checked={resetAuthor}
-                    disabled={newestImmutable}
-                    on="unlock"
-                    off="lock" />
-                <span></span>
-                <ActionWidget
-                    tip="set commit message"
-                    onClick={() => mutator.onDescribe(editableDescription, resetAuthor)}
-                    disabled={newestImmutable || !descriptionChanged}>
-                    <Icon name="file-text" /> Describe
-                </ActionWidget>
-            {:else}
-                {#if authors.length > 1}
-                    <span>Authors:</span>
-                {:else}
-                    <span>Author:</span>
-                {/if}
-                <span>
-                    {#each authors as author, ix}
-                        <!-- prettier-ignore -->
-                        <AuthorSpan {author} />{#if ix < authors.length - 1},&nbsp;
-                        {/if}
-                    {/each}
-                </span>
-                <TimestampRangeSpan from={firstTimestamp} to={lastTimestamp} />
-            {/if}
-        </div>
-
-        {#if revs.parents.length > 0}
-            <Zone operand={{ type: "Merge", header: oldest }} let:target>
-                <div class="parents" class:target>
-                    {#each revs.parents as parent}
-                        <div class="parent">
-                            <span>Parent:</span>
-                            <RevisionObject header={parent} child={oldest} selected={false} noBookmarks />
-                        </div>
-                    {/each}
-                </div>
-            </Zone>
-        {/if}
-
-        {#if syntheticChanges.length > 0}
-            <div class="move-commands">
-                <span class="changes-label">Changes: <span class="stat">{diffStat}</span></span>
-
-                <ActionWidget
-                    tip="move all changes to parent"
-                    onClick={mutator.onSquash}
-                    disabled={oldestImmutable || oldest.parent_ids.length != 1}>
-                    <Icon name="upload" /> Squash
-                </ActionWidget>
-
-                {#if singleton}
-                    <ActionWidget
-                        tip="copy all changes from parent"
-                        onClick={mutator.onRestore}
-                        disabled={newestImmutable || newest.parent_ids.length != 1}>
-                        <Icon name="download" /> Restore
-                    </ActionWidget>
-                {/if}
+<svelte:window bind:innerWidth={viewportWidth} />
+<section class="revision-pane" inert={$hasModal} aria-label="Selected revision">
+    {#if !integrated}<header class="revision-header"><RevisionHeading {revs} /><FilesToggle /></header>{/if}
+    {#if focused}<nav class="inspection-sections" aria-label="Revision sections"><button type="button" aria-current={section === "files" ? "page" : undefined} on:click={() => section = "files"}>Files <span>{syntheticChanges.length}</span></button><button type="button" aria-current={section === "details" ? "page" : undefined} on:click={() => section = "details"}>Details</button><button class="file-picker" type="button" aria-label="Choose changed file" aria-controls="changed-files" aria-expanded={filesVisible} on:click={showFiles}>Choose file</button></nav>{/if}
+    <div class="revision-workspace" class:with-files={filesVisible && !overlayFiles} bind:clientWidth={workspaceWidth} style="--files-width: {filesWidth}px;">
+        {#if filesVisible && overlayFiles}<button class="file-tree-backdrop" type="button" aria-label="Close changed files" on:click={() => hideFiles()}></button>{/if}
+        <div class="revision-content" class:details-focused={focused && section === "details"} inert={filesVisible && overlayFiles}>
+            <RevisionOverviewPanel {revs} mode={focused ? section : null} onSection={value => section = value} />
+            <div class="revision-main" class:hidden={focused && section === "details"}>
+                {#if modules.length > 1}<nav class="module-tabs" aria-label="Revision views">{#each modules as module}<button class="selection-item" type="button" aria-current={module.id === activeModule?.id ? "page" : undefined} on:click={() => selectedModule = module.id}>{module.label}</button>{/each}</nav>{/if}
+                {#if activeModule}<svelte:boundary><svelte:component this={activeModule.component} {...context} />{#snippet failed(_error, reset)}<div class="module-error" role="alert"><p>Couldn’t display {activeModule.label.toLowerCase()}.</p><ActionWidget secondary tip="Retry revision view" onClick={reset}>Try again</ActionWidget></div>{/snippet}</svelte:boundary>{/if}
             </div>
 
-            <ListWidget {list} type="Change" descendant={$changeSelectEvent?.path.repo_path}>
-                <div class="changes">
-                    {#each syntheticChanges as change}
-                        <!-- XXX implement, somehow, plural squash/restore -->
-                        <ChangeObject
-                            {change}
-                            headers={revs.headers}
-                            selected={$changeSelectEvent?.path?.repo_path === change.path.repo_path} />
-                        {#if $changeSelectEvent?.path?.repo_path === change.path.repo_path}
-                            <div class="change" style="--lines: {minLines(change)}" tabindex="-1">
-                                {#each change.hunks as hunk}
-                                    <div class="hunk">
-                                        <HunkObject header={singleton ? newest : null} path={change.path} {hunk} />
-                                    </div>
-                                    <pre class="diff">{#each hunk.lines.lines as line}<span class={lineColour(line)}
-                                                ><span class="prefix">{line.slice(0, 1)}</span>{line.slice(1)}</span
-                                            >{/each}</pre>
-                                {/each}
-                            </div>
-                        {/if}
-                    {/each}
-                </div>
-            </ListWidget>
-        {:else}
-            <div class="move-commands">
-                <span class="changes-label">Changes: <span class="stat">(empty)</span></span>
-            </div>
+        </div>
+        {#if filesVisible && !overlayFiles}
+            <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role (the focusable separator follows the window splitter pattern) -->
+            <button type="button" class="files-separator" class:dragging={resizingFiles} role="separator" aria-label="Resize changed files" aria-controls="changed-files" aria-orientation="vertical" aria-valuenow={Math.round(filesWidth)} aria-valuemin={180} aria-valuemax={maxFilesWidth}
+                on:pointerdown={event => { event.preventDefault(); resizingFiles = true; event.currentTarget.setPointerCapture(event.pointerId); }}
+                on:pointermove={moveFilesSplitter} on:pointerup={() => resizingFiles = false} on:pointercancel={() => resizingFiles = false} on:lostpointercapture={() => resizingFiles = false} on:keydown={filesSplitterKeydown}></button>
         {/if}
+        <RevisionFiles changes={syntheticChanges} headers={revs.headers} {selectedPath} {reviewKey} visible={filesVisible} overlay={overlayFiles} onSelect={selectFile} onClose={() => hideFiles()} />
     </div>
-</Pane>
+</section>
 
 <style>
-    .header {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        text-wrap: nowrap;
-        font-weight: normal;
-    }
+    .revision-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+    .revision-header { display: flex; align-items: center; gap: 12px; height: 40px; min-height: 40px; padding: 4px 8px 4px var(--pane-inset); border-block-end: 1px solid var(--rule); }
+    .revision-workspace { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+    .revision-workspace.with-files { grid-template-columns: minmax(0, 1fr) 4px var(--files-width); }
+    .files-separator { position: relative; width: 4px; margin: 0; border: 0; padding: 0; background: transparent; cursor: col-resize; touch-action: none; user-select: none; }
+    .files-separator::before { content: ""; position: absolute; inset-block: 0; inset-inline: -5px; }
+    .files-separator::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 1px; width: 1px; background: var(--rule); pointer-events: none; }
+    .files-separator:focus-visible { outline: none; }
+    .files-separator.dragging, .files-separator:focus-visible { background: var(--accent-subtle); }
+    .files-separator.dragging::after, .files-separator:focus-visible::after { background: var(--accent); }
+    @media (hover: hover) { .files-separator:hover { background: var(--hover); } .files-separator:hover::after { background: var(--control-hover); } }
+    @media (pointer: coarse) { .files-separator::before { inset-inline: -10px; } }
+    .revision-content { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+    .file-tree-backdrop { position: absolute; inset: 0; z-index: 2; border: 0; padding: 0; background: var(--scrim); cursor: default; pointer-events: auto; }
+    .revision-main { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+    .module-tabs { display: flex; flex-shrink: 0; gap: 4px; overflow-x: auto; overscroll-behavior: contain; padding: 6px var(--pane-inset); border-block-end: 1px solid var(--rule); }
+    .module-tabs button { padding: 5px 10px; min-height: 32px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .module-error { padding: 24px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+    .inspection-sections { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-block-end: 1px solid var(--rule); flex-shrink: 0; }
+    .inspection-sections button { min-height: 44px; padding: 8px 0; border: 0; border-block-end: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: var(--type-ui); }
+    .inspection-sections button[aria-current] { color: var(--text); border-block-end-color: var(--accent); }
+    .inspection-sections span { font-variant-numeric: tabular-nums; margin-inline-start: 4px; }
+    .inspection-sections .file-picker { margin-inline-start: auto; color: var(--text); }
+    .revision-main.hidden { display: none; }
+    .details-focused { overflow: auto; pointer-events: auto; }
+    .details-focused :global(.overview-scroll) { max-height: none; }
 
-    .title {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    /* the header may be click-through, but selection needs a click target */
-    .title :global(.selectable) {
-        pointer-events: auto;
-    }
-
-    .checkout-commands {
-        height: 30px;
-        padding: 0 3px;
-        display: flex;
-        align-items: center;
-        justify-content: end;
-        gap: 6px;
-    }
-
-    .body {
-        height: 100%;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        margin: 0 -6px -3px -6px;
-        padding: 0 6px 3px 6px;
-        gap: 0;
-    }
-
-    .description {
-        resize: vertical;
-        min-height: 90px;
-        overflow: auto;
-    }
-
-    .description-list {
-        min-height: 90px;
-        overflow: auto;
-        pointer-events: auto;
-
-        border: 1px solid transparent;
-        border-radius: 4px;
-        padding: 1px;
-
-        white-space: pre-wrap;
-        user-select: text;
-
-        color: var(--ctp-subtext0);
-    }
-
-    .description-row {
-        white-space: pre-wrap;
-    }
-
-    .description-divider {
-        border: none;
-        border-top: 1px dashed var(--ctp-overlay0);
-        margin: 4px 1px;
-    }
-
-    .signature-commands {
-        height: 30px;
-        width: 100%;
-        display: grid;
-        grid-template-columns: 63px auto auto auto 1fr auto;
-        align-items: center;
-        gap: 6px;
-        padding: 0 3px;
-        flex-shrink: 0;
-    }
-
-    .parents {
-        border-top: 1px solid var(--ctp-overlay0);
-        padding: 0 3px;
-    }
-
-    .parent {
-        display: grid;
-        grid-template-columns: 63px 1fr;
-        align-items: baseline;
-        gap: 6px;
-    }
-
-    .move-commands {
-        border-top: 1px solid var(--ctp-overlay0);
-        height: 30px;
-        min-height: 30px;
-        width: 100%;
-        padding: 0 3px;
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .move-commands > :global(button) {
-        margin-top: -1px;
-    }
-
-    .changes-label {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .stat {
-        color: var(--ctp-subtext0);
-    }
-
-    .changes {
-        border-top: 1px solid var(--ctp-overlay0);
-        display: flex;
-        flex-direction: column;
-        pointer-events: auto;
-        overflow-x: hidden;
-        overflow-y: auto;
-        scrollbar-color: var(--ctp-text) var(--ctp-crust);
-        flex: 1;
-        min-height: 0;
-    }
-
-    .changes::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .changes::-webkit-scrollbar-thumb {
-        background-color: var(--ctp-text);
-        border-radius: 6px;
-    }
-
-    .changes::-webkit-scrollbar-track {
-        background-color: var(--ctp-crust);
-    }
-
-    .change {
-        font-size: small;
-        margin: 0;
-        pointer-events: auto;
-        overflow-x: auto;
-        overflow-y: scroll;
-        scrollbar-color: var(--ctp-text) var(--ctp-base);
-        min-height: calc(var(--lines) * 1em);
-    }
-
-    .change::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-    }
-
-    .change::-webkit-scrollbar-thumb {
-        background-color: var(--ctp-text);
-        border-radius: 6px;
-    }
-
-    .change::-webkit-scrollbar-track {
-        background-color: var(--ctp-base);
-    }
-
-    .hunk {
-        margin: 0;
-        text-align: center;
-        background: var(--ctp-mantle);
-    }
-
-    .diff {
-        margin: 0;
-        background: var(--ctp-base);
-        user-select: text;
-    }
-
-    /* the +/-/space is a diff marker, not content - excluding it from selection keeps it out of copies */
-    .diff .prefix {
-        user-select: none;
-    }
-
-    .add {
-        color: var(--ctp-green);
-    }
-
-    .remove {
-        color: var(--ctp-red);
-    }
-
-    .target {
-        color: black;
-        background: var(--ctp-flamingo);
-    }
+    @media (pointer: coarse), (max-width: 600px) { .revision-header { height: 52px; min-height: 52px; } }
 </style>

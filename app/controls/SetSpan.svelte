@@ -16,7 +16,7 @@
     }
 
     .separator {
-        color: var(--ctp-subtext1);
+        color: var(--muted);
         font-family: var(--stack-code);
     }
 

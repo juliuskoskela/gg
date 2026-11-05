@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { revisionNodeRadius, revisionRowHeight } from "./graphLayout";
     import type { RevHeader } from "./messages/RevHeader";
     import { currentContext } from "./stores.js";
 
@@ -11,40 +12,38 @@
 
 {#if header.is_immutable}
     {#if header.is_working_copy}
-        <circle class={wcClass} class:context cx="9" cy="15" r="6" />
+        <circle class={wcClass} cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius} />
     {:else}
-        <circle class:context cx="9" cy="15" r="6" />
+        <circle class="immutable" cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius} />
     {/if}
 {:else}
-    <circle class:context cx="9" cy="15" r="6" class="mutable" />
+    <circle cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius} class="mutable" />
     {#if header.is_working_copy}
-        <circle class={wcClass} class:context cx="9" cy="15" r="3" />
+        <circle class={wcClass} cx="9" cy={revisionRowHeight / 2} r="2" />
     {/if}
 {/if}
+
+{#if context}<circle class="context" cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius + 3} />{/if}
 
 <style>
     circle {
         pointer-events: none;
-        stroke: var(--ctp-blue);
-        fill: var(--ctp-blue);
+        stroke: var(--graph-node);
+        fill: none;
+        stroke-width: 1;
     }
 
+    .immutable { stroke: var(--graph-immutable); fill: var(--graph-immutable); }
+
     .wc {
-        stroke: var(--ctp-green);
-        fill: var(--ctp-green);
+        stroke: var(--positive);
+        fill: var(--positive);
     }
 
     .other-wc {
-        stroke: var(--ctp-yellow);
-        fill: var(--ctp-yellow);
+        stroke: var(--warning);
+        fill: var(--warning);
     }
 
-    .context {
-        stroke: var(--ctp-rosewater);
-        fill: var(--ctp-rosewater);
-    }
-
-    .mutable {
-        fill: none;
-    }
+    .context { stroke: var(--graph-context); fill: none; }
 </style>

@@ -28,14 +28,16 @@
         default: {};
     }
 
+    export let rowHeight = 30;
     export let list: List;
     export let type: Operand["type"];
-    export let descendant: string | undefined;
+    export let descendant: string | undefined = undefined;
     export let clientHeight = 0;
     export let clientWidth = 0;
     export let scrollTop = 0;
+    export let scrollPaddingBottom = 0;
 
-    let activedescendant = `${type}-${descendant}`;
+    $: activedescendant = descendant ? `${type}-${descendant}` : undefined;
     let box: HTMLElement;
     let pollFrame: number;
     let lastFrame: number | undefined;
@@ -144,7 +146,7 @@
                 event.preventDefault();
                 selection = list.getSelection();
                 minIdx = Math.min(selection.from, selection.to);
-                pageRows = Math.round(box.clientHeight / 30);
+                pageRows = Math.round(box.clientHeight / rowHeight);
                 minIdx = Math.max(minIdx - pageRows, 0);
                 onSelect(minIdx);
                 break;
@@ -153,7 +155,7 @@
                 event.preventDefault();
                 selection = list.getSelection();
                 maxIdx = Math.max(selection.from, selection.to);
-                pageRows = Math.round(box.clientHeight / 30);
+                pageRows = Math.round(box.clientHeight / rowHeight);
                 maxIdx = Math.min(maxIdx + pageRows, list.getSize() - 1);
                 onSelect(maxIdx);
                 break;
@@ -189,18 +191,18 @@
     }
 
     function scrollToRow(index: number) {
-        let y = index * 30;
-        if (box.scrollTop + box.clientHeight < y + 30) {
+        let y = index * rowHeight;
+        if (box.scrollTop + box.clientHeight - scrollPaddingBottom < y + rowHeight) {
             box.scrollTo({
                 left: 0,
-                top: y - box.clientHeight + 30,
-                behavior: "smooth",
+                top: y - box.clientHeight + scrollPaddingBottom + rowHeight,
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
             });
         } else if (box.scrollTop > y) {
             box.scrollTo({
                 left: 0,
                 top: y,
-                behavior: "smooth",
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
             });
         }
     }
@@ -232,26 +234,13 @@
     .listbox {
         overflow-x: hidden;
         overflow-y: auto;
-        scrollbar-color: var(--ctp-text) var(--ctp-crust);
         display: grid;
         outline: none;
     }
 
     .listbox:focus-visible {
-        outline: 2px solid var(--ctp-lavender);
-        border-radius: 3px;
+        outline: 2px solid var(--accent);
+        border-radius: var(--radius-control);
     }
 
-    .listbox::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .listbox::-webkit-scrollbar-thumb {
-        background-color: var(--ctp-text);
-        border-radius: 6px;
-    }
-
-    .listbox::-webkit-scrollbar-track {
-        background-color: var(--ctp-crust);
-    }
 </style>

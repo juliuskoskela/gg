@@ -18,18 +18,18 @@
 
 <style>
     #overlay {
-        z-index: 1;
+        z-index: 100;
         position: absolute;
         top: 0;
         right: 0;
-        bottom: 33px;
+        bottom: 0;
         left: 0;
 
-        background: rgb(var(--ctp-overlay1-rgb) / 40%);
+        background: var(--scrim);
         pointer-events: auto;
 
         display: grid;
-        grid-template-columns: minmax(16.6%, 1fr) auto minmax(16.6%, 1fr);
+        grid-template-columns: minmax(16px, 1fr) auto minmax(16px, 1fr);
         grid-template-rows: 1fr auto 2fr;
     }
 

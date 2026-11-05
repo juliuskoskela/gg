@@ -17,7 +17,8 @@
 
 <style>
     .timestamp {
-        color: var(--ctp-subtext0);
+        color: var(--muted);
+        font-size: var(--type-caption);
         white-space: nowrap;
         pointer-events: auto;
     }

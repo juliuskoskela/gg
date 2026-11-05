@@ -1,208 +1,49 @@
-<!-- XXX duplicates a lot of dispatch and enablement logic from menu.rs, but it's not easy to share... -->
 <script lang="ts">
+    import { onMount, onDestroy } from "svelte";
+    import { currentWorkspaceIdentity } from "../commands/context";
     import type { Operand } from "../messages/Operand";
-    import type { RevHeader } from "../messages/RevHeader";
-    import type { StoreRef } from "../messages/StoreRef";
-    import { ignoreToggled } from "../stores";
-    import RefMutator from "../mutators/RefMutator";
-    import { handleCommand } from "../mutators/commands";
-
+    import { currentMutation, ignoreToggled } from "../stores";
+    import { mutationPending } from "../operations";
+    import { contextCommands, revisionCommands } from "../commands/registry";
     export let operand: Operand;
     export let x: number;
     export let y: number;
     export let onClose: () => void;
-
-    function getRevisionHeaders(): RevHeader[] {
-        if (operand.type === "Revision") {
-            return [operand.header];
-        } else if (operand.type === "Revisions") {
-            return operand.headers;
-        }
-        return [];
-    }
-
-    function onClick(action: string) {
-        handleCommand(operand, action, $ignoreToggled);
-        onClose();
-    }
-
-    function onDismiss() {
-        onClose();
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-        if (event.key === "Escape") {
-            onClose();
-        }
-    }
-
-    function isRevisionEnabled(headers: RevHeader[], ignoreImmutable: boolean = false) {
-        const isSingleton = headers.length == 1;
-        const anyImmutable = !ignoreImmutable && headers.some((h) => h.is_immutable);
-        const hasSingleParent = headers[headers.length - 1]?.parent_ids.length == 1;
-
-        return {
-            new_child: true,
-            new_parent: !anyImmutable && hasSingleParent,
-            edit: isSingleton && !anyImmutable && !headers[0]?.is_working_copy,
-            revert: true,
-            duplicate: true,
-            abandon: !anyImmutable,
-            squash: !anyImmutable && hasSingleParent,
-            restore: isSingleton && !anyImmutable && hasSingleParent,
-            bookmark: isSingleton,
-        };
-    }
-
-    function isChangeEnabled(headers: RevHeader[], ignoreImmutable: boolean = false) {
-        const anyImmutable = !ignoreImmutable && headers.some((h) => h.is_immutable);
-        const hasSingleParent = headers[headers.length - 1]?.parent_ids.length == 1;
-
-        return {
-            squash: !anyImmutable && hasSingleParent,
-            restore: !anyImmutable && hasSingleParent,
-        };
-    }
-
-    function isRefEnabled(ref: StoreRef) {
-        return {
-            track: ref.type === "RemoteBookmark" && !ref.is_tracked,
-            untrack:
-                (ref.type === "LocalBookmark" && ref.tracking_remotes.length > 0) ||
-                (ref.type === "RemoteBookmark" && !ref.is_synced && ref.is_tracked && !ref.is_absent),
-            push_all:
-                (ref.type === "LocalBookmark" && ref.tracking_remotes.length > 0) ||
-                (ref.type === "RemoteBookmark" && ref.is_tracked && ref.is_absent),
-            push_single: ref.type === "LocalBookmark" && ref.potential_remotes > 0,
-            fetch_all:
-                (ref.type === "LocalBookmark" && ref.tracking_remotes.length > 0) ||
-                (ref.type === "RemoteBookmark" && (!ref.is_tracked || !ref.is_absent)),
-            fetch_single: ref.type === "LocalBookmark" && ref.available_remotes > 0,
-            rename: ref.type === "LocalBookmark",
-            delete: !(ref.type === "RemoteBookmark" && ref.is_absent && ref.is_tracked),
-        };
-    }
-
-    $: revisionEnabled =
-        operand.type === "Revision" || operand.type === "Revisions"
-            ? isRevisionEnabled(getRevisionHeaders(), $ignoreToggled)
-            : null;
-    $: changeEnabled = operand.type === "Change" ? isChangeEnabled(operand.headers, $ignoreToggled) : null;
-    $: refEnabled = operand.type === "Ref" ? isRefEnabled(operand.ref) : null;
-    $: defaultCommand = operand.type === "Ref" ? RefMutator.defaultCommand(operand.ref) : null;
-
-    // clamp to viewport
     let menuElement: HTMLDivElement;
+    let previous = document.activeElement as HTMLElement | null;
+    onMount(() => menuElement?.querySelector<HTMLButtonElement>("button")?.focus());
+    onDestroy(() => { if (document.activeElement === document.body || menuElement?.contains(document.activeElement)) previous?.focus({ preventScroll: true }); });
+    function key(event: KeyboardEvent) {
+        if (event.key === "Escape" || event.key === "Tab") { onClose(); if (event.key === "Escape") { event.stopPropagation(); event.preventDefault(); } return; }
+        let items = Array.from(menuElement.querySelectorAll<HTMLButtonElement>("button"));
+        let index = items.indexOf(document.activeElement as HTMLButtonElement);
+        if (event.key === "ArrowDown") index = (index + 1) % items.length;
+        else if (event.key === "ArrowUp") index = (index - 1 + items.length) % items.length;
+        else if (event.key === "Home") index = 0;
+        else if (event.key === "End") index = items.length - 1;
+        else return;
+        event.preventDefault(); items[index]?.focus();
+    }
+    $: commands = operand.type === "Revision" ? revisionCommands([operand.header], false, $ignoreToggled, $currentMutation, $mutationPending) : operand.type === "Revisions" ? revisionCommands(operand.headers, false, $ignoreToggled, $currentMutation, $mutationPending) : contextCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending);
     $: if (menuElement) {
-        const rect = menuElement.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        if (x + rect.width > viewportWidth) {
-            menuElement.style.left = `${viewportWidth - rect.width - 8}px`;
-        }
-        if (y + rect.height > viewportHeight) {
-            menuElement.style.top = `${viewportHeight - rect.height - 8}px`;
-        }
+        let rect = menuElement.getBoundingClientRect();
+        menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
+        menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
     }
 </script>
-
-<svelte:window on:click={onDismiss} />
-
-<div
-    class="context-menu"
-    style="left: {x}px; top: {y}px;"
-    role="menu"
-    tabindex="0"
-    on:click|stopPropagation
-    on:keydown={onKeyDown}
-    bind:this={menuElement}>
-    {#if (operand.type === "Revision" || operand.type === "Revisions") && revisionEnabled}
-        <button disabled={!revisionEnabled.new_child} on:click={() => onClick("new_child")}>New child</button>
-        <button disabled={!revisionEnabled.new_parent} on:click={() => onClick("new_parent")}
-            >New inserted parent</button>
-        <hr />
-        <button disabled={!revisionEnabled.edit} on:click={() => onClick("edit")}>Edit as working copy</button>
-        <button disabled={!revisionEnabled.revert} on:click={() => onClick("revert")}>Revert into working copy</button>
-        <button disabled={!revisionEnabled.duplicate} on:click={() => onClick("duplicate")}>Duplicate</button>
-        <button disabled={!revisionEnabled.abandon} on:click={() => onClick("abandon")}>Abandon</button>
-        <hr />
-        <button disabled={!revisionEnabled.squash} on:click={() => onClick("squash")}>Squash into parent</button>
-        <button disabled={!revisionEnabled.restore} on:click={() => onClick("restore")}>Restore from parent</button>
-        <hr />
-        <button disabled={!revisionEnabled.bookmark} on:click={() => onClick("bookmark")}>Create bookmark...</button>
-    {:else if operand.type === "Change" && changeEnabled}
-        <button disabled={!changeEnabled.squash} on:click={() => onClick("squash")}>Squash into parent</button>
-        <button disabled={!changeEnabled.restore} on:click={() => onClick("restore")}>Restore from parent</button>
-        <hr />
-        <button on:click={() => onClick("file_history")}>View file history</button>
-    {:else if operand.type === "Ref" && refEnabled}
-        <button
-            disabled={!refEnabled.track}
-            class:defaulted={defaultCommand === "track"}
-            on:click={() => onClick("track")}>Track</button>
-        <button
-            disabled={!refEnabled.untrack}
-            class:defaulted={defaultCommand === "untrack"}
-            on:click={() => onClick("untrack")}>Untrack</button>
-        <hr />
-        <button disabled={!refEnabled.push_all} on:click={() => onClick("push-all")}>Push</button>
-        <button disabled={!refEnabled.push_single} on:click={() => onClick("push-single")}>Push to remote...</button>
-        <button disabled={!refEnabled.fetch_all} on:click={() => onClick("fetch-all")}>Fetch</button>
-        <button disabled={!refEnabled.fetch_single} on:click={() => onClick("fetch-single")}
-            >Fetch from remote...</button>
-        <hr />
-        <button disabled={!refEnabled.rename} on:click={() => onClick("rename")}>Rename...</button>
-        <button disabled={!refEnabled.delete} on:click={() => onClick("delete")}>Delete</button>
-    {:else if operand.type === "Workspace"}
-        <button class="defaulted" on:click={() => onClick("open")}>Open</button>
-        <button on:click={() => onClick("forget")}>Forget</button>
-        <button on:click={() => onClick("rename")}>Rename...</button>
-    {/if}
+<svelte:window on:click={onClose} />
+<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="0" on:click|stopPropagation on:keydown={key} bind:this={menuElement}>
+    {#each commands as command (command.id)}
+        <button role="menuitem" aria-disabled={!!command.reason} title={command.reason ?? command.label} on:click={() => { if (!command.reason) { command.execute(); onClose(); } }}>{command.label}{#if command.reason} — {command.reason}{/if}</button>
+    {/each}
 </div>
 
 <style>
-    .context-menu {
-        position: fixed;
-        z-index: 1000;
-        background: var(--ctp-surface0);
-        border: 1px solid var(--ctp-overlay0);
-        border-radius: 3px;
-        box-shadow: 2px 2px var(--ctp-text);
-    }
-
-    hr {
-        border: none;
-        border-top: 1px solid var(--ctp-overlay0);
-        margin: 2px 0;
-    }
-
-    button {
-        width: 100%;
-        display: block;
-        border: none;
-        padding: 4px 12px;
-
-        text-align: left;
-        background: none;
-        color: var(--ctp-text);
-        font-family: var(--stack-industrial);
-
-        &:disabled {
-            color: var(--ctp-overlay0);
-        }
-
-        /* the command run by double-clicking the object */
-        &.defaulted:not(:disabled) {
-            font-weight: bold;
-        }
-
-        &:not(:disabled) {
-            cursor: pointer;
-            &:hover {
-                background: var(--ctp-flamingo);
-                color: black;
-            }
-        }
-    }
+    .context-menu { position: fixed; z-index: 1000; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-control); padding: 5px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; box-shadow: var(--shadow-overlay); }
+    button { width: 100%; display: block; border: none; min-height: var(--control-height); padding: 6px var(--control-padding-inline); font-size: 13px; line-height: 20px; border-radius: var(--radius-control); text-align: start; background: transparent; color: var(--text); font-family: var(--stack-ui); }
+    button[aria-disabled="true"] { color: var(--text-disabled); }
+    button:not([aria-disabled="true"]) { cursor: pointer; }
+    @media (hover: hover) { button:not([aria-disabled="true"]):hover { background: var(--hover); } }
+    button:not([aria-disabled="true"]):active { background: var(--control-pressed); }
+    @media (pointer: coarse), (max-width: 600px) { button { min-height: 44px; } }
 </style>

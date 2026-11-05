@@ -10,33 +10,38 @@
     $: category = id.type == "CommitId" ? "commit" : id.is_divergent ? "divergent" : id.offset ? "hidden" : "change";
 </script>
 
-<span class="id" class:pronoun={pronoun || $currentTarget?.type == "Repository"} class:selectable>
+<span title={id.type === "ChangeId" && id.is_divergent ? "Divergent change" : undefined} class="id" class:pronoun={pronoun || $currentTarget?.type == "Repository"} class:selectable>
     <span class="prefix {category}">{id.prefix}</span>{suffix}{#if id.type == "ChangeId" && id.offset}<span
             class="suffix {category}">/{id.offset}</span
-        >{/if}
+        >{/if}{#if id.type === "ChangeId" && id.is_divergent}<span class="divergence" aria-label="Divergent change">≠</span>{/if}
 </span>
 
 <style>
     .id {
         pointer-events: none;
-        color: var(--ctp-subtext0);
+        color: var(--muted);
         font-family: var(--stack-code);
+        font-size: var(--type-caption);
     }
 
     .commit {
-        color: var(--ctp-mauve);
+        color: var(--muted);
     }
 
+    .prefix:is(.change, .hidden, .divergent) { font-weight: 500; }
+
     .change {
-        color: var(--ctp-pink);
+        color: var(--text);
     }
 
     .hidden {
-        color: var(--ctp-text);
+        color: var(--text);
     }
 
+    .divergence { margin-inline-start: 2px; font-weight: 500; color: var(--negative); }
+
     .divergent {
-        color: var(--ctp-red);
+        color: var(--negative);
     }
 
     .pronoun {
@@ -47,10 +52,11 @@
     .pronoun > .prefix,
     .pronoun > .suffix {
         color: inherit;
-        font-weight: bold;
+        font-weight: 500;
     }
 
     .selectable {
         user-select: text;
+        pointer-events: auto;
     }
 </style>

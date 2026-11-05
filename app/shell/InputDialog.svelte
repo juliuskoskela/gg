@@ -105,30 +105,21 @@
         {:else if getType(field) == "select"}
             <SelectWidget
                 id="field-{field.label}"
+                label={field.label}
                 value={field.choices[0]}
                 options={field.choices.map((c) => ({ label: c, value: c }))} />
         {:else if getType(field) == "check"}
             <span><CheckWidget id="field-{field.label}" checked={field.choices[0] == "true"} /></span>
         {/if}
     {/each}
-    <div class="separator"></div>
     <svelte:fragment slot="commands">
         {#if fields.length}<ActionWidget safe secondary onClick={onCancel}>Cancel</ActionWidget>{/if}
-        <ActionWidget safe onClick={onEnter}>{fields.length ? "Enter" : "OK"}</ActionWidget>
+        <ActionWidget safe primary onClick={onEnter}>{fields.length ? "Enter" : "OK"}</ActionWidget>
     </svelte:fragment>
 </ModalDialog>
 
 <style>
-    p {
-        grid-column: 1/3;
-        word-wrap: break-word;
-    }
-
-    label:first-child {
-        margin-top: 1em;
-    }
-
-    .separator {
-        height: 1em;
-    }
+    p { grid-column: 1 / -1; overflow-wrap: anywhere; }
+    p:has(code) { padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); }
+    label { color: var(--muted); font-size: 13px; }
 </style>

@@ -2,7 +2,7 @@ use super::title_candidates;
 
 #[test]
 fn title_candidates_no_workspace() {
-    assert_eq!(title_candidates(None), vec!["GG - Gui for JJ"]);
+    assert_eq!(title_candidates(None), vec!["GG+ — Jujutsu workspace"]);
 }
 
 #[test]
@@ -11,10 +11,10 @@ fn title_candidates_elide_leading_directories() {
     assert_eq!(
         title_candidates(Some("/opt/src/foo/bar")),
         vec![
-            "GG - /opt/src/foo/bar",
-            "GG - …/src/foo/bar",
-            "GG - …/foo/bar",
-            "GG - bar",
+            "GG+ — /opt/src/foo/bar",
+            "GG+ — …/src/foo/bar",
+            "GG+ — …/foo/bar",
+            "GG+ — bar",
         ]
     );
 }
@@ -29,10 +29,10 @@ fn title_candidates_abbreviate_home() {
     assert_eq!(
         title_candidates(Some(path)),
         vec![
-            format!("GG - {path}"),
-            String::from("GG - ~/Documents/Agile/framework"),
-            String::from("GG - …/Agile/framework"),
-            String::from("GG - framework"),
+            format!("GG+ — {path}"),
+            String::from("GG+ — ~/Documents/Agile/framework"),
+            String::from("GG+ — …/Agile/framework"),
+            String::from("GG+ — framework"),
         ]
     );
 }
@@ -40,5 +40,5 @@ fn title_candidates_abbreviate_home() {
 #[test]
 #[cfg(unix)]
 fn title_candidates_root() {
-    assert_eq!(title_candidates(Some("/")), vec!["GG - /"]);
+    assert_eq!(title_candidates(Some("/")), vec!["GG+ — /"]);
 }

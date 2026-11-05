@@ -55,8 +55,12 @@ function createMockRevs(
 }
 
 describe("RevisionPane", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         setupMocks();
+        localStorage.clear();
+        let { descriptionDrafts, revisionMetadataVisible } = await import("./stores");
+        descriptionDrafts.set({});
+        revisionMetadataVisible.set(true);
     });
 
     afterEach(async () => {
@@ -80,6 +84,7 @@ describe("RevisionPane", () => {
         expect(container.textContent).toContain("deadbeef");
 
         // should display the description in the textarea
+        await fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Edit revision description"]')!);
         let textarea = container.querySelector("textarea");
         expect(textarea).not.toBeNull();
         expect(textarea?.value).toBe("Test commit message");
@@ -88,26 +93,60 @@ describe("RevisionPane", () => {
         expect(container.textContent).toContain("Test User");
     });
 
-    it("preserves an undescribed message when the commit id changes", async () => {
+    it("keeps the description title outside collapsed metadata and updates it on selection", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let revs = createMockRevs();
+        revs.headers[0].description.lines = ["A useful title", "", "A longer description body."];
+        let { container, rerender } = render(RevisionPane, { props: { revs } });
+        let disclosure = container.querySelector<HTMLButtonElement>(".overview .disclosure")!;
+        expect(disclosure.textContent).toBe("A useful title");
+        expect(container.querySelector(".description-body")?.textContent).toBe("A longer description body.");
+        expect(container.querySelector("#revision-overview-content")?.textContent).not.toContain("A useful title");
+        await fireEvent.click(disclosure);
+        expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+        expect(disclosure.textContent).toBe("A useful title");
+        expect(container.querySelector("#revision-overview-content")?.hasAttribute("hidden")).toBe(true);
+        await rerender({ revs: createMockRevs("other", "other", "Another title") });
+        expect(disclosure.textContent).toBe("Another title");
+        expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+        await rerender({ revs: createMockRevs("empty", "empty", "") });
+        expect(disclosure.textContent).toBe("(no description set)");
+    });
+
+    it("keeps a draft scoped to its exact commit and restores it on return", async () => {
         const { default: RevisionPane } = await import("./RevisionPane.svelte");
 
         let { container, rerender } = render(RevisionPane, {
             props: { revs: createMockRevs() },
         });
 
+        await fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Edit revision description"]')!);
         let textarea = container.querySelector("textarea")!;
         textarea.value = "desc";
         await fireEvent.input(textarea);
 
         await rerender({ revs: createMockRevs("feed5678abcd") });
-
+        expect(container.querySelector("textarea")).toBeNull();
+        await rerender({ revs: createMockRevs() });
         expect(container.querySelector("textarea")?.value).toBe("desc");
     });
 
-    it("preserves an undescribed message when the pane is remounted", async () => {
+    it("updates the authored date when selecting another revision", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let { container, rerender } = render(RevisionPane, { props: { revs: createMockRevs() } });
+        let previous = container.querySelector(".timestamp")!.textContent;
+        let next = createMockRevs("other", "other");
+        next.headers[0].author.timestamp = "2035-06-01T12:00:00Z";
+        await rerender({ revs: next });
+        expect(container.querySelector(".timestamp")!.textContent).not.toBe(previous);
+        expect(container.querySelector(".timestamp")!.getAttribute("title")).toBe(new Date(next.headers[0].author.timestamp).toLocaleString());
+    });
+
+    it("does not carry a draft to a different commit when remounting", async () => {
         const { default: RevisionPane } = await import("./RevisionPane.svelte");
 
         let first = render(RevisionPane, { props: { revs: createMockRevs() } });
+        await fireEvent.click(first.container.querySelector<HTMLButtonElement>('button[aria-label="Edit revision description"]')!);
         let textarea = first.container.querySelector("textarea")!;
         textarea.value = "desc";
         await fireEvent.input(textarea);
@@ -115,13 +154,17 @@ describe("RevisionPane", () => {
 
         let second = render(RevisionPane, { props: { revs: createMockRevs("feed5678abcd") } });
 
-        expect(second.container.querySelector("textarea")?.value).toBe("desc");
+        expect(second.container.querySelector("textarea")).toBeNull();
+        second.unmount();
+        let original = render(RevisionPane, { props: { revs: createMockRevs() } });
+        expect(original.container.querySelector("textarea")?.value).toBe("desc");
     });
 
-    it("discards an undescribed message when the change id changes", async () => {
+    it("does not carry a description draft into a different change", async () => {
         const { default: RevisionPane } = await import("./RevisionPane.svelte");
 
         let first = render(RevisionPane, { props: { revs: createMockRevs() } });
+        await fireEvent.click(first.container.querySelector<HTMLButtonElement>('button[aria-label="Edit revision description"]')!);
         let textarea = first.container.querySelector("textarea")!;
         textarea.value = "desc";
         await fireEvent.input(textarea);
@@ -131,6 +174,37 @@ describe("RevisionPane", () => {
             props: { revs: createMockRevs("feed5678abcd", "999888777666", "Other message") },
         });
 
-        expect(second.container.querySelector("textarea")?.value).toBe("Other message");
+        expect(second.container.textContent).toContain("Other message");
+        expect(second.container.querySelector("textarea")).toBeNull();
     });
+    it("restores each revision's draft when navigating away and back", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let firstRevision = createMockRevs();
+        let { container, rerender } = render(RevisionPane, { props: { revs: firstRevision } });
+        await fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Edit revision description"]')!);
+        await fireEvent.input(container.querySelector("textarea")!, { target: { value: "Unfinished description" } });
+        await rerender({ revs: createMockRevs("other", "other", "Another revision") });
+        expect(container.textContent).toContain("Another revision");
+        await rerender({ revs: firstRevision });
+        expect(container.querySelector("textarea")?.value).toBe("Unfinished description");
+    });
+
+    it("keeps squash and restore available when the overview is collapsed", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let { revisionMetadataVisible, revisionSelectEvent } = await import("./stores");
+        revisionMetadataVisible.set(false);
+        let revs = createMockRevs();
+        revs.headers[0].parent_ids = [{ type: "CommitId", hex: "parent", prefix: "p", rest: "arent" }];
+        revs.changes = [{ kind: "Modified", has_conflict: false, path: { repo_path: "a.ts", relative_path: "a.ts" }, hunks: [] }];
+        revisionSelectEvent.set(revs.set);
+        let { getByRole, container, rerender } = render(RevisionPane, { props: { revs } });
+        await fireEvent.click(getByRole("button", { name: "Revision actions" }));
+        expect(getByRole("button", { name: "Squash into parent" }).hasAttribute("disabled")).toBe(false);
+        expect(getByRole("button", { name: "Restore from parent" }).hasAttribute("disabled")).toBe(false);
+        expect(container.querySelector('#revision-overview-content')?.hasAttribute("hidden")).toBe(true);
+        await rerender({ revs: { ...revs, changes: [{ ...revs.changes[0], path: { repo_path: "b.rs", relative_path: "b.rs" } }] } });
+        expect(container.textContent).toContain("File no longer available");
+        revisionMetadataVisible.set(true);
+    });
+
 });

@@ -1187,7 +1187,7 @@ pub fn try_create_window(app_handle: &AppHandle, workspace: Option<PathBuf>) -> 
         &label,
         tauri::WebviewUrl::App("index.html".into()),
     )
-    .title("GG - Gui for JJ")
+    .title("GG+ — Jujutsu workspace")
     .inner_size(1280.0, 720.0)
     .focused(true)
     .visible(false)
@@ -1199,6 +1199,7 @@ pub fn try_create_window(app_handle: &AppHandle, workspace: Option<PathBuf>) -> 
     let builder = if crate::macos::is_tahoe_or_later() {
         builder
             .title_bar_style(TitleBarStyle::Overlay)
+            .hidden_title(true)
             .initialization_script(format!(
                 "document.documentElement.classList.add('overlay-titlebar');
                 document.documentElement.style.setProperty('--titlebar-height', '{}px');",
@@ -1458,14 +1459,14 @@ fn update_title(window: &Window) {
 // longest first - the full path, then eliding leading directories, down to just the name
 fn title_candidates(path: Option<&str>) -> Vec<String> {
     let Some(path) = path else {
-        return vec![String::from("GG - Gui for JJ")];
+        return vec![String::from("GG+ — Jujutsu workspace")];
     };
 
-    let mut titles = vec![format!("GG - {path}")];
+    let mut titles = vec![format!("GG+ — {path}")];
 
     let abbreviated = menu::abbreviate_path(path);
     if abbreviated != path {
-        titles.push(format!("GG - {abbreviated}"));
+        titles.push(format!("GG+ — {abbreviated}"));
     }
 
     // the first component is a root or ~, which is no longer than an ellipsis
@@ -1475,14 +1476,14 @@ fn title_candidates(path: Option<&str>) -> Vec<String> {
         .collect();
     for start in 2..components.len().saturating_sub(1) {
         titles.push(format!(
-            "GG - …{MAIN_SEPARATOR_STR}{}",
+            "GG+ — …{MAIN_SEPARATOR_STR}{}",
             components[start..].join(MAIN_SEPARATOR_STR)
         ));
     }
     if components.len() > 1
         && let Some(name) = components.last()
     {
-        titles.push(format!("GG - {name}"));
+        titles.push(format!("GG+ — {name}"));
     }
 
     titles

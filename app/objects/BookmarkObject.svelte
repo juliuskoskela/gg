@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { bookmarkLabel, bookmarkStatus } from "../revisionStatus";
     import { getContext } from "svelte";
     import type { RevHeader } from "../messages/RevHeader";
     import type { StoreRef } from "../messages/StoreRef";
@@ -31,45 +32,15 @@
 
     $: defaultCommand = RefMutator.defaultCommand(ref);
 
-    $: tip = computeTip(ref);
-
-    function computeTip(ref: Extract<StoreRef, { type: "LocalBookmark" | "RemoteBookmark" }>): string {
-        if (ref.type === "LocalBookmark") {
-            if (ref.available_remotes == 0 && ref.potential_remotes > 0) {
-                return "local-only bookmark";
-            }
-            let result = "local bookmark";
-            if (ref.tracking_remotes.length >= 0) {
-                result = result + " (tracking ";
-                let first = true;
-                for (let r of ref.tracking_remotes) {
-                    if (first) {
-                        first = false;
-                    } else {
-                        result = result + ", ";
-                    }
-                    result = result + r;
-                }
-                result = result + ")";
-            }
-            return result;
-        } else {
-            let result = "remote bookmark";
-            if (ref.is_tracked && ref.is_absent) {
-                return result + " (deleting)";
-            } else if (ref.is_tracked) {
-                return result + " (tracked)";
-            } else {
-                return result + " (untracked)";
-            }
-        }
-    }
+    $: tip = bookmarkStatus(ref);
+    $: lifecycleIcon = ref.has_conflict ? "alert-triangle" : ref.type === "RemoteBookmark" ? (ref.is_tracked ? (ref.is_absent ? "minus-circle" : "link") : "help-circle") : (!ref.is_synced ? "upload" : null);
 </script>
 
-<Object {operand} {label} {defaultCommand} conflicted={ref.has_conflict} let:context let:hint={dragHint}>
+<Object {operand} label={bookmarkLabel(ref)} {defaultCommand} conflicted={ref.has_conflict} let:context let:hint={dragHint}>
     <Zone {operand} let:target let:hint={dropHint}>
         <Chip {context} {target} {disconnected} {tip}>
             <Icon name="bookmark" state={context ? null : state} />
+            {#if lifecycleIcon}<Icon name={lifecycleIcon} />{/if}
             <span>{dragHint ?? dropHint ?? label}</span>
         </Chip>
     </Zone>
