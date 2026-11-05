@@ -5,8 +5,10 @@ import { getInput, mutate } from "../ipc";
 
 export default class WorkspaceMutator {
     #name: string;
+    #valid: () => boolean;
 
-    constructor(name: string) {
+    constructor(name: string, valid: () => boolean = () => true) {
+        this.#valid = valid;
         this.#name = name;
     }
 
@@ -47,7 +49,7 @@ export default class WorkspaceMutator {
 
     onRename = async () => {
         let response = await getInput("Rename Workspace", "", ["Workspace Name"]);
-        if (response) {
+        if (response && this.#valid()) {
             let new_name = response["Workspace Name"];
             mutate<RenameWorkspace>("rename_workspace", {
                 name: this.#name,

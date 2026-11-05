@@ -37,7 +37,8 @@
     let dispatch = createEventDispatcher();
 
     onMount(() => {
-        document.getElementById(`field-${fields[0].label}`)?.focus();
+        if (fields[0]) document.getElementById(`field-${fields[0].label}`)?.focus();
+        else document.querySelector<HTMLButtonElement>("#dialog-commands button:last-child")?.focus();
     });
 
     function onCancel() {
@@ -112,8 +113,8 @@
     {/each}
     <div class="separator"></div>
     <svelte:fragment slot="commands">
-        <ActionWidget safe onClick={onEnter}>Enter</ActionWidget>
-        <ActionWidget safe onClick={onCancel}>Cancel</ActionWidget>
+        {#if fields.length}<ActionWidget safe secondary onClick={onCancel}>Cancel</ActionWidget>{/if}
+        <ActionWidget safe onClick={onEnter}>{fields.length ? "Enter" : "OK"}</ActionWidget>
     </svelte:fragment>
 </ModalDialog>
 
