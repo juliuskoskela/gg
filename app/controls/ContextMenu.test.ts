@@ -174,7 +174,7 @@ describe("ContextMenu (revert)", () => {
         expect(mutationCalls).toHaveLength(0);
     });
 
-    it("create bookmark is disabled for multi-revision selection", async () => {
+    it("create bookmark is hidden for multi-revision selection", async () => {
         const { default: ContextMenu } = await import("./ContextMenu.svelte");
         const { selectionHeaders } = await import("../stores");
 
@@ -196,8 +196,8 @@ describe("ContextMenu (revert)", () => {
         let buttons = container.querySelectorAll("button");
         let bookmarkButton = Array.from(buttons).find((b) => b.textContent?.startsWith("Create bookmark…"));
 
-        expect(bookmarkButton).toBeTruthy();
-        expect(bookmarkButton!.getAttribute("aria-disabled")).toBe("true");
+        // unavailable actions are hidden, per apple's context menu guidance
+        expect(bookmarkButton).toBeUndefined();
     });
 
     it("revert is enabled for multi-revision selection", async () => {

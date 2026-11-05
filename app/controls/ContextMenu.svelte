@@ -4,14 +4,16 @@
     import type { Operand } from "../messages/Operand";
     import { currentMutation, ignoreToggled } from "../stores";
     import { mutationPending } from "../operations";
-    import { contextCommands, revisionCommands } from "../commands/registry";
+    import { contextCommands, revisionCommands, type Command } from "../commands/registry";
+    import Icon from "./Icon.svelte";
     export let operand: Operand;
     export let x: number;
     export let y: number;
     export let onClose: () => void;
     let menuElement: HTMLDivElement;
     let previous = document.activeElement as HTMLElement | null;
-    onMount(() => menuElement?.querySelector<HTMLButtonElement>("button")?.focus());
+    // like native menus, nothing is highlighted until the pointer or arrow keys pick an item
+    onMount(() => menuElement?.focus());
     onDestroy(() => { if (document.activeElement === document.body || menuElement?.contains(document.activeElement)) previous?.focus({ preventScroll: true }); });
     function key(event: KeyboardEvent) {
         if (event.key === "Escape" || event.key === "Tab") { onClose(); if (event.key === "Escape") { event.stopPropagation(); event.preventDefault(); } return; }
@@ -21,29 +23,95 @@
         else if (event.key === "ArrowUp") index = (index - 1 + items.length) % items.length;
         else if (event.key === "Home") index = 0;
         else if (event.key === "End") index = items.length - 1;
+        else if (event.key.length === 1 && /\S/.test(event.key) && !event.metaKey && !event.ctrlKey && !event.altKey) {
+            // type-select, as in native menus
+            let letter = event.key.toLowerCase();
+            let match = [...items.slice(index + 1), ...items.slice(0, index + 1)].find(item => item.textContent?.trim().toLowerCase().startsWith(letter));
+            if (!match) return;
+            index = items.indexOf(match);
+        }
         else return;
         event.preventDefault(); items[index]?.focus();
     }
+
+    // apple hig: context menus hide unavailable items rather than dimming them; the palette still lists them with reasons.
+    function sections(all: Command[]): Command[][] {
+        let available = all.filter(command => !command.reason);
+        let groups = new Map<number, Command[]>();
+        for (let command of available) {
+            let group = command.destructive ? Number.MAX_SAFE_INTEGER : command.group ?? 0;
+            groups.set(group, [...(groups.get(group) ?? []), command]);
+        }
+        return [...groups.entries()].sort(([a], [b]) => a - b).map(([, commands]) => commands);
+    }
+
     $: commands = operand.type === "Revision" ? revisionCommands([operand.header], false, $ignoreToggled, $currentMutation, $mutationPending) : operand.type === "Revisions" ? revisionCommands(operand.headers, false, $ignoreToggled, $currentMutation, $mutationPending) : contextCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending);
+    $: grouped = sections(commands);
+    // a title only when it clarifies scope: several revisions at once
+    $: title = operand.type === "Revisions" && operand.headers.length > 1 ? `${operand.headers.length} revisions` : null;
+    $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? "No actions available") : null;
     $: if (menuElement) {
         let rect = menuElement.getBoundingClientRect();
         menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
         menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
     }
 </script>
-<svelte:window on:click={onClose} />
-<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="0" on:click|stopPropagation on:keydown={key} bind:this={menuElement}>
-    {#each commands as command (command.id)}
-        <button role="menuitem" aria-disabled={!!command.reason} title={command.reason ?? command.label} on:click={() => { if (!command.reason) { command.execute(); onClose(); } }}>{command.label}{#if command.reason} — {command.reason}{/if}</button>
+<svelte:window on:click={onClose} on:blur={onClose} on:resize={onClose} />
+<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="-1" aria-label={title ?? "Actions"} on:click|stopPropagation on:contextmenu|preventDefault|stopPropagation on:keydown={key} on:mouseleave={() => menuElement.focus({ preventScroll: true })} bind:this={menuElement}>
+    {#if title}<p class="menu-title" role="presentation">{title}</p>{/if}
+    {#each grouped as section, index}
+        {#if index > 0}<hr />{/if}
+        {#each section as command (command.id)}
+            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" on:mouseenter={event => event.currentTarget.focus({ preventScroll: true })} on:click={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
+        {/each}
     {/each}
+    {#if unavailable}<p class="menu-empty" role="presentation">{unavailable}</p>{/if}
 </div>
 
 <style>
-    .context-menu { position: fixed; z-index: 1000; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-control); padding: 5px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; box-shadow: var(--shadow-overlay); }
-    button { width: 100%; display: block; border: none; min-height: var(--control-height); padding: 6px var(--control-padding-inline); font-size: 13px; line-height: 20px; border-radius: var(--radius-control); text-align: start; background: transparent; color: var(--text); font-family: var(--stack-ui); }
-    button[aria-disabled="true"] { color: var(--text-disabled); }
-    button:not([aria-disabled="true"]) { cursor: pointer; }
-    @media (hover: hover) { button:not([aria-disabled="true"]):hover { background: var(--hover); } }
-    button:not([aria-disabled="true"]):active { background: var(--control-pressed); }
+    .context-menu {
+        position: fixed; z-index: 1000;
+        min-width: 220px; max-width: min(320px, calc(100vw - 24px)); max-height: calc(100dvh - 16px);
+        padding: 5px;
+        overflow-y: auto; overscroll-behavior: contain;
+        background: color-mix(in srgb, var(--raised) 86%, transparent);
+        -webkit-backdrop-filter: blur(24px) saturate(1.6);
+        backdrop-filter: blur(24px) saturate(1.6);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: var(--shadow-overlay);
+        pointer-events: auto;
+        font: 400 var(--type-ui)/1.3 var(--stack-ui);
+        color: var(--text);
+    }
+    @media (prefers-reduced-motion: no-preference) {
+        .context-menu { animation: menu-in 120ms var(--motion-sheet-ease); transform-origin: top left; }
+        @keyframes menu-in { from { opacity: 0; scale: .97; } }
+    }
+    button {
+        display: flex; align-items: center; gap: 10px;
+        width: 100%; min-height: 28px; padding: 4px 10px 4px 8px;
+        border: 0; border-radius: 6px;
+        background: transparent; color: inherit; font: inherit; text-align: start;
+        cursor: pointer; outline: none;
+    }
+    button > :global(svg) { --icon-size: 15px; color: var(--muted); }
+    button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* macos highlights the pointed or focused item with a solid accent fill; pointer moves focus so there is one highlight */
+    button:focus { background: var(--accent-solid); color: var(--text-on-accent); }
+    button:focus > :global(svg) { color: currentColor; }
+    button:focus-visible { outline: none; }
+    button:active { background: var(--accent-solid-hover); }
+    .destructive { color: var(--negative); }
+    .destructive > :global(svg) { color: currentColor; }
+    .destructive:focus { background: var(--negative); color: var(--text-on-accent); }
+    .context-menu:focus { outline: none; }
+    hr { margin: 5px 10px; border: 0; border-block-start: 1px solid var(--rule); }
+    .menu-title { margin: 0; padding: 4px 10px 6px; color: var(--muted); font-size: var(--type-caption); font-weight: 500; }
+    .menu-empty { margin: 0; padding: 6px 10px; color: var(--muted); }
     @media (pointer: coarse), (max-width: 600px) { button { min-height: 44px; } }
+    @media (forced-colors: active) {
+        .context-menu { backdrop-filter: none; background: Canvas; border-color: CanvasText; }
+        button:focus { background: Highlight; color: HighlightText; }
+    }
 </style>
