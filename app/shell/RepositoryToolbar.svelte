@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { mutationPending } from "../operations";
+    import SelectWidget from "../controls/SelectWidget.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Icon from "../controls/Icon.svelte";
     import IdSpan from "../controls/IdSpan.svelte";
@@ -19,7 +21,6 @@
     export let refreshing = false;
     export let onRefresh: () => void;
     let remoteName = "";
-    let viewportWidth = 1440;
     let menuOpen = false;
     let recent: string[] = [];
     async function toggleMenu() {
@@ -38,6 +39,9 @@
     let toolbar: HTMLDivElement;
     $: remotes = $repoConfigEvent.type === "Workspace" ? $repoConfigEvent.git_remotes : [];
     $: if (!remotes.includes(remoteName)) remoteName = remotes[0] ?? "";
+    $: remoteOptions = remotes.length ? remotes.map(value => ({ value })) : [{ value: "", label: "No remote" }];
+    $: busy = !!$currentMutation || $mutationPending;
+    $: redoReason = busy ? "Another operation is in progress" : !$repoStatusEvent?.can_redo ? "Nothing to redo. New operations clear redo history." : "";
 
 
     let dropHint: RichHint | null = null;
@@ -84,35 +88,24 @@
     function onFetch(_remote: string) { runRepository("repository.fetch"); }
 </script>
 
-<svelte:window bind:innerWidth={viewportWidth} on:pointerdown={event => { if (menuOpen && !toolbar.contains(event.target as Node)) menuOpen = false; }} on:keydown={event => { if (event.key === "Escape" && menuOpen) { menuOpen = false; document.querySelector<HTMLButtonElement>('[aria-label="More repository actions"]')?.focus(); } }} />
+<svelte:window on:pointerdown={event => { if (menuOpen && !toolbar.contains(event.target as Node)) menuOpen = false; }} on:keydown={event => { if (event.key === "Escape" && menuOpen) { menuOpen = false; document.querySelector<HTMLButtonElement>('[aria-label="More repository actions"]')?.focus(); } }} />
 
 <div class="repository-toolbar" bind:this={toolbar} role="group" aria-label="Repository actions" inert={$hasModal}>
     <div class="sync-actions" role="group" aria-label="Remote synchronization">
-        <select aria-label="Git remote" title={remoteName || "No remote"} bind:value={remoteName} disabled={!remotes.length}>
-            <button type="button" class="select-trigger"><selectedcontent></selectedcontent></button>
-            {#each remotes as remote}<option value={remote}>{remote}</option>{:else}<option value="">No remote</option>{/each}
-        </select>
-        {#if viewportWidth > 380}
-        <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || !!$currentMutation} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
-        <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || !!$currentMutation} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
-        {/if}
+        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}><svelte:fragment let:option>{option.value || "No remote"}</svelte:fragment></SelectWidget></div>
+        <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || busy} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
+        <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || busy} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
     </div>
-    <button class="commands-button" type="button" on:click={() => window.dispatchEvent(new Event("gg:open-commands"))}>Commands</button>
     <div class="history-actions" role="group" aria-label="Operation history">
-        {#if viewportWidth > 380}
-        <ActionWidget secondary tip="Undo the latest operation" disabled={!!$currentMutation} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
-        {/if}
+        <ActionWidget secondary tip="Undo the latest operation" disabled={busy} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
+        <ActionWidget secondary tip="Redo the latest undone operation" disabled={!!redoReason} disabledReason={redoReason} onClick={onRedo}><Icon name="rotate-cw" /> <span class="action-label">Redo</span></ActionWidget>
+        <ActionWidget secondary tip="Refresh repository" disabled={refreshing || busy} onClick={onRefresh}><Icon name="refresh-cw" /></ActionWidget>
+    </div>
+    <button class="commands-button" type="button" aria-label="Commands" on:click={() => window.dispatchEvent(new Event("gg:open-commands"))}><Icon name="command" /><span class="action-label">Commands</span></button>
         <div class="more-actions">
             <button class="more-button" aria-label="More repository actions" aria-expanded={menuOpen} on:click={toggleMenu}><Icon name="more-horizontal" /></button>
             {#if menuOpen}
                 <div class="action-menu">
-                    {#if viewportWidth <= 600}
-                        <select aria-label="Git remote" bind:value={remoteName} disabled={!remotes.length}>{#each remotes as remote}<option value={remote}>{remote}</option>{:else}<option value="">No remote</option>{/each}</select>
-                        <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || !!$currentMutation} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
-                        <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || !!$currentMutation} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
-                        <ActionWidget secondary tip="Undo the latest operation" disabled={!!$currentMutation} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
-                        <hr />
-                    {/if}
                     {#if isTauri()}
                         {#each nativeRepositoryCommands() as command}
                             <button type="button" on:click={() => { menuOpen = false; command.execute(); }}>{command.label}</button>
@@ -132,14 +125,11 @@
                         <hr />
                     {/if}
                     <button type="button" aria-label={`Theme: ${$effectiveTheme}. Switch to ${$effectiveTheme === "dark" ? "light" : "dark"} theme`} on:click={toggleTheme}><Icon name={$effectiveTheme === "dark" ? "sun" : "moon"} /> Theme: {$effectiveTheme === "dark" ? "Dark" : "Light"} · Switch to {$effectiveTheme === "dark" ? "light" : "dark"}</button>
-                    <ActionWidget secondary tip="Refresh" disabled={refreshing} onClick={() => { onRefresh(); menuOpen = false; }}><Icon name="refresh-cw" /> {refreshing ? "Refreshing…" : "Refresh"}</ActionWidget>
-                    <ActionWidget secondary tip="Redo the latest undone operation" disabled={!$repoStatusEvent?.can_redo || !!$currentMutation} onClick={onRedo}><Icon name="rotate-cw" /> Redo</ActionWidget>
                     <p class="operation-info" title={$repoStatusEvent?.operation_description}>{$repoStatusEvent?.operation_description ?? "No operation"}</p>
                     <label class="protection" class:overriding={$ignoreToggled}><ToggleWidget tip="Override immutability" bind:checked={$ignoreToggled} safe on="shield-off" off="shield" /><span>Override immutability</span></label>
                 </div>
             {/if}
         </div>
-    </div>
 </div>
 
 {#if dropHint}
@@ -159,13 +149,14 @@
 {/if}
 
 <style>
-    .repository-toolbar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0; background: transparent; border: 0; border-radius: var(--radius-control); box-shadow: none; pointer-events: auto; min-width: 0; }
-    .commands-button { display: inline-flex; align-items: center; min-height: var(--control-height); border: 0; border-radius: var(--radius-control); padding: 5px var(--control-padding-inline); background: transparent; color: var(--text); cursor: pointer; }
+    .repository-toolbar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--tool-group-gap); padding: 0; background: transparent; border: 0; border-radius: var(--radius-control); box-shadow: none; pointer-events: auto; min-width: 0; }
+    .commands-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); border: 0; border-radius: var(--radius-control); padding: 5px var(--control-padding-inline); background: transparent; color: var(--text); cursor: pointer; }
     @media (hover: hover) { .commands-button:hover { background: var(--hover); } }
     .commands-button:active { background: var(--control-pressed); }
-    .sync-actions, .history-actions { display: flex; align-items: center; gap: var(--space-1); min-width: 0; flex-wrap: wrap; }
-    select { min-width: 96px; max-width: 180px; font-size: var(--type-ui); }
-    .repository-toolbar :global(button:not(.select-trigger)) { font-size: var(--type-ui); height: auto; max-width: 100%; }
+    .sync-actions, .history-actions { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; flex-wrap: nowrap; }
+    .remote-select { width: 104px; min-width: 0; }
+    .repository-toolbar :global(button:not(.select-trigger)) { font-size: var(--type-ui); max-width: 100%; }
+    .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .commands-button, .more-button { height: var(--control-height); }
     .more-actions { position: static; }
     .more-button { display: grid; place-items: center; min-width: 32px; min-height: 32px; padding: 5px var(--control-padding-inline); border: 0; background: transparent; border-radius: var(--radius-control); color: var(--text); cursor: pointer; }
     @media (hover: hover) { .more-button:hover { background: var(--hover); } }
@@ -177,7 +168,6 @@
     .action-menu > button:disabled { opacity: .5; cursor: default; }
     .menu-heading { padding: 5px 8px; font-size: var(--type-caption); color: var(--muted); }
     .recent { overflow-wrap: anywhere; }
-    .action-menu .action-label { display: inline; }
     .protection { padding: 8px 7px 4px; margin-block-start: 4px; border-block-start: 1px solid var(--rule); display: flex; align-items: center; gap: var(--space-2); font-size: var(--type-ui); color: var(--text); }
     .protection.overriding { color: var(--warning); }
     .operation-info { margin: 0; padding: 4px 8px; font-size: var(--type-caption); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; pointer-events: auto; }
@@ -185,17 +175,14 @@
     .drag-bar.target { color: var(--text); }
     .drag-bar.maybe { color: var(--warning); }
     @media (pointer: coarse), (max-width: 600px) {
-        .repository-toolbar :global(button:not(.select-trigger)), select, .more-button { min-height: 44px; }
+        .repository-toolbar :global(button:not(.select-trigger)), .more-button { min-height: 44px; }
         .repository-toolbar :global(button:not(.select-trigger)), .more-button { min-width: 44px; }
-        select { font-size: var(--type-ui); }
+        .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .commands-button, .more-button { height: 44px; }
     }
+    @media (max-width: 1100px) { .action-label { display: none; } }
     @media (max-width: 600px) {
-        .repository-toolbar { flex-shrink: 0; flex-wrap: nowrap; gap: 4px; }
-        .sync-actions { display: none; }
-        .commands-button { display: block; min-height: 44px; border: 0; border-radius: var(--radius-control); padding: 8px; background: transparent; color: var(--text); }
-        .history-actions { display: none; }
-        .action-label { display: none; }
-        select { width: 76px; min-width: 76px; max-width: 76px; }
+        .repository-toolbar { flex: 1 0 100%; gap: var(--panel-gap); }
+        .remote-select { width: 88px; }
     }
     .action-menu hr { width: 100%; border: 0; border-block-start: 1px solid var(--rule); margin: 4px 0; }
 </style>

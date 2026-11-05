@@ -9,6 +9,7 @@
     import ToggleTray from "../controls/ToggleTray.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
     import VirtualFileList from "./VirtualFileList.svelte";
+    import TextField from "../controls/TextField.svelte";
     import PanelHeader from "../controls/PanelHeader.svelte";
     import FileTree from "../FileTree.svelte";
     import { navigateOptions } from "../controls/optionNavigation";
@@ -45,7 +46,7 @@
 <svelte:window on:keydown={keydown} />
 <aside class="file-tree" class:overlay hidden={!visible} id="changed-files" aria-label="Changed files" bind:this={panel}>
     {#if showHeading}<PanelHeader><div class="file-tree-heading">Files <span>{changes.length}</span>{#if onClose}<div class="tree-toggle"><ToggleTray label="Changed files"><ToggleItem kind="disclosure" on text="Tree" label="File tree" tip="Hide file tree" controls="changed-files" onClick={onClose} /></ToggleTray></div>{/if}</div></PanelHeader>{/if}
-    <input class="file-search" type="search" aria-label="Filter changed files" placeholder="Find a file…" bind:this={searchInput} bind:value={search} />
+    <TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} />
     {#if changes.length > 200}<VirtualFileList changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">No matching files</p>{/if}{:else}
     <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" on:keydown={navigateOptions}><FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
 </aside>
@@ -59,8 +60,8 @@
     .file-tree-heading { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 27px; color: var(--text); font-size: var(--type-ui); }
     .file-tree-heading span { font-size: var(--type-caption); color: var(--muted); }
     .tree-toggle { display: flex; margin-inline-start: auto; }
-    .file-search { margin-inline: var(--panel-inset); width: calc(100% - 2 * var(--panel-inset)); min-width: 0; }
+    .file-tree :global(.file-search) { margin-inline: var(--panel-inset); width: calc(100% - 2 * var(--panel-inset)); min-width: 0; }
     .tree-scroll { padding: 0 var(--panel-inset) 8px; flex: 1; overflow: auto; overscroll-behavior: contain; min-height: 0; pointer-events: auto; }
     .no-results { margin: 8px 4px; font-size: var(--type-ui); color: var(--muted); }
-    @media (pointer: coarse), (max-width: 600px) { .file-search { min-height: 44px; } }
+    @media (pointer: coarse), (max-width: 600px) { .file-tree :global(.file-search) { min-height: 44px; } }
 </style>

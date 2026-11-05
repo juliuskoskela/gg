@@ -1,3 +1,4 @@
+import "./global.css";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
@@ -25,11 +26,32 @@ describe("history density", () => {
         expect(get(blocked)).toBe("tall");
     });
     it("keeps compact touch rows at least 44px and tall rows at 60px", () => {
-        expect(historyRowSize("compact", false)).toBe(32);
+        expect(historyRowSize("compact", false)).toBe(28);
         expect(historyRowSize("compact", true)).toBe(44);
         expect(historyRowSize("tall", false)).toBe(60);
         expect(historyRowSize("tall", true)).toBe(60);
-        expect(anchoredHistoryScroll(10.5 * 32, 32, 60)).toBe(10.5 * 60);
+        expect(anchoredHistoryScroll(10.5 * 28, 28, 60)).toBe(10.5 * 60);
+    });
+    it("keeps minimum bookmark clearance in condensed rows", async () => {
+        let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
+        let target = document.createElement("div");
+        target.id = "shell";
+        target.style.cssText = "width:600px;--leftpad:24px";
+        document.body.append(target);
+        let ref = { type: "LocalBookmark" as const, bookmark_name: "main", has_conflict: false, is_synced: true, tracking_remotes: [], available_remotes: 0, potential_remotes: 0 };
+        let { container, unmount } = render(RevisionObject, { target, context: new Map([["settings", { markUnpushedBookmarks: false }]]), props: { header: { ...header, refs: [ref, { ...ref, bookmark_name: "release" }] }, selected: false } });
+        let row = container.querySelector(".layout")!.getBoundingClientRect();
+        let chips = [...container.querySelectorAll(".refs .chip")].map(chip => chip.getBoundingClientRect());
+        expect(row.height).toBe(28);
+        expect(chips).toHaveLength(2);
+        for (let chip of chips) {
+            expect(chip.top - row.top).toBeGreaterThanOrEqual(3);
+            expect(row.bottom - chip.bottom).toBeGreaterThanOrEqual(3);
+        }
+        expect(chips[1].left - chips[0].right).toBeGreaterThanOrEqual(6);
+        let description = container.querySelector(".desc")!.getBoundingClientRect();
+        expect(chips[0].left - description.right).toBeGreaterThanOrEqual(8);
+        unmount(); target.remove();
     });
     it("updates graph nodes, edge paths and drop zones together on a density change", async () => {
         let { default: GraphLog } = await import("./GraphLog.svelte");
@@ -94,10 +116,12 @@ describe("history density", () => {
         target.remove();
     });
     it("exposes a labelled density choice and saves it", async () => {
-        let { default: LogPane } = await import("./LogPane.svelte");
-        let { getByRole } = render(LogPane, { props: { integrated: true, query_choices: { default: "@" }, latest_query: "@" } });
-        let select = getByRole("combobox", { name: "History density" });
-        await fireEvent.change(select, { target: { value: "tall" } });
+        let { default: TimelineDisplayOptions } = await import("./timeline/TimelineDisplayOptions.svelte");
+        let { getByRole } = render(TimelineDisplayOptions);
+        let toggle = getByRole("button", { name: "Tall revisions" });
+        expect(toggle.getAttribute("aria-pressed")).toBe("false");
+        await fireEvent.click(toggle);
+        expect(toggle.getAttribute("aria-pressed")).toBe("true");
         expect(get(historyDensity)).toBe("tall");
         expect(localStorage.getItem(historyDensityKey)).toBe("tall");
     });

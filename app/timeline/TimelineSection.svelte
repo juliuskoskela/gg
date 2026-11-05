@@ -1,0 +1,66 @@
+<script lang="ts">
+    import PanelFooter from "../controls/PanelFooter.svelte";
+    import { hasModal } from "../stores";
+
+    export let element: HTMLDivElement;
+    export let showHeader = true;
+</script>
+
+<section class="timeline-panel" inert={$hasModal}>
+    {#if showHeader && $$slots.header}
+        <header class="timeline-header"><slot name="header" /></header>
+    {/if}
+    <div class="timeline-section graph-body" bind:this={element}>
+        <div class="timeline-summary"><slot name="summary" /></div>
+        <div class="timeline-viewport"><slot /></div>
+        <PanelFooter className="timeline-footer"><slot name="footer" /></PanelFooter>
+    </div>
+</section>
+
+<style>
+    .timeline-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .timeline-header {
+        display: flex;
+        align-items: center;
+        flex: none;
+        min-height: var(--panel-toolbar-height);
+        padding: 4px var(--pane-inset);
+        background: var(--panel-header-bg);
+        border-bottom: 1px solid var(--rule);
+    }
+
+    .timeline-section {
+        display: grid;
+        flex: 1;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .timeline-summary {
+        display: grid;
+        align-items: center;
+        min-width: 0;
+        min-height: 32px;
+        padding-inline: var(--pane-inset);
+    }
+
+    .timeline-viewport {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        /* inset the viewport, not its rows: scrolling and svg coordinates retain the same origin. */
+        padding-inline: var(--pane-inset);
+    }
+
+    @media (pointer: coarse) {
+        .timeline-summary { min-height: 44px; }
+    }
+</style>

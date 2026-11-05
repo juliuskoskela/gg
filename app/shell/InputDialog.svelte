@@ -1,4 +1,5 @@
 <script lang="ts">
+    import TextField from "../controls/TextField.svelte";
     import { createEventDispatcher, onMount } from "svelte";
     import type { InputResponse } from "../messages/InputResponse";
     import type { InputField } from "../messages/InputField";
@@ -83,7 +84,7 @@
     {#each fields as field}
         <label for="field-{field.label}">{field.label}{field.label.endsWith(":") ? "" : ":"}</label>
         {#if getType(field) == "text"}
-            <input
+            <TextField
                 id="field-{field.label}"
                 type="text"
                 autocapitalize="off"
@@ -92,9 +93,9 @@
                 spellcheck="false"
                 value={field.choices.length == 1 ? field.choices[0] : ""} />
         {:else if getType(field) == "password"}
-            <input id="field-{field.label}" type="password" />
+            <TextField id="field-{field.label}" type="password" />
         {:else if getType(field) == "url"}
-            <input
+            <TextField
                 id="field-{field.label}"
                 type="url"
                 autocapitalize="off"

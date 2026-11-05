@@ -41,8 +41,7 @@ describe("repository toolbar and commands", () => {
         let { themePreference } = await import("../display/theme");
         repoConfigEvent.set({ ...workspace, theme_override: "light" });
         themePreference.sync(null);
-        let { container, getByRole } = render(Toolbar, { props: { target: false, onRefresh: () => {} } });
-        container.querySelector<HTMLElement>(".history-actions")!.style.display = "flex";
+        let { getByRole } = render(Toolbar, { props: { target: false, onRefresh: () => {} } });
         await fireEvent.click(getByRole("button", { name: "More repository actions" }));
         await fireEvent.click(getByRole("button", { name: "Theme: light. Switch to dark theme" }));
         expect(getByRole("button", { name: "Theme: dark. Switch to light theme" })).toBeTruthy();
@@ -55,8 +54,7 @@ describe("repository toolbar and commands", () => {
         let { default: Toolbar } = await import("./RepositoryToolbar.svelte");
         let { repoConfigEvent, repoStatusEvent } = await import("../stores");
         repoConfigEvent.set(workspace); repoStatusEvent.set(workspace.status);
-        let { container, getByRole, findByRole } = render(Toolbar, { props: { target: false, onRefresh: () => {} } });
-        container.querySelector<HTMLElement>(".history-actions")!.style.display = "flex";
+        let { getByRole, findByRole } = render(Toolbar, { props: { target: false, onRefresh: () => {} } });
         await fireEvent.click(getByRole("button", { name: "More repository actions" }));
         await fireEvent.click(getByRole("button", { name: "Initialize repository…" }));
         await waitFor(() => expect(calls).toContainEqual({ cmd: "forward_accelerator", args: { key: "n", ctrl: true, shift: true } }));
@@ -76,6 +74,13 @@ describe("repository toolbar and commands", () => {
         expect(opened).toHaveBeenCalledOnce();
         expect(repositoryCommands().find(c => c.id === "repository.push")?.reason).toBe("No Git remote configured");
         expect(repositoryCommands().find(c => c.id === "repository.redo")?.reason).toBe("Nothing to redo");
+        let redo = getByRole("button", { name: "Redo the latest undone operation" }) as HTMLButtonElement;
+        expect(redo.disabled).toBe(true);
+        expect(redo.title).toContain("Nothing to redo");
+        repoStatusEvent.set({ ...workspace.status, can_redo: true });
+        await waitFor(() => expect(redo.disabled).toBe(false));
+        expect(getByRole("button", { name: "Fetch remote bookmarks" })).toBeTruthy();
+        expect(getByRole("button", { name: "Undo the latest operation" })).toBeTruthy();
         window.removeEventListener("gg:open-commands", opened);
     });
 });

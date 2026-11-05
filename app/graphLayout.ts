@@ -2,7 +2,7 @@ import { derived, readable, writable } from "svelte/store";
 
 export type HistoryDensity = "compact" | "tall";
 export let historyDensityKey = "gg.history-density";
-export let revisionRowHeight = 32;
+export let revisionRowHeight = 28;
 // shared with edge endpoints so smaller markers stay connected.
 export let revisionNodeRadius = 4.5;
 export let revisionAuthorHeight = 18;

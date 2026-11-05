@@ -112,9 +112,11 @@ Reference: https://ui.shadcn.com/docs/components/base/tabs (default filled varia
 
 The Description panel is a top-aligned document, not a collapsible summary. Show the
 change's actual description title and body first, including for the working copy.
-Use Working copy or No description set only when the description is empty. Keep edit
-and revision actions beside the title; narrow panels place them on a trailing-aligned
-row below it. Preserve drafts and full-width editing. The old Details disclosure,
+Use a ready-to-fill multiline field for an empty working-copy description. Existing
+mutable text uses `EditableText`: quiet text at rest, neutral hover feedback, click or
+keyboard activation to enter the editor. Keep drafts and full-width editing. There is
+no pen button or visible Edit description label. Revision commands live in their own
+Revision tools panel, available from Views. The old Details disclosure,
 stored overview visibility preference and independent metadata scroll cap are removed.
 
 `RevisionOverview` composes description text/editing and `RevisionMetadata`.
@@ -139,3 +141,66 @@ Production build, Svelte and Node/Vite type checks, formatting and Clippy pass. 
 measurements at 320/390/768/1440px in both themes confirm one value alignment edge and no
 horizontal overflow. Full-panel documents start 19px below the dock header in both themes.
 Screenshot evidence is under `.taste-skill/description-redesign/`.
+
+
+## Shared fields, inline editing and timeline sections
+
+`TextField` and `TextAreaField` own ordinary text entry across timeline revsets, file
+search, description editing, command search, destination selection, repository paths
+and input dialogs. They share global field tokens for surface, borders, radius, hover,
+focus and disabled states. Single-line and multiline fields preserve their native roles,
+labels, bindings, input/change/keyboard events and focus references. The hidden Neovim
+input and checkboxes keep their specialized behavior.
+
+`EditableText` is an action with button semantics, keyboard focus and no underline or
+side marker. It displays the description itself instead of an editing label. Hover and
+focus reveal the affordance; editing replaces the text with `TextAreaField`. Cancel
+restores focus to the text, or to the empty working-copy field. An empty field does not
+steal focus when a revision is selected. Save/cancel controls appear after editing starts.
+
+`RevisionTools` groups existing revision commands under Create, Rewrite and Remove.
+It follows the shared selection and command registry; immutable, stale-selection and
+pending-operation guards remain active and unavailable reasons remain visible. It is
+an independent dock panel, openable from Views and movable like any other panel.
+
+`TimelineSection` owns the complete timeline frame, summary and scrolling viewport.
+The Pane header remains full-width. A shared 12px inset surrounds timeline content;
+the inset belongs outside the virtual list so graph SVG geometry, row hit targets,
+vertical virtualization and slot keys retain their existing coordinates.
+
+Implementation was developed in independent Jujutsu workspaces `gg-fields`,
+`gg-timeline` and `gg-revision-tools`, then integrated into the active workspace.
+
+Shared-fields integration validation: 161 component tests and 14 workspace browser tests
+pass. Coverage includes native field binding/event forwarding, inline edit and focus return,
+empty working-copy input, draft persistence, save/undo, independent tools panel lifecycle,
+command protection, and timeline gutter geometry. Build, Svelte/Node type checks, formatting
+and Clippy pass. Live review confirms 12px timeline gutters on both sides, no page overflow
+on desktop/phone, and no editing label or revision menu inside Description. Evidence is in
+`.taste-skill/inline-fields/`. The three worker workspaces retain their original changes for
+review; the active workspace contains the integrated implementation.
+
+## Panel title bars and fixed footers
+
+Timeline's preset and revset fields live in the fixed bottom bar, outside the graph's
+scroll area. Its count remains above the graph. Density uses the shared themed icon
+toggle (`TimelineDisplayOptions`) in the title bar; its pressed state means tall rows
+with revision authors. The choice still persists and preserves the graph reading anchor.
+
+Diff's file count, additions/deletions and five display toggles are composed by
+`DiffTools` in the dock title bar through the shared `PanelTabs` tools slot. There is
+no second tools row inside the docked diff body. The close button stays at the trailing
+edge. Tool content can wrap within narrow title bars; ordinary header icons reserve
+their own space so the scrolling tab strip never overlaps them.
+
+`PanelFooter` provides a full-width surface and top rule, fixed at 49px on desktop or
+61px for narrow/coarse input. Timeline fields and the diff's previous/next file buttons
+and current path use this same component. Both footers stay outside content scrolling.
+Wide title bars remain 32px tall in both light and dark themes.
+
+Verification: 161 component tests, 14 workspace browser checks, whole-file diff controls,
+persisted density/reading-anchor behavior and compact touch density checks pass. Live
+measurements confirm matching 32px desktop headers, matching 49px footers and common
+bottom alignment in both themes. At 320/390px, tab switching, close placement and all
+diff controls remain reachable without page overflow. Evidence:
+`.taste-skill/panel-placement/`.

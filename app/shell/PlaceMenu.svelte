@@ -1,4 +1,5 @@
 <script lang="ts">
+    import TextField from "../controls/TextField.svelte";
     import type { RepoConfig } from "../messages/RepoConfig";
     import type { WorkspaceContext } from "../messages/WorkspaceContext";
     import type { WorkspaceRecord } from "../messages/WorkspaceRecord";
@@ -20,8 +21,8 @@
     let request = 0;
 
     $: folder = workspace.absolute_path.split(/[\\/]/).filter(Boolean).pop() ?? "Repository";
-    $: projectLabel = context?.project_name ?? "Project";
-    $: workspaceLabel = context?.workspace_name ?? folder;
+    $: projectLabel = context?.project_name ?? folder;
+    $: workspaceLabel = context?.workspace_name ?? "default";
     $: void loadContext(workspace.absolute_path);
 
     async function loadContext(_path: string) {
@@ -82,14 +83,12 @@
     }} />
 
 <div class="place" bind:this={root} aria-busy={loading}>
-    <button bind:this={projectButton} type="button" class="place-button" aria-haspopup="menu" aria-expanded={projectOpen} aria-controls="project-menu" title={context?.repo_path ?? workspace.absolute_path} on:click={toggleProject}>
-        <span class="place-kicker">Project</span>
-        <span class="place-name">{projectLabel}</span>
-    </button>
-    <span class="place-rule" aria-hidden="true">/</span>
-    <button bind:this={workspaceButton} type="button" class="place-button" aria-haspopup="menu" aria-expanded={workspaceOpen} aria-controls="workspace-menu" title={context?.workspace_path ?? workspace.absolute_path} on:click={toggleWorkspace}>
-        <span class="place-kicker">Workspace</span>
+    <button bind:this={workspaceButton} type="button" class="place-button workspace-name" class:alternate-workspace={workspaceLabel !== "default"} aria-label="Workspace: {workspaceLabel}" aria-haspopup="menu" aria-expanded={workspaceOpen} aria-controls="workspace-menu" title={context?.workspace_path ?? workspace.absolute_path} on:click={toggleWorkspace}>
         <span class="place-name">{workspaceLabel}</span>
+    </button>
+    <span class="place-rule" aria-hidden="true">@</span>
+    <button bind:this={projectButton} type="button" class="place-button project-name" aria-label="Project: {projectLabel}" aria-haspopup="menu" aria-expanded={projectOpen} aria-controls="project-menu" title={context?.repo_path ?? workspace.absolute_path} on:click={toggleProject}>
+        <span class="place-name">{projectLabel}</span>
     </button>
     {#if projectOpen}
         <div id="project-menu" class="place-menu" role="menu" aria-label="Project">
@@ -101,7 +100,7 @@
                 {#each recent as path}<button type="button" role="menuitem" class="path-item" title={path} on:click={() => openPath(path)}>{path}</button>{/each}
             {/if}
             <form class="path-form" on:submit|preventDefault={() => openPath(pathField.trim())}>
-                <input aria-label="Repository path" placeholder="Path to a repository" bind:value={pathField} />
+                <TextField label="Repository path" placeholder="Path to a repository" bind:value={pathField} />
                 <button type="submit" disabled={!pathField.trim()}>Open</button>
             </form>
         </div>
@@ -124,11 +123,13 @@
 </div>
 
 <style>
-    .place { position: relative; display: flex; flex: 1; align-items: center; gap: 4px; min-width: 0; }
-    .place-button { display: flex; align-items: baseline; gap: 6px; min-width: 0; max-width: 100%; min-height: 32px; padding: 4px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; text-align: start; cursor: pointer; }
-    .place-kicker { flex-shrink: 0; color: var(--muted); font-size: var(--type-caption); }
+    .place { position: relative; display: flex; flex: 1 1 160px; align-items: center; gap: 0; min-width: 0; }
+    .place-button { display: inline-flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%; min-height: 32px; padding: 4px 6px; border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: var(--type-ui); line-height: 20px; text-align: start; cursor: pointer; }
+    .workspace-name { flex-shrink: 1; }
+    .project-name { flex-shrink: 2; }
     .place-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-    .place-rule { color: var(--muted); font-size: 13px; }
+    .place-rule { flex: none; color: var(--muted); font-size: var(--type-ui); line-height: 20px; }
+    .alternate-workspace { color: var(--ref-workspace); border-color: color-mix(in oklab, var(--ref-workspace) 22%, transparent); background: color-mix(in oklab, var(--ref-workspace) 8%, transparent); }
     .place-menu { position: absolute; inset-inline-start: 0; inset-block-start: calc(100% + 4px); z-index: 70; width: min(360px, calc(100vw - 24px)); max-height: min(420px, calc(100dvh - 80px)); overflow: auto; overscroll-behavior: contain; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
     .place-menu > button, .path-form button { min-height: 32px; padding: 6px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; text-align: start; cursor: pointer; }
     .place-menu > button:disabled { color: var(--muted); cursor: default; }
@@ -138,12 +139,11 @@
     .place-path, .place-note { margin: 0; padding: 4px 8px; overflow-wrap: anywhere; }
     .path-item { overflow-wrap: anywhere; }
     .path-form { display: flex; gap: 6px; padding: 4px; }
-    .path-form input { flex: 1; min-width: 0; font-size: 13px; }
+    .path-form :global(.text-field) { flex: 1; min-width: 0; font-size: 13px; }
     .path-form button:disabled { color: var(--muted); cursor: default; }
     @media (hover: hover) {
         .place-button:hover, .place-menu > button:hover:not(:disabled), .path-form button:hover:not(:disabled) { background: var(--hover); }
     }
     .place-button:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { .place-button, .place-menu > button, .path-form button { min-height: 44px; } }
-    @media (max-width: 700px) { .place-kicker { display: none; } }
 </style>

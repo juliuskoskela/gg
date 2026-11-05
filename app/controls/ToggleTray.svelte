@@ -15,7 +15,7 @@
     .tray {
         position: relative;
         display: inline-flex; align-items: stretch; flex-shrink: 0;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         /* clips the segments to the pill, so items need no radius of their own */
         overflow: hidden;
         background: transparent;
@@ -26,7 +26,7 @@
         border-radius: inherit;
         border: 1px solid var(--border);
     }
-    .tray.sm { --toggle-height: 28px; }
+    .tray.sm { --toggle-height: var(--panel-control-size); }
     .tray.md { --toggle-height: 32px; }
     @media (pointer: coarse), (max-width: 600px) { .tray.sm, .tray.md { --toggle-height: 40px; } }
 

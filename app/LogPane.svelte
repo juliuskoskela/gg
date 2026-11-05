@@ -11,7 +11,9 @@
     import { workspaceController } from "./workspace/state";
     import { activeLogQuery, ignoreToggled, logQueryRequest, repoStatusEvent, revisionSelectEvent } from "./stores.js";
     import RevisionMutator from "./mutators/RevisionMutator.js";
-    import Pane from "./shell/Pane.svelte";
+    import TextField from "./controls/TextField.svelte";
+    import TimelineDisplayOptions from "./timeline/TimelineDisplayOptions.svelte";
+    import TimelineSection from "./timeline/TimelineSection.svelte";
     import RevisionObject from "./objects/RevisionObject.svelte";
     import ActionWidget from "./controls/ActionWidget.svelte";
     import Icon from "./controls/Icon.svelte";
@@ -408,15 +410,14 @@
     }
 </script>
 
-<Pane flexibleHeader>
-    <div slot="header" class="graph-header">
-        {#if !integrated}<div class="graph-title"><h2 tabindex="-1">Timeline</h2></div>{/if}
-    <div class="log-selector" class:editable={isCustom || isDeletable}>
+<TimelineSection bind:element={graphBody} showHeader={!integrated}>
+    <div slot="header" class="standalone-title"><h2 tabindex="-1">Timeline</h2><TimelineDisplayOptions /></div>
+    <div slot="footer" class="log-selector" class:editable={isCustom || isDeletable}>
         <SelectWidget options={choices} bind:value={entered_query} on:change={reloadLog}>
             <svelte:fragment let:option>{option.label}</svelte:fragment>
         </SelectWidget>
-        <input
-            dir="ltr" aria-label="Filter revisions with a revset"
+        <TextField
+            dir="ltr" label="Filter revisions with a revset"
             title="Jujutsu revset"
             type="text"
             autocapitalize="off"
@@ -435,10 +436,7 @@
             </ActionWidget>
         {/if}
     </div>
-
-    </div>
-    <div slot="body" class="graph-body" bind:this={graphBody}>
-        <div class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span><label class="density-control"><span>Density</span><select aria-label="History density" value={$historyDensity} on:change={event => historyDensity.set(event.currentTarget.value === "tall" ? "tall" : "compact")}><option value="compact">Compact</option><option value="tall">Tall</option></select></label></div>
+    <div slot="summary" class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span></div>
     <ListWidget
         type="Revision"
         rowHeight={$historyRowHeight}
@@ -475,13 +473,10 @@
             <div class="empty-graph" role="status"><h3>Loading revisions…</h3><p>Reading your repository graph.</p></div>
         {/if}
     </ListWidget>
-    </div>
-</Pane>
+</TimelineSection>
 
 <style>
-    .graph-header { display: grid; gap: 4px; min-width: 0; padding-block-end: 4px; }
-    .graph-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .graph-title h2 { font-size: 13px; font-weight: 500; margin: 0; }
+    h2 { font-size: 13px; font-weight: 500; margin: 0; }
     .log-selector {
         min-height: 32px;
         display: grid;
@@ -498,17 +493,14 @@
         }
     }
 
-    input {
+    .log-selector :global(.text-field) {
         font-family: var(--stack-code);
         font-size: var(--type-ui);
         color: var(--muted);
     }
-    .graph-body { display: grid; grid-template-rows: 28px minmax(0, 1fr); min-width: 0; min-height: 0; }
-    input:focus-visible { color: var(--text-strong); }
+    .log-selector :global(.text-field:focus-visible) { color: var(--text-strong); }
+    .standalone-title { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
     .graph-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; color: var(--muted); }
-    .density-control { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-    .density-control select { min-height: 24px; padding: 0 4px; font-size: 12px; border: 0; background: transparent; }
-    @media (pointer: coarse) { .graph-body { grid-template-rows: 44px minmax(0, 1fr); } .density-control select { min-height: 44px; font-size: 16px; } }
     .graph-caption > span:first-child { color: var(--muted); }
     .empty-graph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--muted); text-align: center; }
     .empty-graph h3 { color: var(--text); font-size: 14px; }
@@ -517,6 +509,6 @@
     @media (pointer: coarse), (max-width: 600px) {
         .log-selector, .log-selector.editable { grid-template-columns: 136px minmax(0, 1fr); min-height: 44px; }
         .log-selector.editable { grid-template-columns: 136px minmax(0, 1fr) auto; }
-        .log-selector input, .log-selector :global(select) { font-size: max(16px, 1rem); min-height: 44px; }
+        .log-selector :global(.text-field), .log-selector :global(select) { font-size: max(16px, 1rem); min-height: 44px; }
     }
 </style>

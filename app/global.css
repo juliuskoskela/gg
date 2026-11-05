@@ -104,11 +104,13 @@
   --control-padding-inline: 8px;
   --control-gap: 6px;
   --pane-inset: 12px;
-  --panel-inset: 8px;
-  --panel-tabs-height: 32px;
-  --panel-toolbar-height: 36px;
-  --panel-header-bg: var(--ground);
-  --panel-tab-active: var(--surface);
+  --panel-inset: 12px;
+  --panel-bar-padding: 5px;
+  --panel-gap: 8px;
+  --tool-group-gap: 12px;
+  --panel-control-size: 28px;
+  --panel-tabs-height: 40px;
+  --panel-toolbar-height: 40px;
   --icon-size: 16px;
   --icon-stroke: 1.75;
   --type-caption: .75rem;
@@ -123,6 +125,8 @@
   /* luminance ladder: chrome sits below content, content below raised and selected rows. */
   --ground: light-dark(#f3f4f7, #0a0b0e);
   --surface: light-dark(var(--neutral-0), #111318);
+  --panel-header-bg: var(--ground);
+  --panel-tab-active: var(--surface);
   --raised: light-dark(#f8f9fb, #181b21);
   --hover: light-dark(#eef0f4, #1a1e25);
   --active: light-dark(#e4e7ed, #232831);
@@ -281,6 +285,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
 }
 
 @media (pointer: coarse), (max-width: 600px) {
+  :root { --panel-control-size: 40px; --panel-tabs-height: 52px; --panel-toolbar-height: 52px; }
   textarea, select, input:not([type="checkbox"]):not([type="radio"]) { font-size: max(16px, 1rem); min-height: var(--touch-target); }
 }
 @media (forced-colors: active) {

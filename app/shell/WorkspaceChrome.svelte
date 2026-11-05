@@ -83,9 +83,9 @@
     .navigation-footer :global(button) { width: 100%; justify-content: flex-start; }
     .with-navigation:not(.expanded-navigation) .navigation-footer :global(button) { justify-content: center; }
     .with-navigation .workspace-sheet { grid-row: 2; grid-column: 2; }
-    .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; height: 40px; min-height: 40px; padding: 4px var(--pane-inset); background: var(--ground); border-block-end: 1px solid var(--rule); min-width: 0; }
+    .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: 3px var(--pane-inset); background: var(--ground); border-block-end: 1px solid var(--rule); min-width: 0; }
     .navigation-trigger { display: grid; place-items: center; width: 32px; min-height: 32px; flex-shrink: 0; padding: 6px; background: transparent; color: var(--text); border: 0; border-radius: var(--radius-control); cursor: pointer; }
-    .topbar-actions { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; min-width: 0; }
+    .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--panel-gap); margin-inline-start: auto; min-width: 0; max-width: 100%; }
     .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--surface); }
     .workspace-sheet.has-error { grid-template-rows: auto minmax(0, 1fr); }
     .refresh-error { margin: 0; padding: 8px 16px; color: var(--negative); font-size: 13px; }
@@ -94,5 +94,5 @@
 
     .navigation-trigger:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { .navigation-trigger { width: 44px; min-height: 44px; } .workspace-topbar { height: auto; min-height: 52px; } }
-    @media (max-width: 600px) { .workspace-topbar { flex-wrap: wrap; gap: 4px; padding: 2px 8px; } }
+    @media (max-width: 600px) { .workspace-topbar { gap: var(--panel-gap); padding: 4px var(--pane-inset); } .topbar-actions { display: contents; } }
 </style>

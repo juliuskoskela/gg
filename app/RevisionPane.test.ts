@@ -195,20 +195,35 @@ describe("RevisionPane", () => {
         expect(container.querySelector("textarea")?.value).toBe("Unfinished description");
     });
 
-    it("keeps squash and restore available alongside visible metadata", async () => {
+    it("offers an empty working-copy field immediately without stealing focus", async () => {
         let { default: RevisionPane } = await import("./RevisionPane.svelte");
-        let { revisionSelectEvent } = await import("./stores");
-        let revs = createMockRevs();
-        revs.headers[0].parent_ids = [{ type: "CommitId", hex: "parent", prefix: "p", rest: "arent" }];
-        revs.changes = [{ kind: "Modified", has_conflict: false, path: { repo_path: "a.ts", relative_path: "a.ts" }, hunks: [] }];
-        revisionSelectEvent.set(revs.set);
-        let { getByRole, container, rerender } = render(RevisionPane, { props: { revs } });
-        await fireEvent.click(getByRole("button", { name: "Revision actions" }));
-        expect(getByRole("button", { name: "Squash into parent" }).hasAttribute("disabled")).toBe(false);
-        expect(getByRole("button", { name: "Restore from parent" }).hasAttribute("disabled")).toBe(false);
+        let revs = createMockRevs("empty", "empty", "");
+        revs.headers[0].is_working_copy = true;
+        let { container, getByRole } = render(RevisionPane, { props: { revs } });
+        let field = getByRole("textbox", { name: "Revision description" }) as HTMLTextAreaElement;
+        expect(field.value).toBe("");
+        expect(field.placeholder).toBe("Describe this change…");
+        expect(document.activeElement).not.toBe(field);
+        expect(container.querySelector('[aria-label="Edit revision description"]')).toBeNull();
+        expect(container.querySelector('[aria-label="Revision actions"]')).toBeNull();
+        await fireEvent.input(field, { target: { value: "A new description" } });
+        await fireEvent.keyDown(field, { key: "Escape" });
+        expect(field.value).toBe("");
         expect(container.querySelector('[aria-label="Revision metadata"]')?.textContent).toContain("Test User");
-        await rerender({ revs: { ...revs, changes: [{ ...revs.changes[0], path: { repo_path: "b.rs", relative_path: "b.rs" } }] } });
-        expect(container.textContent).toContain("File no longer available");
     });
 
+    it("edits the description text and returns focus to it on cancel", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let { getByRole, container } = render(RevisionPane, { props: { revs: createMockRevs() } });
+        let link = getByRole("button", { name: "Edit revision description" });
+        expect(link.textContent).toBe("Test commit message");
+        link.focus();
+        await fireEvent.click(link);
+        let field = getByRole("textbox", { name: "Revision description" });
+        expect(document.activeElement).toBe(field);
+        await fireEvent.keyDown(field, { key: "Escape" });
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        expect(document.activeElement).toBe(getByRole("button", { name: "Edit revision description" }));
+        expect(container.textContent).not.toContain("Edit description");
+    });
 });

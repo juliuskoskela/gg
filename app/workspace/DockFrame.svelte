@@ -3,9 +3,10 @@
     import type { RepoConfig } from "../messages/RepoConfig";
     import type { RevsResult } from "../messages/RevsResult";
     import type { RevChange } from "../messages/RevChange";
+    import TimelineDisplayOptions from "../timeline/TimelineDisplayOptions.svelte";
+    import DiffTools from "../revision/DiffTools.svelte";
     import PanelTabs from "../controls/PanelTabs.svelte";
     import type { DockNode, Edge, PanelId } from "./dock";
-    import { draggedPanel, panelDrag, setDraggedPanel } from "./dock";
     import { panelLabel } from "./panels";
     import PanelBody from "./PanelBody.svelte";
 
@@ -24,39 +25,6 @@
     export let onSelectFile: (change: RevChange) => void;
 
     let resizing = false;
-    let hint: Edge | null = null;
-
-    function startDrag(event: DragEvent, id: PanelId) {
-        setDraggedPanel(id);
-        event.dataTransfer?.setData("application/x-gg-panel", id);
-        event.dataTransfer?.setData("text/plain", panelLabel[id]);
-        if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-    }
-
-    function finishDrag() {
-        setDraggedPanel(null);
-        hint = null;
-    }
-
-    function clearHint(event: DragEvent) {
-        let next = event.relatedTarget;
-        if (next instanceof Node && (event.currentTarget as HTMLElement).contains(next)) return;
-        hint = null;
-    }
-
-    function allowDrop(event: DragEvent, edge: Edge) {
-        if (!draggedPanel()) return;
-        event.preventDefault();
-        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-        hint = edge;
-    }
-
-    function dropOn(target: PanelId, edge: Edge) {
-        let id = draggedPanel();
-        finishDrag();
-        if (id) onMove(id, target, edge);
-    }
-
     function moveSplitter(event: PointerEvent) {
         if (!resizing || node.type !== "split") return;
         let container = (event.currentTarget as HTMLElement).parentElement!;
@@ -95,24 +63,17 @@
         <svelte:self node={node.second} path={[...path, 1]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
     </div>
 {:else}
-    <div class="tabs">
-        <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={node.active} draggable drop={hint === "tab" && !!$panelDrag}
-            onSelect={onFocus} {onClose} onDragStart={startDrag} onDragEnd={finishDrag}
-            onDragOver={event => allowDrop(event, "tab")} onDragLeave={clearHint} onDrop={id => dropOn(id, "tab")} />
-        <!-- svelte-ignore a11y_no_static_element_interactions (drop target for a panel drag) -->
-        <div class="stack" on:dragleave={clearHint}>
+    <div class="tabs" data-panel-group={node.active}>
+        <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={node.active} draggable
+            onSelect={onFocus} {onClose} {onMove} toolsVisible={node.active === "timeline" || (node.active === "diff" && !!detail)} toolsWrap={node.active === "diff"}>
+            <svelte:fragment slot="tools">{#if node.active === "timeline"}<TimelineDisplayOptions />{:else if node.active === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
+        </PanelTabs>
+        <div class="stack">
             {#each node.panels as id (id)}
                 <div class="panel-body" id="panel-{id}" role="tabpanel" aria-labelledby="panel-tab-{id}" hidden={node.active !== id} inert={node.active !== id}>
                     <PanelBody {id} active={node.active === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onSelectFile} />
                 </div>
             {/each}
-            {#if $panelDrag}
-                {#each ["left", "right", "top", "bottom"] as edge}
-                    <!-- svelte-ignore a11y_no_static_element_interactions (drop target for a panel drag) -->
-                    <div class="edge {edge}" on:dragover={event => { allowDrop(event, edge as Edge); event.stopPropagation(); }} on:drop|preventDefault|stopPropagation={() => dropOn(node.active, edge as Edge)}></div>
-                {/each}
-                {#if hint && hint !== "tab"}<span class="drop-line {hint}"></span>{/if}
-            {/if}
         </div>
     </div>
 {/if}
@@ -137,20 +98,6 @@
     .separator:focus-visible { outline: none; }
     .separator.dragging, .separator:focus-visible { background: var(--accent-subtle); }
     .separator.dragging::after, .separator:focus-visible::after { background: var(--accent); }
-    .edge { position: absolute; z-index: 3; }
-    .edge.left, .edge.right { inset-block: 0; width: 16px; }
-    .edge.left { inset-inline-start: 0; }
-    .edge.right { inset-inline-end: 0; }
-    .edge.top, .edge.bottom { inset-inline: 0; height: 16px; }
-    .edge.top { inset-block-start: 0; }
-    .edge.bottom { inset-block-end: 0; }
-    .drop-line { position: absolute; z-index: 4; background: var(--accent); pointer-events: none; }
-    .drop-line.left, .drop-line.right { inset-block: 0; width: 1px; }
-    .drop-line.left { inset-inline-start: 0; }
-    .drop-line.right { inset-inline-end: 0; }
-    .drop-line.top, .drop-line.bottom { inset-inline: 0; height: 1px; }
-    .drop-line.top { inset-block-start: 0; }
-    .drop-line.bottom { inset-block-end: 0; }
     @media (hover: hover) {
         .separator:hover { background: var(--hover); }
         .separator:hover::after { background: var(--control-hover); }

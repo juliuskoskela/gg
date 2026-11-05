@@ -8,6 +8,7 @@
     export let secondary: boolean = false;
     export let primary: boolean = false;
     export let disabled: boolean = false;
+    export let disabledReason = "";
 
     $: isDisabled = disabled || (!safe && $hasModal);
 </script>
@@ -22,7 +23,7 @@
     on:click|stopPropagation={isDisabled ? undefined : onClick}
     on:dragenter={dragOverWidget}
     on:dragover={dragOverWidget}
-    title={tip}
+    title={isDisabled && disabledReason ? disabledReason : tip}
     aria-label={tip || undefined}>
     <slot />
 </button>

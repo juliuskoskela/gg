@@ -47,7 +47,7 @@
         transition: none;
         -webkit-tap-highlight-color: transparent;
     }
-    .toggle.icon-only { min-width: calc(var(--toggle-height, 28px) + 4px); padding: 0 8px; }
+    .toggle.icon-only { min-width: var(--toggle-height, 28px); padding: 0 6px; }
     .caret { display: inline-flex; margin-inline-start: -3px; --icon-size: 10px; }
 
     .toggle.on { background: var(--active); color: var(--text-strong); }

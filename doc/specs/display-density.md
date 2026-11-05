@@ -18,7 +18,9 @@ Descriptions have medium weight; change IDs and empty descriptions remain quiete
 
 ## History density
 
-The labelled History density selector offers Compact (32px on fine pointers; at least 44px on coarse pointers) and Tall (60px). Tall places a regular-weight, muted author below the description, with change ID and title aligned on the first line. `gg.history-density` persists the choice. Switching scales the graph scroll offset by the row-height ratio to preserve the top revision and fractional offset. Virtualization, selection paging, node centers, connecting edges and drag/drop regions all receive the same row height.
+The Timeline density icon switches between Compact (28px on fine pointers; at least 44px on coarse pointers) and Tall (60px). Tall places a regular-weight, muted author below the description, with change ID and title aligned on the first line. `gg.history-density` persists the choice. Switching scales the graph scroll offset by the row-height ratio to preserve the top revision and fractional offset. Virtualization, selection paging, node centers, connecting edges and drag/drop regions all receive the same row height.
+
+Compact rows retain at least 3px above and below 22px reference chips, 6px between chips, and 8px between description text and references.
 
 On timeline containers below 400px, reference chips use compact icons to yield space to descriptions while keeping bookmark selection and commands reachable. Full names remain in tooltips, accessible labels and revision details.
 
