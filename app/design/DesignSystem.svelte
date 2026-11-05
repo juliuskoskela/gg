@@ -8,6 +8,9 @@
     import EditableText from "../controls/EditableText.svelte";
     import PanelTabs from "../controls/PanelTabs.svelte";
     import PanelHeader from "../controls/PanelHeader.svelte";
+    import ActionWidget from "../controls/ActionWidget.svelte";
+    import ProgressWidget from "../controls/ProgressWidget.svelte";
+    import DiffViewer from "../DiffViewer.svelte";
     import Icon from "../controls/Icon.svelte";
     import ToggleTray from "../controls/ToggleTray.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
@@ -20,7 +23,7 @@
     import RepositoryNavigation from "../shell/RepositoryNavigation.svelte";
 
     setContext("settings", { markUnpushedBookmarks: true });
-    let theme = "dark";
+    let theme: "light" | "dark" = "dark";
     let active = "diff";
     let currentQuery = "all()";
     let wrap = true;
@@ -31,7 +34,7 @@
     let sampleRemote = "origin";
     let samplePreset = "custom";
     let timelineExample: HTMLDivElement;
-    let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.svelte", relative_path: "app/workspace.svelte" }, has_conflict: false, hunks: [], stat: { added: 1, removed: 1 } }];
+    let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.svelte", relative_path: "app/workspace.svelte" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 4 }, to_file: { start: 1, len: 4 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n'] } }], stat: { added: 1, removed: 1 } }];
     let items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }];
     let workspace = { query_choices: { default: "all()", "My revisions": "mine()" } };
     let rows = [
@@ -54,8 +57,8 @@
                 <div><dt>Adjacent controls</dt><dd>8px</dd></div>
                 <div><dt>Tool groups</dt><dd>12px</dd></div>
                 <div><dt>Title padding</dt><dd>5px above and below</dd></div>
-                <div><dt>Controls</dt><dd>28px; 40px on touch</dd></div>
-                <div><dt>Title bar</dt><dd>40px; 52px on touch</dd></div>
+                <div><dt>Controls</dt><dd>28px; 44px on touch</dd></div>
+                <div><dt>Title bar</dt><dd>40px; 56px on touch</dd></div>
             </dl>
             <p>At 520px and below, Diff tools wrap onto their own trailing-aligned row. Header backgrounds and divider lines span the full panel width.</p>
         </section>
@@ -66,7 +69,7 @@
                 {#each items as item}
                     <div id="example-{item.id}" role="tabpanel" aria-labelledby="example-tab-{item.id}" hidden={active !== item.id}>
                         {#if item.id === "diff"}
-                            <div class="code-example">{#each rows as row}<div class="code-line {row.kind}"><span>{row.number}</span><span>{row.kind === "added" ? "+" : row.kind === "removed" ? "−" : " "}</span><code>{row.text}</code></div>{/each}</div><PanelFooter><div class="example-file-navigation"><Icon name="chevron-up" /><Icon name="chevron-down" /><Icon name="file-text" /><span>app/workspace.svelte</span></div></PanelFooter>
+                            <div class="diff-example"><DiffViewer change={sampleChanges[0]} themeOverride={theme} /></div><PanelFooter><div class="example-file-navigation"><Icon name="chevron-up" /><Icon name="chevron-down" /><Icon name="file-text" /><span>app/workspace.svelte</span></div></PanelFooter>
                         {:else if item.id === "edit"}<PanelHeader><Icon name="file-text" /><span>app/workspace.svelte</span></PanelHeader><TextAreaField label="Example editor" spellcheck="false" value={rows.filter(row => row.kind !== "removed").map(row => row.text).join("\n")} />
                         {:else}<PanelHeader><h2>Current operation</h2></PanelHeader><p class="operation-example">No pending operation in this component preview.</p>{/if}
                     </div>
@@ -80,7 +83,7 @@
         </section>
         <div class="specimens">
             <section><h2>Timeline panel</h2><p>Tools stay at the trailing edge of the title bar. Preset and filter fields stay at the bottom, outside the graph's scroll area.</p><div class="sample"><PanelTabs items={[{ id: "timeline", label: "Timeline" }]} active="timeline" prefix="single" onSelect={() => {}}><svelte:fragment slot="tools"><TimelineDisplayOptions /></svelte:fragment></PanelTabs><div class="timeline-example" id="single-timeline" role="tabpanel" aria-labelledby="single-tab-timeline"><TimelineSection showHeader={false} bind:element={timelineExample}><span slot="summary">2 revisions</span><div class="timeline-example-rows"><p>Keep revision descriptions readable</p><p>Unify panel chrome</p></div><div slot="footer" class="timeline-example-fields"><SelectWidget options={[{ label: "Default", value: "all()" }]} bind:value={sampleQuery}><svelte:fragment let:option>{option.label}</svelte:fragment></SelectWidget><TextField label="Example revset" bind:value={sampleQuery} /></div></TimelineSection></div></div></section>
-            <section><h2>Controls</h2><p>Independent toggles and exclusive choices share the workspace control components.</p><div class="control-example"><ToggleTray label="Example wrapping"><ToggleItem icon="corner-down-left" text="Wrap lines" label="Wrap example lines" on={wrap} onClick={() => wrap = !wrap} /></ToggleTray><button type="button">Refresh</button><button type="button" disabled>Unavailable</button></div></section>
+            <section><h2>Controls</h2><p>Independent toggles and exclusive choices share the workspace control components.</p><div class="control-example"><ToggleTray label="Example wrapping"><ToggleItem icon="corner-down-left" text="Wrap lines" label="Wrap example lines" on={wrap} onClick={() => wrap = !wrap} /></ToggleTray><ActionWidget onClick={() => {}}><Icon name="refresh-cw" />Refresh</ActionWidget><ActionWidget primary onClick={() => {}}>Save description</ActionWidget><ActionWidget disabled disabledReason="Select a revision first" onClick={() => {}}>Unavailable</ActionWidget></div></section>
             <section><h2>Revision tools</h2><p>Commands live in their own dockable panel, available from Views. They follow the selected revision.</p><div class="tools-specimen"><PanelTabs items={[{ id: "tools", label: "Revision tools" }]} active="tools" prefix="tools-specimen" onSelect={() => {}} /><div id="tools-specimen-tools" role="tabpanel" aria-labelledby="tools-specimen-tab-tools"><RevisionTools headers={[]} /></div></div></section>
             <section id="selects"><h2>Dropdowns</h2><p>Remote and revset choices use the same native select, inset Feather chevron and keyboard behavior.</p><div class="control-example"><SelectWidget label="Example remote" options={[{ value: "origin" }, { value: "upstream" }]} bind:value={sampleRemote} /><SelectWidget label="Example preset" options={[{ value: "custom", label: "Custom" }, { value: "default", label: "Default" }]} bind:value={samplePreset}><svelte:fragment let:option>{option.label}</svelte:fragment></SelectWidget></div></section>
             <section class="field-specimens"><h2>Fields and inline editing</h2><p>Text, search and multiline fields share native behavior and the same surface, border and focus tokens.</p><TextField label="Example search" type="search" placeholder="Find a file…" bind:value={sampleSearch} />
@@ -88,12 +91,14 @@
                 <TextAreaField label="Empty working-copy example" placeholder="Describe this change…" />
             </section>
             <section><h2>Selection</h2><p>Use a neutral surface and stronger text. Underlines and side stripes are prohibited for active tabs, navigation and selected rows. Focus uses a complete outline.</p><div class="row-example" role="listbox" aria-label="Example files"><button class="selection-item" role="option" aria-selected="true"><Icon name="file-text" />workspace.svelte</button><button class="selection-item" role="option" aria-selected="false"><Icon name="file-text" />global.css</button></div></section>
+            <section id="states"><h2>Feedback and field states</h2><p>Production controls retain native hover, keyboard focus and pressed behavior. Tab through this page to inspect focus in either theme.</p><div class="state-fields"><TextField label="Disabled field" value="Unavailable while loading" disabled /><TextField label="Invalid revset" value="ancestors(" aria-invalid="true" aria-describedby="example-error" /><p id="example-error" class="error-text">Close the parenthesis to complete this revset.</p><ProgressWidget label="Loading revisions…" /><ProgressWidget label="3 of 4 files loaded" value={75} /><p role="status">No matching files. Try a different file name.</p></div></section>
             <section><h2>Surfaces and type</h2><p>IBM Plex Sans for controls; JetBrains Mono for code. Semantic colors belong to changes and repository data.</p><div class="swatches">{#each ["ground", "surface", "raised", "text", "muted", "rule"] as token}<div><span style="background: var(--{token})"></span><code>--{token}</code></div>{/each}</div></section>
         </div>
     </main>
 </div>
 
 <style>
+    @import "../controls/action.css";
     #shell { height: 100%; overflow: auto; background: var(--ground); color: var(--text); font: var(--type-ui)/1.5 var(--stack-ui); pointer-events: auto; }
     .system-page { max-width: 1280px; margin: auto; padding: 32px; }
     .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 28px; }
@@ -101,8 +106,9 @@
     h2 { font-size: var(--type-ui); font-weight: 500; }
     p { color: var(--muted); }
     h1 + p { margin-top: 4px; }
-    button { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--text); cursor: pointer; }
-    button:disabled { color: var(--text-disabled); cursor: default; }
+    .state-fields { display: grid; gap: 12px; }
+    .error-text { color: var(--negative); }
+    .diff-example { height: 220px; overflow: hidden; }
     .spacing-specimen { margin-block-end: 24px; }
     .spacing-specimen > p { max-width: 80ch; margin-block: 6px 12px; }
     .spacing-rules { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-block: 16px; }
@@ -114,11 +120,7 @@
     .navigation-content { padding: 8px; }
     .reader-example { min-width: 0; }
     [role="tabpanel"][hidden] { display: none; }
-    .added { color: var(--positive); } .removed { color: var(--negative); }
-    .code-example { overflow: auto; padding-block: 12px; pointer-events: auto; }
-    .code-line { display: grid; grid-template-columns: 40px 24px 1fr; min-width: max-content; padding-inline-end: 12px; line-height: 26px; }
-    .code-line > span { text-align: center; color: var(--muted); font-family: var(--stack-code); }
-    .code-line.added { background: var(--diff-addition); } .code-line.removed { background: var(--diff-deletion); }
+
     .reader-example :global(textarea) { display: block; min-height: 200px; border: 0; border-radius: 0; padding: 12px; font: var(--type-code)/1.8 var(--stack-code); }
     .operation-example { padding: 16px; }
     .description-specimen { margin-block-start: 32px; }

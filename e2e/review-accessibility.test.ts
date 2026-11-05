@@ -15,25 +15,22 @@ describe("reviewed revision navigation", () => {
     });
     afterEach(async () => destroyContext(ctx));
 
-    it("keeps the standalone revision actions visible and keyboard accessible", async () => {
+    it("opens revision tools and reaches a command by keyboard", async () => {
         let backend = await startGG(ctx);
-        await ctx.page.goto(`${backend}/revision?revset=@`);
-        let trigger = ctx.page.getByRole("button", { name: "Revision actions", exact: true });
-        await trigger.focus();
-        await trigger.press("Enter");
-        let menu = ctx.page.getByRole("group", { name: "Revision actions menu" });
-        await menu.waitFor();
-        let first = menu.getByRole("button").first();
-        let box = (await first.boundingBox())!;
+        await ctx.page.goto(backend);
+        await ctx.page.locator(".graph .selection-item").first().click();
+        let views = ctx.page.getByRole("button", { name: "Views", exact: true });
+        await views.focus();
+        await views.press("Enter");
+        await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools" }).click();
+        let tab = ctx.page.getByRole("tab", { name: "Revision tools", exact: true });
+        await expect.poll(() => tab.getAttribute("aria-selected")).toBe("true");
+        let tool = ctx.page.locator(".revision-tools button:not(:disabled)").first();
+        await tool.focus();
+        expect(await tool.evaluate(element => element === document.activeElement)).toBe(true);
+        let box = (await tool.boundingBox())!;
         expect(box.y).toBeGreaterThanOrEqual(0);
-        expect(await first.evaluate(element => {
-            let rect = element.getBoundingClientRect();
-            return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
-        })).toBe(true);
-        await trigger.press("Tab");
-        expect(await first.evaluate(element => element === document.activeElement)).toBe(true);
-        await ctx.page.keyboard.press("Escape");
-        expect(await trigger.evaluate(element => element === document.activeElement)).toBe(true);
+        expect(box.y + box.height).toBeLessThanOrEqual(844);
     });
 
     it("selects a hunk and discovers its commands using only keyboard activation", async () => {

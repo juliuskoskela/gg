@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Icon from "../controls/Icon.svelte";
     import TextField from "../controls/TextField.svelte";
     import DestinationPicker from "./DestinationPicker.svelte";
     import { mutationPending } from "../operations";
@@ -64,7 +65,7 @@
 {#if open}
     <dialog bind:this={dialog} class="palette" aria-label="Commands" on:cancel|preventDefault={close} on:click={event => { if (event.target === dialog) close(); }}>
         <div class="content">
-            <div class="heading"><label for="command-search">Commands</label><button type="button" on:click={close} aria-label="Close commands">×</button></div>
+            <div class="heading"><label for="command-search">Commands</label><button type="button" on:click={close} aria-label="Close commands"><Icon name="x" /></button></div>
             <TextField id="command-search" bind:element={input} bind:value={search} placeholder="Search commands" autocomplete="off" aria-controls="command-results" />
             <div id="command-results" class="results" aria-label="Available commands">
                 {#each filtered as command (command.id)}
@@ -78,7 +79,7 @@
 {/if}
 <style>
     .palette { position: fixed; inset: min(12vh, 90px) 16px auto; width: min(560px, calc(100% - 32px)); max-width: none; max-height: min(70dvh, 640px); box-sizing: border-box; margin: 0 auto; padding: 0; background: var(--raised); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-surface); box-shadow: var(--shadow-overlay); pointer-events: auto; }
-    .palette::backdrop { background: #0008; }
+    .palette::backdrop { background: var(--scrim); }
     .content { display: flex; flex-direction: column; max-height: min(70dvh, 640px); padding: 12px; pointer-events: auto; }
     .heading { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
     .heading button { border: 0; background: transparent; color: inherit; font-size: 24px; min-width: 44px; min-height: 44px; }

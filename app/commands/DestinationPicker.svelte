@@ -24,7 +24,7 @@
 {/if}
 <style>
     dialog { width: min(560px, calc(100% - 32px)); max-height: 75dvh; box-sizing: border-box; background: var(--raised); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-surface); padding: 16px; pointer-events: auto; }
-    dialog::backdrop { background: #0008; }
+    dialog::backdrop { background: var(--scrim); }
     h2 { margin: 0 0 12px; font-size: var(--type-title); }
     .input-row { display: flex; gap: 8px; } .input-row :global(.text-field) { min-width: 0; flex: 1; min-height: 44px; }
     button { min-height: 44px; } .candidates { max-height: 42dvh; overflow: auto; display: grid; pointer-events: auto; }

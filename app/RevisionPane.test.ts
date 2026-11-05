@@ -119,6 +119,22 @@ describe("RevisionPane", () => {
         expect(container.querySelector(".parents")?.textContent).toContain("Keep repository context");
     });
 
+    it("keeps metadata labels clear of values when text is enlarged", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let { revisionFixture } = await import("./design/revisionFixture");
+        let { container } = render(RevisionPane, { props: { revs: revisionFixture }, context: new Map([["settings", { markUnpushedBookmarks: true }]]) });
+        container.style.width = "760px";
+        container.style.setProperty("--type-ui", "26px");
+        for (let row of container.querySelectorAll(".metadata-row")) {
+            let label = row.querySelector("dt")!;
+            let value = row.querySelector("dd")!;
+            expect(label.getBoundingClientRect().right).toBeLessThan(value.getBoundingClientRect().left);
+            expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth);
+        }
+        let columns = getComputedStyle(container.querySelector(".metadata-row")!).gridTemplateColumns;
+        expect(parseFloat(columns)).toBeCloseTo(26 * (window.matchMedia("(max-width: 600px)").matches ? 68 / 14 : 80 / 13), 1);
+    });
+
     it("keeps a draft scoped to its exact commit and restores it on return", async () => {
         const { default: RevisionPane } = await import("./RevisionPane.svelte");
 

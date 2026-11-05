@@ -27,7 +27,7 @@
         <nav aria-label="Saved revsets">
             {#if !collapsed}<h2>Saved revsets</h2>{/if}
             {#each savedViews as [name, revset]}
-                <button class="selection-item" type="button" aria-label={name.replaceAll("-", " ")} title={`${name.replaceAll("-", " ")}: ${revset}`} aria-current={currentQuery === revset ? "page" : undefined} on:click={() => onSelect(revset)}><Icon name="filter" />{#if !collapsed}<span>{name.replaceAll("-", " ")}</span>{/if}</button>
+                <button class="selection-item" type="button" aria-label={`Saved revset: ${name.replaceAll("-", " ")}`} title={`Saved revset: ${name.replaceAll("-", " ")}: ${revset}`} aria-current={currentQuery === revset ? "page" : undefined} on:click={() => onSelect(revset)}><Icon name="filter" />{#if !collapsed}<span>{name.replaceAll("-", " ")}</span>{/if}</button>
             {/each}
         </nav>
     {/if}

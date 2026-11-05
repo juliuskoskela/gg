@@ -10,24 +10,42 @@
     export let error: boolean = false;
 
     let dispatch = createEventDispatcher();
+    let dialog: HTMLDivElement;
+    let previous: HTMLElement | null;
+
+    function focusable() {
+        return [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')].filter(element => element.getClientRects().length > 0);
+    }
 
     onMount(() => {
+        previous = document.activeElement as HTMLElement | null;
+        (focusable()[0] ?? dialog).focus();
         document.addEventListener("keydown", onKeyDown);
         return () => {
             document.removeEventListener("keydown", onKeyDown);
+            if (previous?.isConnected) previous.focus();
         };
     });
 
     function onKeyDown(event: KeyboardEvent) {
-        if (event.key == "Escape") {
+        if (event.defaultPrevented || event.isComposing) return;
+        if (event.key === "Escape") {
+            event.preventDefault();
             dispatch("cancel");
-        } else if (event.key == "Enter") {
+        } else if (event.key === "Tab") {
+            let items = focusable();
+            let index = items.indexOf(document.activeElement as HTMLElement);
+            if (!items.length) { event.preventDefault(); dialog.focus(); }
+            else if (event.shiftKey && index <= 0) { event.preventDefault(); items[items.length - 1].focus(); }
+            else if (!event.shiftKey && (index < 0 || index === items.length - 1)) { event.preventDefault(); items[0].focus(); }
+        } else if (event.key === "Enter" && event.target instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit"].includes(event.target.type)) {
+            event.preventDefault();
             dispatch("default");
         }
     }
 </script>
 
-<div id="dialog-chrome" role="dialog" aria-modal="true" aria-labelledby="dialog-header">
+<div id="dialog-chrome" bind:this={dialog} tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="dialog-header">
     <h3 id="dialog-header" class:error>{title}</h3>
 
     <div id="dialog-content">

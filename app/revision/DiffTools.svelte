@@ -10,7 +10,7 @@
     $: deletions = changes.reduce((total, change) => total + (change.stat?.removed ?? change.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("-")).length, 0)), 0);
 </script>
 
-<PanelTools label="Diff tools">
+<div class="diff-tools"><PanelTools label="Diff tools">
     <svelte:fragment slot="summary">
     <div class="changes-summary">
         {#if title}<h3>{title}</h3>{/if}
@@ -19,9 +19,10 @@
     </div>
     </svelte:fragment>
     {#if changes.length}<DiffDisplayOptions />{/if}
-</PanelTools>
+</PanelTools></div>
 
 <style>
+    .diff-tools { container: diff-tools / inline-size; min-width: 0; width: 100%; }
     .changes-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--panel-gap); min-width: 0; }
     h3 { margin: 0; font-size: var(--type-ui); font-weight: 500; }
     .file-count { font-size: var(--type-caption); color: var(--muted); white-space: nowrap; }

@@ -94,5 +94,5 @@
 
     .navigation-trigger:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { .navigation-trigger { width: 44px; min-height: 44px; } .workspace-topbar { height: auto; min-height: 52px; } }
-    @media (max-width: 600px) { .workspace-topbar { gap: var(--panel-gap); padding: 4px var(--pane-inset); } .topbar-actions { display: contents; } }
+    @media (max-width: 600px) { .workspace-topbar { gap: var(--panel-gap); padding: 4px var(--pane-inset); } .topbar-actions { flex: 1 0 100%; justify-content: flex-end; } }
 </style>

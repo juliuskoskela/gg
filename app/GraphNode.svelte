@@ -5,12 +5,13 @@
 
     export let header: RevHeader;
     export let rowHeight = revisionRowHeight;
+    export let authorSpace = 0;
     export let lane = 0;
 
     let context = false;
     $: context = $currentContext?.type == "Revision" && header == $currentContext.header;
     $: selected = $revisionSelectEvent?.from.commit.hex === header.id.commit.hex || $revisionSelectEvent?.to.commit.hex === header.id.commit.hex;
-    $: cy = revisionNodeOffset(rowHeight);
+    $: cy = revisionNodeOffset(rowHeight, authorSpace);
     $: r = revisionNodeRadius;
     // diamond matches jj's ◆ glyph for immutable history
     $: diamond = `M9,${cy - r - 0.5} L${9 + r + 0.5},${cy} L9,${cy + r + 0.5} L${9 - r - 0.5},${cy} Z`;

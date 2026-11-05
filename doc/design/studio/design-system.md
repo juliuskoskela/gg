@@ -1,5 +1,9 @@
 # GG+ workspace design system
 
+The current implementation contract is [UI design sweep](../../reviews/ui-design-sweep.md).
+Earlier sections below retain historical design decisions and verification records;
+where they disagree, the current contract and production components take precedence.
+
 ## Direction
 
 The revision graph is GG’s identity and working context. Its real topology, selected revision and working-copy marker should remain the visual anchor while an inspector reveals detail. Use IBM Plex Sans / JetBrains Mono, matching the owner’s `~/Repos/repo-docs` documentation template, neutral light and dark surfaces, and muted green graph semantics. Do not import terminal-dashboard cards, financial status colors, ornamental grids or a new font system from researched examples.
@@ -121,7 +125,10 @@ stored overview visibility preference and independent metadata scroll cap are re
 
 `RevisionOverview` composes description text/editing and `RevisionMetadata`.
 `MetadataList` and `MetadataRow` own semantic definition lists and consistent label/value
-columns: 80px labels plus 16px gap on desktop, 68px plus 12px at narrow viewports.
+columns: labels and gaps scale with the UI type: `calc(var(--type-ui) * 80 / 13)` plus
+`calc(var(--type-ui) * 16 / 13)` on desktop (80px/16px at 13px type), and
+`calc(var(--type-ui) * 68 / 14)` plus `calc(var(--type-ui) * 12 / 14)` at narrow
+viewports (68px/12px at 14px type). Labels can wrap within their column.
 When the metadata container is 320px or narrower, every row stacks its label above its
 value. Top-align wrapped content, rather than vertically centering labels against chips.
 
@@ -204,3 +211,55 @@ measurements confirm matching 32px desktop headers, matching 49px footers and co
 bottom alignment in both themes. At 320/390px, tab switching, close placement and all
 diff controls remain reachable without page overflow. Evidence:
 `.taste-skill/panel-placement/`.
+
+## Shared state contract (November 2026 sweep)
+
+Solid actions use `accent-solid`, `accent-solid-hover`, `accent-solid-pressed` and
+`text-on-accent`. Destructive filled states use `danger-solid`, its hover/pressed
+variants and `text-on-danger`; `negative` remains the foreground/diff role.
+Primary pressed treatment wins over hover. Buttons retain a 32px minimum but grow
+with text; relative leading preserves the 20px desktop baseline. On narrow/coarse
+input, shared panel controls and toggle trays reach 44px, within 56px title/tool bars.
+
+Resting field outlines use the quiet `control-border` through `input-border`,
+following the owner’s Paseo reference calibration; disabled fields remain quiet. Invalid fields use `negative` with a visible explanatory message.
+Keyboard focus uses the full-strength focus token. Floating menus use the opaque
+`popover-surface`, `radius-popover` and `shadow-overlay`; drawer backdrops use `scrim`.
+Docked panels retain their flat surfaces and neutral selection.
+
+`graph-edge` is a topology role independent of separators: light #c8c8c0, dark
+#40403d, with a 1.5px stroke. The owner rejected the stronger 3:1 palette as visually
+dominant. Keep connectors subdued; nodes, revision text and selection carry the
+stronger cues. This choice does not claim 3:1 connector contrast.
+
+The catalogue now renders `ActionWidget`, `ProgressWidget` and an actual `DiffViewer`
+with a local typed change fixture, alongside production fields, tabs and toggles.
+Its light/dark switch stays local and passes a theme override to the diff renderer;
+viewing specimens does not save a user preference. Error, disabled, loading, empty
+and selected states are available, with live hover/pressed and keyboard focus states.
+This supersedes the earlier illustrative-code-row description above.
+
+## Text enlargement and virtual history geometry
+
+Metadata label widths and gaps scale with `--type-ui`; long labels wrap instead of
+painting over values. The normal 80px/16px desktop and 68px/12px narrow geometry is
+preserved. The existing narrow-container stacked layout remains available.
+
+History measures one hidden CSS row in `LogPane`, following the UI type and density.
+Baseline compact desktop/touch/tall heights remain 28px/44px/60px; doubled UI type
+produces 56px/88px/120px. One measured height drives list keyboard navigation,
+virtual slice offsets, row foreignObjects, graph endpoints and the preserved reading
+anchor. Tall title/author/gap geometry scales together (22px/18px/2px baseline).
+Explicit author space reaches graph stations and edges, so enlarged tall rows do not
+rely on comparing their total height with a fixed 60px number. Slot-index keys remain.
+
+
+## Quiet surface hierarchy
+
+The owner’s Paseo Progress reference supersedes the first sweep’s stronger field
+boundaries and blue-black canvas. Dark chrome and content share #1f1f1e, with
+#2b2b2a rules and #343433 container hairlines. Input surfaces are #232322 with
+#3a3a38 resting borders. Keep the complete focus ring for keyboard interaction.
+Light mode follows the same close neutral steps. Selected rows are neutral,
+reference chip colors/fills/borders are subdued, and outline icons use a 1.5px stroke.
+See the [current measurements and palette](../../reviews/ui-design-sweep.md#paseo-reference-calibration).

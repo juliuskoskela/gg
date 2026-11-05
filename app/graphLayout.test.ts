@@ -57,11 +57,11 @@ describe("history density", () => {
         let { default: GraphLog } = await import("./GraphLog.svelte");
         let line: EnhancedLine = { key: 1, type: "FromNode", source: [0, 0], target: [0, 1], indirect: false, parent: header, child: header };
         let rows: EnhancedRow[] = [0, 1].map(row => ({ revision: header, location: [0, row], padding: 0, lines: [], passingLines: [line] }));
-        let props = { rows, rowHeight: 32, containerHeight: 120, containerWidth: 400, scrollTop: 0 };
+        let props = { rows, authorSpace: 0, rowHeight: 32, containerHeight: 120, containerWidth: 400, scrollTop: 0 };
         let { container, rerender } = render(GraphLog, { props });
         expect(container.querySelector("circle")?.getAttribute("cy")).toBe("16");
         expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,20.5 L9,43.5");
-        await rerender({ ...props, rowHeight: 60 });
+        await rerender({ ...props, rowHeight: 60, authorSpace: 20 });
         expect(container.querySelector("circle")?.getAttribute("cy")).toBe("20");
         expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,24.5 L9,75.5");
         expect(container.querySelector('foreignObject[y="24.5"]')?.getAttribute("height")).toBe("51");
@@ -78,16 +78,41 @@ describe("history density", () => {
         let { container, rerender } = render(GraphLine, { props: { line, rowHeight: 32 } });
         let path = container.querySelector("path")!;
         let previous = path.getAttribute("d");
-        await rerender({ line, rowHeight: 60 });
+        await rerender({ line, rowHeight: 60, authorSpace: 20 });
         expect(container.querySelector("path")).toBe(path);
         expect(path.getAttribute("d")).not.toBe(previous);
         expect(path.getAttribute("d")).toContain("M9,24.5");
         expect(path.getAttribute("d")).toContain("L27,135.5");
         let bounds = () => [...container.querySelectorAll("foreignObject")].map(element => ["x", "y", "width", "height"].map(attribute => element.getAttribute(attribute)));
         let zones = bounds();
-        await rerender({ line: { ...line, target: [2, 3] }, rowHeight: 60 });
+        await rerender({ line: { ...line, target: [2, 3] }, rowHeight: 60, authorSpace: 20 });
         expect(path.getAttribute("d")).toContain("L45,195.5");
         expect(bounds()).not.toEqual(zones);
+    });
+    it.each([false, true])("keeps enlarged text, graph geometry and reading anchor aligned (tall=%s)", async tall => {
+        let { default: GraphLog } = await import("./GraphLog.svelte");
+        let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
+        let base = tall ? 60 : 28;
+        let line: EnhancedLine = { key: 1, type: "FromNode", source: [0, 0], target: [0, 1], indirect: false, parent: header, child: header };
+        let rows: EnhancedRow[] = [0, 1].map(row => ({ revision: header, location: [0, row], padding: 0, lines: [], passingLines: [line] }));
+        let { container } = render(GraphLog, { props: { rows, rowHeight: base * 2, authorSpace: tall ? 40 : 0, containerHeight: 300, containerWidth: 760, scrollTop: 0 } });
+        let center = tall ? 40 : 28;
+        expect(container.querySelector("circle")?.getAttribute("cy")).toBe(String(center));
+        expect(container.querySelector("path")?.getAttribute("d")).toBe(`M9,${center + 4.5} L9,${base * 2 + center - 4.5}`);
+        expect(anchoredHistoryScroll(10.5 * base, base, base * 2) / (base * 2)).toBe(10.5);
+        let target = document.createElement("div");
+        target.id = "shell";
+        target.style.cssText = "width:760px;--leftpad:24px;--type-ui:26px;--type-caption:24px;--type-code:24px";
+        document.body.append(target);
+        let revision = render(RevisionObject, { target, props: { header, selected: false, tall, rowHeight: base * 2, textScale: 2 } });
+        let row = target.querySelector(".layout")!.getBoundingClientRect();
+        for (let selector of tall ? [".desc", ".author"] : [".desc"]) {
+            let text = target.querySelector(selector)!.getBoundingClientRect();
+            expect(text.top).toBeGreaterThanOrEqual(row.top);
+            expect(text.bottom).toBeLessThanOrEqual(row.bottom);
+        }
+        if (tall) expect(target.querySelector(".desc")!.getBoundingClientRect().bottom).toBeLessThan(target.querySelector(".author")!.getBoundingClientRect().top);
+        revision.unmount(); target.remove();
     });
     it("keeps tall authors quiet and emphasizes only the selected description", async () => {
         let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");

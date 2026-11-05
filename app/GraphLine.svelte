@@ -7,6 +7,7 @@
 
     export let line: EnhancedLine;
     export let rowHeight = revisionRowHeight;
+    export let authorSpace = 0;
 
     $: isMerge = line.type == "ToIntersection";
     $: allowEarlyBreak = line.type == "FromNode";
@@ -20,8 +21,8 @@
     // draw path downward, from child to parent
     let path: string;
 
-    $: childY = r1 * rowHeight + revisionNodeOffset(rowHeight) + revisionNodeRadius;
-    $: parentY = r2 * rowHeight + revisionNodeOffset(rowHeight) - revisionNodeRadius;
+    $: childY = r1 * rowHeight + revisionNodeOffset(rowHeight, authorSpace) + revisionNodeRadius;
+    $: parentY = r2 * rowHeight + revisionNodeOffset(rowHeight, authorSpace) - revisionNodeRadius;
 
     type Block = { x: number; y: number; w: number; h: number };
     let blocks: Block[] = [];

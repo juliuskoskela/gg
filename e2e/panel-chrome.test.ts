@@ -31,11 +31,11 @@ describe("shared panel chrome", () => {
             expect(bar.leftInset).toBe(12);
             expect(bar.closeStart - bar.triggerEnd).toBeGreaterThanOrEqual(0);
             expect(bar.closeStart - bar.triggerEnd).toBeLessThanOrEqual(8);
-            expect(bar.closeSize).toBe(width > 600 ? 28 : 40);
+            expect(bar.closeSize).toBe(width > 600 ? 28 : 44);
             if (bar.rightInset !== null) expect(Math.abs(bar.rightInset - 12)).toBeLessThan(1);
             for (let control of bar.controls) {
-                expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 40);
-                expect(control.height).toBe(width > 600 ? 28 : 40);
+                expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 44);
+                expect(control.height).toBe(width > 600 ? 28 : 44);
                 expect(control.left).toBeGreaterThanOrEqual(bar.rect.left + 12);
                 expect(control.right).toBeLessThanOrEqual(bar.rect.right - 12);
                 expect(control.top - bar.rect.top).toBeGreaterThanOrEqual(5);

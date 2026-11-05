@@ -23,6 +23,7 @@
 
     let columnWidth = 18;
     export let rowHeight = revisionRowHeight;
+    export let authorSpace = 0;
     export let containerHeight: number;
     export let endInset = 0;
     export let containerWidth: number;
@@ -102,14 +103,14 @@
     {/each}
 
     {#each distinctLines as line (line.key)}
-        <GraphLine {line} {rowHeight} />
+        <GraphLine {line} {rowHeight} {authorSpace} />
     {/each}
 
     <!-- stations paint last so their halo sits over the lines -->
     {#each visibleSlice as row, i (i)}
         {#if row}
             <g transform="translate({row.location[0] * columnWidth} {row.location[1] * rowHeight})">
-                <GraphNode header={row.revision} {rowHeight} lane={row.location[0]} />
+                <GraphNode header={row.revision} {rowHeight} {authorSpace} lane={row.location[0]} />
             </g>
         {/if}
     {/each}

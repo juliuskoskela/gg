@@ -31,13 +31,21 @@ describe.skipIf(!available)("Neovim development demo", () => {
         if (original === undefined) delete process.env.GG_NEOVIM_DEMO; else process.env.GG_NEOVIM_DEMO = original;
         if (originalRepo === undefined) delete process.env.GG_NEOVIM_REPOSITORY; else process.env.GG_NEOVIM_REPOSITORY = originalRepo;
     });
+    async function openEditor() {
+        await ctx.page.locator(".workspace-dock").waitFor();
+        let tab = ctx.page.getByRole("tab", { name: "Edit", exact: true });
+        if (await tab.count()) await tab.click();
+        else {
+            await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
+            await ctx.page.getByRole("menuitemcheckbox", { name: "Edit", exact: true }).click();
+        }
+    }
     it("edits a real Neovim scratch buffer, undoes, and retains it across reader modes without modifying the repository", async () => {
         let commit = execFileSync("jj", ["--ignore-working-copy", "log", "-r", "main", "--no-graph", "-T", "commit_id"], { cwd: ctx.tempDir, encoding: "utf8" }).trim();
         let diskBefore = readFileSync(join(ctx.tempDir, "d.txt"), "utf8");
         let before = execFileSync("jj", ["--ignore-working-copy", "file", "show", "-r", commit, "root-file:d.txt"], { cwd: ctx.tempDir, encoding: "utf8" });
         await ctx.page.goto(`${url}/?inspect=${commit}&file=d.txt`);
-        await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
-        await ctx.page.getByRole("menuitemcheckbox", { name: "Edit", exact: true }).click();
+        await openEditor();
         let screen = ctx.page.locator(".screen-text");
         await ctx.page.getByRole("textbox", { name: "Neovim scratch editor" }).waitFor();
         await expect.poll(() => screen.textContent()).toContain(before.trim().split("\n")[0]);
@@ -71,8 +79,7 @@ describe.skipIf(!available)("Neovim development demo", () => {
             } catch { /* Vite also has a websocket */ }
         }));
         await ctx.page.goto(`${url}/?inspect=@&file=Demo.svelte`);
-        await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
-        await ctx.page.getByRole("menuitemcheckbox", { name: "Edit", exact: true }).click();
+        await openEditor();
         await expect.poll(() => ({ language, warnings }), { timeout: 10000 }).toEqual({ language: "svelte", warnings: [] });
         let screen = ctx.page.locator(".screen-text");
         await expect.poll(() => screen.textContent()).toContain("Highlighted Svelte");
