@@ -16,8 +16,10 @@ import type { StoreRef } from "../messages/StoreRef";
 export default class RevisionMutator {
     #revisions: RevHeader[];
     #ignoreImmutable: boolean;
+    #valid: () => boolean;
 
-    constructor(revisions: RevHeader[], ignoreImmutable: boolean) {
+    constructor(revisions: RevHeader[], ignoreImmutable: boolean, valid: () => boolean = () => true) {
+        this.#valid = valid;
         this.#revisions = revisions;
         this.#ignoreImmutable = ignoreImmutable;
     }
@@ -113,14 +115,14 @@ export default class RevisionMutator {
     };
 
     onAbandon = () => {
-        mutate<AbandonRevisions>("abandon_revisions", {
+        return mutate<AbandonRevisions>("abandon_revisions", {
             set: this.#set,
         }, { ignoreImmutable: this.#ignoreImmutable });
     };
 
     onDescribe = (new_description: string, reset_author: boolean) => {
         if (!this.#singleton) return;
-        mutate<DescribeRevision>("describe_revision", {
+        return mutate<DescribeRevision>("describe_revision", {
             id: this.#singleton.id,
             new_description,
             reset_author,
@@ -148,7 +150,7 @@ export default class RevisionMutator {
     onBookmark = async () => {
         if (!this.#singleton) return;
         let response = await getInput("Create Bookmark", "", ["Bookmark Name"]);
-        if (response) {
+        if (response && this.#valid()) {
             let ref: StoreRef = {
                 type: "LocalBookmark",
                 bookmark_name: response["Bookmark Name"],

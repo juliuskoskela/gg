@@ -7,14 +7,14 @@ import WorkspaceMutator from "./WorkspaceMutator";
 /**
  * Run a menu command against the mutator which owns the operand's type.
  */
-export function handleCommand(operand: Operand, command: string, ignoreImmutable: boolean) {
+export function handleCommand(operand: Operand, command: string, ignoreImmutable: boolean, valid: () => boolean = () => true) {
     switch (operand.type) {
         case "Revision":
-            new RevisionMutator([operand.header], ignoreImmutable).handle(command);
+            new RevisionMutator([operand.header], ignoreImmutable, valid).handle(command);
             break;
 
         case "Revisions":
-            new RevisionMutator(operand.headers, ignoreImmutable).handle(command);
+            new RevisionMutator(operand.headers, ignoreImmutable, valid).handle(command);
             break;
 
         case "Change":
@@ -22,11 +22,11 @@ export function handleCommand(operand: Operand, command: string, ignoreImmutable
             break;
 
         case "Ref":
-            new RefMutator(operand.ref, ignoreImmutable).handle(command);
+            new RefMutator(operand.ref, ignoreImmutable, valid).handle(command);
             break;
 
         case "Workspace":
-            new WorkspaceMutator(operand.name).handle(command);
+            new WorkspaceMutator(operand.name, valid).handle(command);
             break;
 
         default:
