@@ -5,6 +5,8 @@
 </script>
 
 <svg
+    aria-hidden="true"
+    focusable="false"
     class="feather"
     class:add={state == "add"}
     class:change={state == "change"}
@@ -16,24 +18,25 @@
 <style>
     .feather {
         pointer-events: none;
-        height: 16px;
-        width: 16px;
+        height: var(--icon-size);
+        width: var(--icon-size);
+        flex-shrink: 0;
         fill: none;
         stroke: currentColor;
         stroke-linecap: round;
         stroke-linejoin: round;
-        stroke-width: 2;
+        stroke-width: var(--icon-stroke);
     }
 
     .add {
-        stroke: var(--ctp-green);
+        stroke: var(--positive);
     }
 
     .change {
-        color: var(--ctp-blue);
+        color: var(--text);
     }
 
     .remove {
-        color: var(--ctp-red);
+        color: var(--negative);
     }
 </style>

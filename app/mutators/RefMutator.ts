@@ -12,8 +12,10 @@ export type MutationOptions = { ignoreImmutable?: boolean };
 export default class RefMutator {
     #ref: StoreRef;
     #ignoreImmutable: boolean;
+    #valid: () => boolean;
 
-    constructor(name: StoreRef, ignoreImmutable: boolean) {
+    constructor(name: StoreRef, ignoreImmutable: boolean, valid: () => boolean = () => true) {
+        this.#valid = valid;
         this.#ref = name;
         this.#ignoreImmutable = ignoreImmutable;
     }
@@ -85,7 +87,7 @@ export default class RefMutator {
     }
 
     onTrack = (options?: MutationOptions) => {
-        mutate<TrackBookmark>("track_bookmark", {
+        return mutate<TrackBookmark>("track_bookmark", {
             ref: this.#ref
         }, options);
     };
@@ -99,7 +101,7 @@ export default class RefMutator {
     onRename = async (options?: MutationOptions) => {
         let currentName = this.#ref.type === "Tag" ? this.#ref.tag_name : this.#ref.bookmark_name;
         let response = await getInput("Rename Bookmark", "", [{ label: "Bookmark Name", choices: [currentName || ""] }]);
-        if (response) {
+        if (response && this.#valid()) {
             let new_name = response["Bookmark Name"];
             mutate<RenameBookmark>("rename_bookmark", {
                 ref: this.#ref,
@@ -109,7 +111,7 @@ export default class RefMutator {
     };
 
     onDelete = (options?: MutationOptions) => {
-        mutate<DeleteRef>("delete_ref", {
+        return mutate<DeleteRef>("delete_ref", {
             ref: this.#ref
         }, options);
     };
@@ -161,7 +163,7 @@ export default class RefMutator {
                 }
 
                 let response = await getInput("Select Remote", "", [{ label: "Remote Name", choices: allRemotes.value }]);
-                if (response) {
+                if (response && this.#valid()) {
                     let remote_name = response["Remote Name"];
                     mutate<GitPush>("git_push", {
                         refspec: {
@@ -222,7 +224,7 @@ export default class RefMutator {
                 }
 
                 let response = await getInput("Select Remote", "", [{ label: "Remote Name", choices: trackedRemotes.value }]);
-                if (response) {
+                if (response && this.#valid()) {
                     let remote_name = response["Remote Name"];
                     mutate<GitFetch>("git_fetch", {
                         refspec: {

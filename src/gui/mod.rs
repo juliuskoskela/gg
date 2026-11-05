@@ -324,12 +324,18 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             init_repository,
             clone_repository,
             query_workspace,
+            query_workspace_identity,
             query_recent_workspaces,
             query_log,
             query_log_next_page,
             query_revisions,
+            query_revision_summary,
+            resolve_revision_selection,
+            query_operation_preflight,
+            query_revision_diff,
             query_remotes,
             query_snapshot,
+            query_current_status,
             abandon_revisions,
             backout_revisions,
             checkout_revision,
@@ -672,6 +678,86 @@ fn query_revisions(
 }
 
 #[tauri::command(async)]
+fn query_operation_preflight(
+    window: Window,
+    app_state: State<AppState>,
+    redo: bool,
+) -> Result<messages::queries::OperationPreflight, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryOperationPreflight { tx, redo })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn resolve_revision_selection(
+    window: Window,
+    app_state: State<AppState>,
+    id: messages::RevId,
+) -> Result<messages::queries::RevisionSelectionResult, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::ResolveRevisionSelection { tx, id })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_revision_summary(
+    window: Window,
+    app_state: State<AppState>,
+    set: messages::RevSet,
+) -> Result<messages::queries::RevisionSummaryResult, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryRevisionSummary { tx, set })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_revision_diff(
+    window: Window,
+    app_state: State<AppState>,
+    set: messages::RevSet,
+    path: messages::TreePath,
+) -> Result<messages::queries::RevisionDiffResult, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryRevisionDiff { tx, set, path })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_workspace_identity(
+    window: Window,
+    app_state: State<AppState>,
+) -> Result<String, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryWorkspaceIdentity { tx })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
 fn query_remotes(
     window: Window,
     app_state: State<AppState>,
@@ -704,6 +790,21 @@ fn query_snapshot(
         .send(SessionEvent::ExecuteSnapshot { tx: call_tx })
         .map_err(InvokeError::from_error)?;
     call_rx.recv().map_err(InvokeError::from_error)
+}
+
+#[tauri::command(async)]
+fn query_current_status(
+    window: Window,
+    app_state: State<AppState>,
+) -> Result<messages::RepoStatus, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryCurrentStatus { tx })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
 }
 
 #[tauri::command(async)]
@@ -1086,7 +1187,7 @@ pub fn try_create_window(app_handle: &AppHandle, workspace: Option<PathBuf>) -> 
         &label,
         tauri::WebviewUrl::App("index.html".into()),
     )
-    .title("GG - Gui for JJ")
+    .title("GG+ — Jujutsu workspace")
     .inner_size(1280.0, 720.0)
     .focused(true)
     .visible(false)
@@ -1098,6 +1199,7 @@ pub fn try_create_window(app_handle: &AppHandle, workspace: Option<PathBuf>) -> 
     let builder = if crate::macos::is_tahoe_or_later() {
         builder
             .title_bar_style(TitleBarStyle::Overlay)
+            .hidden_title(true)
             .initialization_script(format!(
                 "document.documentElement.classList.add('overlay-titlebar');
                 document.documentElement.style.setProperty('--titlebar-height', '{}px');",
@@ -1357,14 +1459,14 @@ fn update_title(window: &Window) {
 // longest first - the full path, then eliding leading directories, down to just the name
 fn title_candidates(path: Option<&str>) -> Vec<String> {
     let Some(path) = path else {
-        return vec![String::from("GG - Gui for JJ")];
+        return vec![String::from("GG+ — Jujutsu workspace")];
     };
 
-    let mut titles = vec![format!("GG - {path}")];
+    let mut titles = vec![format!("GG+ — {path}")];
 
     let abbreviated = menu::abbreviate_path(path);
     if abbreviated != path {
-        titles.push(format!("GG - {abbreviated}"));
+        titles.push(format!("GG+ — {abbreviated}"));
     }
 
     // the first component is a root or ~, which is no longer than an ellipsis
@@ -1374,14 +1476,14 @@ fn title_candidates(path: Option<&str>) -> Vec<String> {
         .collect();
     for start in 2..components.len().saturating_sub(1) {
         titles.push(format!(
-            "GG - …{MAIN_SEPARATOR_STR}{}",
+            "GG+ — …{MAIN_SEPARATOR_STR}{}",
             components[start..].join(MAIN_SEPARATOR_STR)
         ));
     }
     if components.len() > 1
         && let Some(name) = components.last()
     {
-        titles.push(format!("GG - {name}"));
+        titles.push(format!("GG+ — {name}"));
     }
 
     titles

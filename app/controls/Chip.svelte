@@ -14,30 +14,32 @@
     .chip {
         pointer-events: auto;
 
-        font-family: var(--stack-code);
-        font-size: smaller;
+        font-family: var(--stack-ui);
+        font-size: var(--type-ui);
 
-        height: 24px;
-        line-height: 16px;
+        min-height: 22px;
+        line-height: 1.25;
 
         display: flex;
         align-items: center;
-        border: 1px solid var(--ctp-overlay1);
-        border-radius: 12px;
+        border: 1px solid var(--rule);
+        border-radius: var(--radius-sm);
         padding: 0 6px;
-        background: var(--ctp-mantle);
+        background: transparent;
         white-space: nowrap;
-        gap: 3px;
+        gap: 4px;
     }
 
     .context {
         color: inherit;
-        border-color: currentColor;
+        border-color: var(--control);
     }
 
     .target {
-        background: var(--ctp-flamingo);
-        color: black;
+        outline: 2px solid var(--text);
+        outline-offset: -2px;
+        border-radius: var(--radius-control);
+        color: var(--text);
     }
 
     .disconnected {

@@ -698,6 +698,51 @@ impl Mutation for RedoOperation {
     }
 }
 
+pub(crate) async fn operation_preflight(
+    ws: &WorkspaceSession<'_>,
+    redo: bool,
+) -> Result<crate::messages::queries::OperationPreflight> {
+    use crate::messages::queries::OperationPreflight;
+    let repo = ws.repo();
+    let prefix = if redo {
+        REDO_OP_DESC_PREFIX
+    } else {
+        UNDO_OP_DESC_PREFIX
+    };
+    let current = repo.operation();
+    let target = restored_operation(repo.loader(), current, prefix)
+        .await?
+        .unwrap_or_else(|| current.clone());
+    let description = Some(target.metadata().description.clone());
+    let reason = if redo
+        && !target
+            .metadata()
+            .description
+            .starts_with(UNDO_OP_DESC_PREFIX)
+    {
+        Some("Nothing to redo".to_string())
+    } else if let Some(name) = other_workspace_name(ws, &target) {
+        Some(format!(
+            "Operation was performed in workspace {}",
+            name.as_symbol()
+        ))
+    } else {
+        let count = target.parents().await?.len();
+        if count == 0 {
+            Some("Cannot undo repo initialization".to_string())
+        } else if count != 1 {
+            Some("Cannot restore a merge operation".to_string())
+        } else {
+            None
+        }
+    };
+    Ok(OperationPreflight {
+        eligible: reason.is_none(),
+        description,
+        reason,
+    })
+}
+
 /// the workspace an operation was performed in, if it's not this one. undoing or redoing another
 /// workspace's operations is usually a mistake, so jj refuses to do it
 fn other_workspace_name<'op>(

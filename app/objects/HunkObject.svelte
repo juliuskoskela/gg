@@ -5,12 +5,13 @@
     import type { Operand } from "../messages/Operand";
     import Object from "./Object.svelte";
     import Zone from "./Zone.svelte";
+    import { commandOperand } from "../commands/context";
 
     export let header: RevHeader | null;
     export let path: TreePath;
     export let hunk: ChangeHunk;
 
-    let operand: Operand | null =
+    $: operand = (
         header == null
             ? null
             : {
@@ -18,14 +19,14 @@
                   headers: [header],
                   path,
                   hunk,
-              };
+              }) satisfies Operand | null;
 
     function getHunkDescription(hunk: ChangeHunk): string {
         return `@@ -${hunk.location.from_file.start},${hunk.location.from_file.len} +${hunk.location.to_file.start},${hunk.location.to_file.len} @@`;
     }
 </script>
 
-<Object {operand} conflicted={false} label={getHunkDescription(hunk)} let:context let:hint={dragHint}>
+<Object {operand} tabIndex={0} selected={$commandOperand === operand} conflicted={false} label={getHunkDescription(hunk)} let:context let:hint={dragHint}>
     <Zone {operand} let:target let:hint={dropHint}>
         <div class="hunk" class:target>
             {dragHint ?? dropHint ?? getHunkDescription(hunk)}
@@ -36,13 +37,18 @@
 <style>
     .hunk {
         margin: 0;
-        text-align: center;
-        background: var(--ctp-mantle);
-        padding: 4px;
+        text-align: start; font-family: var(--stack-code); font-size: var(--type-code); color: var(--muted);
+        background: var(--raised);
+        padding: 6px 8px; border-radius: var(--radius-sm); margin-block: 2px;
     }
 
     .target {
-        color: black;
-        background: var(--ctp-flamingo);
+        color: var(--text);
+        outline: 2px solid var(--text);
+        outline-offset: -2px;
+        border-radius: var(--radius-control);
+    }
+    @media (pointer: coarse), (max-width: 600px) {
+        .hunk { min-height: 44px; display: flex; align-items: center; }
     }
 </style>

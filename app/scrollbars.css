@@ -1,0 +1,19 @@
+/* retain native scrolling and hit areas without a persistent track. */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+[data-scrollbar-active] { scrollbar-color: var(--scrollbar-thumb) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb { border-radius: 999px; background: transparent; }
+[data-scrollbar-active]::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); }
+*::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+@supports selector(::-webkit-scrollbar) {
+  /* standard scrollbar properties otherwise override the rounded webkit thumb. */
+  *, [data-scrollbar-active] { scrollbar-width: auto; scrollbar-color: auto; }
+}
+@media (hover: hover) {
+  [data-scrollbar-active]::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+}
+@media (forced-colors: active) {
+  *, [data-scrollbar-active] { scrollbar-color: auto; }
+  *::-webkit-scrollbar-thumb { background: CanvasText; }
+}

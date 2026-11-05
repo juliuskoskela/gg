@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { setDestinationCandidates } from "./commands/context";
+    import { revisionRowHeight } from "./graphLayout";
     import { onMount } from "svelte";
     import type { LogPage } from "./messages/LogPage.js";
     import type { LogRow } from "./messages/LogRow.js";
@@ -6,7 +8,8 @@
     import type { RevSet } from "./messages/RevSet";
     import { getInput, query, trigger } from "./ipc.js";
     import { sameChange } from "./ids.js";
-    import { ignoreToggled, logQueryRequest, repoStatusEvent, revisionSelectEvent } from "./stores.js";
+    import { workspaceController } from "./workspace/state";
+    import { activeLogQuery, selectWorkingCopy, ignoreToggled, logQueryRequest, repoStatusEvent, revisionSelectEvent } from "./stores.js";
     import RevisionMutator from "./mutators/RevisionMutator.js";
     import Pane from "./shell/Pane.svelte";
     import RevisionObject from "./objects/RevisionObject.svelte";
@@ -16,14 +19,16 @@
     import ListWidget, { type List, type Selection } from "./controls/ListWidget.svelte";
     import { type EnhancedRow, default as GraphLog, type EnhancedLine } from "./GraphLog.svelte";
 
+
+    export let integrated = false;
+    export let reservedInset = 0;
+    export let overlayInset = 0;
     export let query_choices: Record<string, string>;
     export let latest_query: string;
 
-    function toTitleCase(kebab: string): string {
-        return kebab
-            .split("-")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ");
+    function toSentenceCase(kebab: string): string {
+        let label = kebab.replaceAll("-", " ");
+        return label.charAt(0).toUpperCase() + label.slice(1);
     }
 
     $: presets = (() => {
@@ -37,7 +42,7 @@
         // followed by [gg.presets]
         let others = Object.entries(query_choices)
             .filter(([key]) => key !== "default")
-            .map(([key, value]) => ({ label: toTitleCase(key), value }))
+            .map(([key, value]) => ({ label: toSentenceCase(key), value }))
             .sort((a, b) => a.label.localeCompare(b.label));
 
         if (others.length > 0) {
@@ -51,6 +56,8 @@
     let choices: ReturnType<typeof getChoices>;
     let entered_query = latest_query;
     let graphRows: EnhancedRow[] | undefined;
+    let logError = "";
+    let latestLogRequest = 0;
 
     let selectionAnchorIdx: number | undefined; // selection model is topologically ordered, selection view requires an anchor point
 
@@ -105,13 +112,15 @@
         },
         selectRow(row: number) {
             setSelection(row, row);
+            if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
         },
         extendSelection(row: number) {
             if (!graphRows || selectionAnchorIdx === undefined) return;
 
             const limitIdx = findLinearLimit(selectionAnchorIdx, row);
             if (limitIdx === row) {
-                setSelection(undefined, row); // Keep anchor, extend to new row
+                setSelection(undefined, row); // keep anchor, extend to new row
+                if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
             }
         },
         editRow(row: number) {
@@ -126,6 +135,7 @@
     });
 
     $: choices = getChoices(entered_query, presets);
+    $: activeLogQuery.set(entered_query);
     $: if ($repoStatusEvent) reloadLog();
     $: if ($logQueryRequest) applyQueryRequest($logQueryRequest);
 
@@ -198,6 +208,7 @@
         const clickedIdx = graphRows.findIndex((r) => r.revision.id.commit.hex === header.id.commit.hex);
         if (clickedIdx !== -1) {
             setSelection(clickedIdx, clickedIdx);
+            if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
         }
     }
 
@@ -215,6 +226,7 @@
 
         const limitIdx = findLinearLimit(selectionAnchorIdx, clickedIdx);
         setSelection(undefined, limitIdx); // keep anchor, extend to limit
+        if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
     }
 
     function getChoices(query: string, presetList: typeof presets) {
@@ -251,10 +263,10 @@
     }
 
     async function handleSavePreset() {
-        let response = await getInput("Save Revset", "code:" + entered_query, ["Preset Name"]);
+        let response = await getInput("Save revset", "code:" + entered_query, ["Preset name"]);
         if (!response) return;
 
-        let name = toKebabCase(response["Preset Name"]);
+        let name = toKebabCase(response["Preset name"]);
         if (!name || name === "default") return;
 
         query_choices[name] = entered_query;
@@ -276,24 +288,29 @@
     }
 
     async function loadLog(selectFirst: boolean) {
+        logError = "";
+        let request = ++latestLogRequest;
         let page = await query<LogPage>(
             "query_log",
             {
                 revset: entered_query == "" ? "all()" : entered_query,
             },
-            () => (graphRows = undefined),
+            () => { if (request === latestLogRequest) graphRows = undefined; },
         );
 
+        if (request !== latestLogRequest) return;
         if (page.type == "data") {
+            passNextRow = [];
             graphRows = [];
             graphRows = addPageToGraph(graphRows, page.value.rows);
 
-            if (selectFirst && page.value.rows.length > 0) {
+            if (selectFirst && !$revisionSelectEvent && page.value.rows.length > 0) {
                 setSelection(0, 0);
             }
 
             while (page.value.has_more) {
                 let next_page = await query<LogPage>("query_log_next_page", null);
+                if (request !== latestLogRequest) return;
                 if (next_page.type == "data") {
                     graphRows = addPageToGraph(graphRows, next_page.value.rows);
                     page = next_page;
@@ -306,10 +323,14 @@
             if (!selectFirst) {
                 syncSelectionWithGraph();
             }
+        } else if (page.type === "error") {
+            logError = page.message;
         }
     }
 
-    // policy: reselect by commit id if the original revisions are still around, update by change id if they aren't
+    $: setDestinationCandidates(graphRows?.map(row => row.revision) ?? []);
+
+    // repository-wide rewrite resolution belongs to Shell, never the filtered graph.
     function syncSelectionWithGraph() {
         const selection = $revisionSelectEvent;
         if (!selection || !graphRows || graphRows.length === 0) {
@@ -318,13 +339,6 @@
 
         let fromIdx = graphRows.findIndex((r) => r.revision.id.commit.hex === selection.from.commit.hex);
         let toIdx = graphRows.findIndex((r) => r.revision.id.commit.hex === selection.to.commit.hex);
-
-        if (fromIdx === -1) {
-            fromIdx = graphRows.findIndex((r) => sameChange(r.revision.id.change, selection.from.change));
-        }
-        if (toIdx === -1) {
-            toIdx = graphRows.findIndex((r) => sameChange(r.revision.id.change, selection.to.change));
-        }
 
         // reposition anchor, update ids if changed
         if (fromIdx !== -1 && toIdx !== -1) {
@@ -335,8 +349,7 @@
             if (newFrom.commit.hex !== selection.from.commit.hex || newTo.commit.hex !== selection.to.commit.hex) {
                 $revisionSelectEvent = { from: newFrom, to: newTo };
             }
-        } else {
-            // selection no longer valid (e.g., revision was abandoned), select first row
+        } else if (!$workspaceController.inspector) {
             setSelection(0, 0);
         }
     }
@@ -384,12 +397,16 @@
     }
 </script>
 
-<Pane>
-    <div slot="header" class="log-selector" class:editable={isCustom || isDeletable}>
+<Pane flexibleHeader>
+    <div slot="header" class="graph-header">
+        {#if !integrated}<div class="graph-title"><h2 tabindex="-1">History</h2><div class="graph-tools"><ActionWidget secondary tip="Jump to working copy" onClick={selectWorkingCopy}><Icon name="edit-3" /></ActionWidget></div></div>{/if}
+    <div class="log-selector" class:editable={isCustom || isDeletable}>
         <SelectWidget options={choices} bind:value={entered_query} on:change={reloadLog}>
             <svelte:fragment let:option>{option.label}</svelte:fragment>
         </SelectWidget>
         <input
+            dir="ltr" aria-label="Filter revisions with a revset"
+            title="Jujutsu revset"
             type="text"
             autocapitalize="off"
             autocorrect="off"
@@ -408,17 +425,25 @@
         {/if}
     </div>
 
+    </div>
+    <div slot="body" class="graph-body">
+        <div class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span></div>
     <ListWidget
-        slot="body"
         type="Revision"
+        rowHeight={revisionRowHeight}
+        scrollPaddingBottom={overlayInset}
         descendant={$revisionSelectEvent?.to.commit.prefix}
         {list}
         bind:clientHeight={logHeight}
         bind:clientWidth={logWidth}
         bind:scrollTop={logScrollTop}>
-        {#if graphRows}
+        {#if logError}
+            <div class="empty-graph" role="alert"><h3>Couldn’t load revisions</h3><p>{logError}</p><ActionWidget onClick={() => loadLog(false)}>Try again</ActionWidget></div>
+        {:else if graphRows}
+            {#if graphRows.length}
             <GraphLog
                 containerHeight={logHeight}
+                endInset={reservedInset}
                 containerWidth={logWidth}
                 scrollTop={logScrollTop}
                 rows={graphRows}
@@ -431,31 +456,49 @@
                         onShiftClick={handleShiftClick} />
                 {/if}
             </GraphLog>
+            {:else}<div class="empty-graph"><Icon name="git-branch" /><h3>No revisions match</h3><p>Try another view or change the revset.</p></div>{/if}
         {:else}
-            <div>Loading changes...</div>
+            <div class="empty-graph" role="status"><h3>Loading revisions…</h3><p>Reading your repository graph.</p></div>
         {/if}
     </ListWidget>
+    </div>
 </Pane>
 
 <style>
+    .graph-header { display: grid; gap: 4px; min-width: 0; padding-block-end: 4px; }
+    .graph-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .graph-title h2 { font-size: 13px; font-weight: 500; margin: 0; }
+    .graph-tools { display: flex; align-items: center; gap: 4px; }
     .log-selector {
-        height: 100%;
+        min-height: 32px;
         display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 3px;
+        grid-template-columns: 116px minmax(0, 1fr);
+        gap: 8px;
 
         &.editable {
-            grid-template-columns: auto 1fr auto;
+            grid-template-columns: 116px minmax(0, 1fr) auto;
             & > :global(*:last-child) {
                 height: unset;
                 align-self: stretch;
-                padding: 1px 3px;
+                padding: 5px 7px;
             }
         }
     }
 
     input {
         font-family: var(--stack-code);
-        font-size: 14px;
+        font-size: var(--type-ui);
+    }
+    .graph-body { display: grid; grid-template-rows: 28px minmax(0, 1fr); min-width: 0; min-height: 0; }
+    .graph-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; color: var(--muted); }
+    .graph-caption > span:first-child { color: var(--muted); }
+    .empty-graph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--muted); text-align: center; }
+    .empty-graph h3 { color: var(--text); font-size: 14px; }
+    .empty-graph p { font-size: 13px; }
+
+    @media (pointer: coarse), (max-width: 600px) {
+        .log-selector, .log-selector.editable { grid-template-columns: 136px minmax(0, 1fr); min-height: 44px; }
+        .log-selector.editable { grid-template-columns: 136px minmax(0, 1fr) auto; }
+        .log-selector input, .log-selector :global(select) { font-size: max(16px, 1rem); min-height: 44px; }
     }
 </style>

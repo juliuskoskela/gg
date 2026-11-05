@@ -37,3 +37,15 @@ mise.local.toml
 # Coding agents
 .claude/settings.local.json
 .mcp.json
+
+# Local development
+/.jj/
+/.direnv/
+/result
+/result-*
+
+/.taste-skill/
+
+# browser test failure artifacts
+.vitest-attachments/
+app/__screenshots__/

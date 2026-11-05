@@ -12,7 +12,7 @@
     .ref {
         pointer-events: auto;
         user-select: text;
-        color: var(--ctp-subtext1);
+        color: var(--muted);
         font-family: var(--stack-code);
     }
 </style>

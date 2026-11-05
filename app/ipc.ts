@@ -1,3 +1,5 @@
+import { get } from "svelte/store";
+import { operationLabel, operationState, mutationPending } from "./operations";
 import type { MutationResult } from "./messages/MutationResult";
 import { currentInput, currentMutation, progressEvent, repoConfigEvent, repoStatusEvent, revisionSelectEvent } from "./stores";
 import { isTauri, type Query } from "./events";
@@ -56,6 +58,9 @@ export function trigger(command: string, request?: InvokeArgs, onError?: () => v
  * call an IPC which, if successful, modifies the repo
  */
 export async function mutate<T>(command: string, mutation: T, options?: { operation?: string; ignoreImmutable?: boolean }): Promise<boolean> {
+    if (get(mutationPending)) return false;
+    let operation = { id: Date.now(), label: options?.operation?.replace(/…$/, "") ?? operationLabel(command), phase: "pending" as const };
+    operationState.set(operation);
     if (options?.operation) {
         progressEvent.set({ type: "Message", text: options.operation });
     } else {
@@ -81,12 +86,9 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
                 value.request.fields
             );
 
-            // display cancellation as error
             if (!fields) {
-                currentMutation.set({
-                    type: "data",
-                    value: { type: "PreconditionError", message: "Authentication cancelled" }
-                });
+                currentMutation.set(null);
+                operationState.set({ ...operation, phase: "cancelled" });
                 return false;
             }
 
@@ -107,7 +109,9 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
                 repoConfigEvent.set(value.new_config);
             } else if (value.type == "Updated") {
                 repoStatusEvent.set(value.new_status);
-                if (value.new_selection) {
+                // recovery follows the inspected change; the backend working copy is only a fallback.
+                let recoveringSelection = (command === "undo_operation" || command === "redo_operation") && !!get(revisionSelectEvent);
+                if (value.new_selection && !recoveringSelection) {
                     revisionSelectEvent.set({
                         from: value.new_selection.id,
                         to: value.new_selection.id,
@@ -115,15 +119,18 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
                 }
             }
             currentMutation.set(null);
+            operationState.set({ ...operation, phase: "succeeded", detail: command === "external_diff" || command === "external_resolve" ? "launch requested" : undefined });
             return true;
         }
 
         // failed; transition from overlay or delay to error
         currentMutation.set({ type: "data", value });
+        operationState.set({ ...operation, phase: "failed" });
         return false;
     } catch (error: any) {
         console.error(error);
         currentMutation.set({ type: "error", message: error.toString() });
+        operationState.set({ ...operation, phase: "failed", detail: error.toString() });
         return false;
     }
 }

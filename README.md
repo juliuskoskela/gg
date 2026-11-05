@@ -1,5 +1,11 @@
 # ![icon](res/icons/24x24.png) GG - Gui for JJ
 
+This hard fork is developing a modern desktop interface on GG's Tauri 2 and
+Svelte 5 foundation. Start iterating with `nix develop`, `just setup`, then
+`just dev`. See [Development](doc/DEVELOPMENT.md) for hot reload, browser preview,
+Nix builds and colocated Jujutsu setup. The installation details below describe
+upstream GG.
+
 ![screenshot](res/screenshot.png)
 
 GG is a GUI for the version control system [Jujutsu](https://github.com/jj-vcs/jj). It takes advantage of Jujutsu's composable primitives to present an interactive view of your repository. The big idea: what if you were always in the middle of an interactive rebase, but this was actually a good thing?
