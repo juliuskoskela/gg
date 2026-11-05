@@ -1,6 +1,6 @@
 <script lang="ts">
     import { floating } from "../controls/floating";
-    import { diffStyle, diffWrap } from "../stores";
+    import { diffStyle, diffWrap, diffFullContext } from "../stores";
     import Icon from "../controls/Icon.svelte";
     export let compact = false;
     let menu: HTMLDetailsElement;
@@ -13,10 +13,10 @@
     {#if compact}
         <details class="display-menu" bind:this={menu} bind:open>
             <summary aria-label="Diff display options" title="Diff display options"><Icon name="sliders" /></summary>
-            <div class="display-popover" use:floating={{ open, anchor: menu }}><label for="compact-diff-layout">Diff layout</label><select id="compact-diff-layout" aria-label="Diff layout" bind:value={$diffStyle}><button type="button" class="select-trigger"><selectedcontent></selectedcontent></button><option value="auto">Auto layout</option><option value="split">Side by side</option><option value="unified">Unified</option></select><label class="wrap-option"><input type="checkbox" bind:checked={$diffWrap} />Wrap lines</label></div>
+            <div class="display-popover" use:floating={{ open, anchor: menu }}><label for="compact-diff-layout">Diff layout</label><select id="compact-diff-layout" aria-label="Diff layout" bind:value={$diffStyle}><button type="button" class="select-trigger"><selectedcontent></selectedcontent></button><option value="auto">Auto layout</option><option value="split">Side by side</option><option value="unified">Unified</option></select><label class="wrap-option"><input type="checkbox" bind:checked={$diffWrap} />Wrap lines</label><label class="wrap-option"><input type="checkbox" bind:checked={$diffFullContext} />Show whole file</label></div>
         </details>
     {:else}
-        <select aria-label="Diff layout" bind:value={$diffStyle}><button type="button" class="select-trigger"><selectedcontent></selectedcontent></button><option value="auto">Auto layout</option><option value="split">Side by side</option><option value="unified">Unified</option></select><button type="button" aria-label="Wrap diff lines" title="Wrap diff lines" aria-pressed={$diffWrap} on:click={() => diffWrap.update(value => !value)}><Icon name="corner-down-left" /></button>
+        <button type="button" aria-label="Show whole file" title="Show whole file with changes highlighted" aria-pressed={$diffFullContext} on:click={() => diffFullContext.update(value => !value)}><Icon name="file-text" /></button><select aria-label="Diff layout" bind:value={$diffStyle}><button type="button" class="select-trigger"><selectedcontent></selectedcontent></button><option value="auto">Auto layout</option><option value="split">Side by side</option><option value="unified">Unified</option></select><button type="button" aria-label="Wrap diff lines" title="Wrap diff lines" aria-pressed={$diffWrap} on:click={() => diffWrap.update(value => !value)}><Icon name="corner-down-left" /></button>
     {/if}
 </div>
 

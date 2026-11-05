@@ -52,3 +52,9 @@ The first browser test focused the hidden input directly and missed a real point
 Plugin-free Neovim also lacked Svelte syntax. A pinned Svelte syntax runtime now includes its complete syntax/helper dependency set. A second fixture test checks successful Svelte loading, colored code cells, and click-to-type input. Syntax-load failures produce a non-blocking warning rather than hiding the editable buffer. The native inspector confirmed the original missing-runtime error and that the corrected input receives focus; physical OS keyboard and GPU performance remain manual checks.
 
 The optional `demo/` runtime is ignored by the Rust watcher. Vite handles its updates so syntax edits no longer repeatedly restart the native process.
+
+## Whole-file diff follow-up
+
+Diff tools now include **Show whole file**, independent of Neovim File mode. Native and web queries fetch complete context on demand; the renderer receives a complete model only after that response arrives. Compact hunk operands remain separate from expanded reading context. Desktop/phone toggling, first/last unchanged lines, highlighted changes and original hunk counts are covered by regression tests. Native IPC was also checked directly: compact CSS context started near the edit, full context started at `@import`, with no query error.
+
+Validation: 189 frontend/E2E tests across 41 files and 214 Rust tests pass, along with build, type checks, formatting and Clippy. One initial graph-virtualization timing failure passed on focused rerun and the final full run. Dark desktop and phone captures are in `.taste-skill/neovim-demo/diff-context-*.png` locally.

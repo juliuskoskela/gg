@@ -28,12 +28,12 @@ export async function loadRevisionSummary(set: RevSet): Promise<Ready<RevsResult
 
 export function clearRevisionDiffCache() { diffs.clear(); }
 
-export function loadRevisionDiff(revs: RevisionDetail, file: RevChange, repository: string): Promise<Ready<RevChange | null>> {
-    if (!revs.summaryOnly) return Promise.resolve({ type: "data", value: file });
-    let key = JSON.stringify([revisionIdentity(revs, repository), file.path.repo_path]);
+export function loadRevisionDiff(revs: RevisionDetail, file: RevChange, repository: string, fullContext = false): Promise<Ready<RevChange | null>> {
+    if (!revs.summaryOnly && !fullContext) return Promise.resolve({ type: "data", value: file });
+    let key = JSON.stringify([revisionIdentity(revs, repository), file.path.repo_path, fullContext]);
     let pending = diffs.get(key);
     if (pending) return pending;
-    pending = query<RevisionDiffResult>("query_revision_diff", { set: revs.set, path: file.path }).then(result => {
+    pending = query<RevisionDiffResult>("query_revision_diff", { set: revs.set, path: file.path, fullContext }).then(result => {
         if (result.type === "error") { diffs.delete(key); return result; }
         if (result.value.type === "NotFound") { diffs.delete(key); return { type: "data" as const, value: null }; }
         let { change, conflict } = result.value;

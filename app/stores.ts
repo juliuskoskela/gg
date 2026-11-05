@@ -68,6 +68,7 @@ export let fileTreeVisible = preference<boolean>("gg.layout.files", true);
 export let fileTreeWidth = preference<number>("gg.layout.files-width", 200);
 export let mobileFilesVisible = writable(false);
 export let diffStyle = preference<"auto" | "split" | "unified">("gg.diff-style", "auto");
+export let diffFullContext = preference<boolean>("gg.diff-full-context", false);
 export let diffWrap = preference<boolean>("gg.diff-wrap", false);
 
 export let revisionMetadataVisible = preference<boolean>("gg.layout.overview", true);

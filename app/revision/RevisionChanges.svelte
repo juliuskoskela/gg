@@ -6,7 +6,7 @@
     import { revisionIdentity, loadRevisionDiff, type RevisionDetail } from "./data";
     import type { Query } from "../events";
     import type { RevChange } from "../messages/RevChange";
-    import { changeSelectEvent, revisionReviewState, repoConfigEvent, fileScrollPositions } from "../stores";
+    import { changeSelectEvent, revisionReviewState, repoConfigEvent, fileScrollPositions, diffFullContext } from "../stores";
     import DiffViewer from "../DiffViewer.svelte";
     import ChangeObject from "../objects/ChangeObject.svelte";
     import HunkObject from "../objects/HunkObject.svelte";
@@ -27,17 +27,24 @@
     let scrollTop = 0;
     let scrollElement: HTMLDivElement;
     let loaded: Query<RevChange | null> = { type: "wait" };
+    let loadedFullContext = false;
+    let actionsLoaded: Query<RevChange | null> = { type: "wait" };
     let loadGeneration = 0;
     $: repository = repositoryScope($repoConfigEvent);
     $: key = revisionIdentity(revs, repository);
     $: currentChange = selectedPath ? changes.find(change => change.path.repo_path === selectedPath) : changes[0];
-    $: loadFile(revs, currentChange, repository);
-    async function loadFile(detail: RevisionDetail, file: RevChange | undefined, repo: string) {
+    $: loadFile(revs, currentChange, repository, $diffFullContext);
+    async function loadFile(detail: RevisionDetail, file: RevChange | undefined, repo: string, fullContext: boolean) {
         let generation = ++loadGeneration;
         loaded = { type: "wait" };
+        actionsLoaded = { type: "wait" };
         if (!file) { loaded = { type: "data", value: null }; return; }
-        let result = await loadRevisionDiff(detail, file, repo);
+        let compact = await loadRevisionDiff(detail, file, repo);
         if (generation !== loadGeneration) return;
+        actionsLoaded = compact;
+        let result = fullContext ? await loadRevisionDiff(detail, file, repo, true) : compact;
+        if (generation !== loadGeneration) return;
+        loadedFullContext = fullContext;
         loaded = result;
         await tick();
         if (generation === loadGeneration) restoreScroll(readingKey, fileScrollPositions.get(readingKey) ?? 0);
@@ -84,13 +91,13 @@
                 <div class="diff-scroll" class:reader-hidden={readerMode !== "diff"} role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} on:scroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
                     {#if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p><button type="button" on:click={onRequestFiles}>Choose another file</button></div>
                     {:else if loaded.type === "wait"}<p class="diff-message" role="status">Loading {currentChange.path.relative_path}…</p>
-                    {:else if loaded.type === "error"}<div class="diff-message" role="alert"><p>Couldn’t load this file: {loaded.message}</p><button type="button" on:click={() => loadFile(revs, currentChange, repository)}>Retry file</button></div>
+                    {:else if loaded.type === "error"}<div class="diff-message" role="alert"><p>Couldn’t load this file: {loaded.message}</p><button type="button" on:click={() => loadFile(revs, currentChange, repository, $diffFullContext)}>Retry file</button></div>
                     {:else if loaded.value}
                         {#key loaded.value}
-                            {#if !loaded.value.has_conflict && loaded.value.hunks.length}
-                                <details class="hunk-actions"><summary><Icon name="chevron-right" />Hunk actions <span>{loaded.value.hunks.length}</span></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" on:keydown={navigateOptions}>{#each loaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
+                            {#if actionsLoaded.type === "data" && actionsLoaded.value && !actionsLoaded.value.has_conflict && actionsLoaded.value.hunks.length}
+                                <details class="hunk-actions"><summary><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" on:keydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
                             {/if}
-                            <DiffViewer change={loaded.value} {readingKey} />
+                            <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} />
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
