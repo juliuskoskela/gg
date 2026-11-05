@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { revisionNodeRadius, revisionRowHeight } from "./graphLayout";
+    import { revisionNodeOffset, revisionNodeRadius, revisionRowHeight } from "./graphLayout";
     import type { RevHeader } from "./messages/RevHeader";
     import { currentContext, revisionSelectEvent } from "./stores.js";
 
@@ -10,7 +10,7 @@
     let context = false;
     $: context = $currentContext?.type == "Revision" && header == $currentContext.header;
     $: selected = $revisionSelectEvent?.from.commit.hex === header.id.commit.hex || $revisionSelectEvent?.to.commit.hex === header.id.commit.hex;
-    $: cy = rowHeight / 2;
+    $: cy = revisionNodeOffset(rowHeight);
     $: r = revisionNodeRadius;
     // diamond matches jj's ◆ glyph for immutable history
     $: diamond = `M9,${cy - r - 0.5} L${9 + r + 0.5},${cy} L9,${cy + r + 0.5} L${9 - r - 0.5},${cy} Z`;

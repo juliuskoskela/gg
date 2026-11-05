@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createServer, loadConfigFromFile, type ViteDevServer } from "vite";
 import { createContext, destroyContext, extractTestRepo, PROJECT_ROOT, startGG, type TestContext } from "./harness.js";
@@ -29,18 +29,15 @@ describe("self-hosted development checkout", () => {
         await symlink(join(PROJECT_ROOT, "node_modules"), join(ctx.tempDir, "node_modules"), process.platform === "win32" ? "junction" : "dir");
         await writeFile(join(ctx.tempDir, ".gitignore"), "\n/.vite-cache/\n", { flag: "a" });
         // changing an exported store and its consumers together reproduces stale HMR imports.
-        let files = ["app/App.svelte", "app/stores.ts", "app/RevisionPane.svelte", "app/shell/WorkspacePanelControls.svelte", "app/shell/FilesToggle.svelte"];
+        let files = ["app/App.svelte", "app/stores.ts", "app/RevisionPane.svelte", "app/shell/WorkspacePanelControls.svelte"];
         let current = await Promise.all(files.map(async file => ({ file, source: await readFile(join(ctx.tempDir, file), "utf8") })));
         for (let { file, source } of current) {
             let previous = source.replace(/mobileFilesVisible/g, "previousFilesVisible");
             if (file.endsWith("App.svelte")) {
-                previous = previous.replace(/<WorkspacePanelControls\b[\s\S]*?<\/WorkspacePanelControls>/, "").replace('<div class="workspace-view"', '<div data-source-generation="earlier" class="workspace-view"');
+                previous = previous.replace('<div class="workspace-view"', '<div data-source-generation="earlier" class="workspace-view"');
             }
             if (file.endsWith("RevisionPane.svelte")) previous = previous.replace('{#if !integrated}<header', '<header data-integrated={integrated}').replace('</header>{/if}', '</header>');
-            if (file.endsWith("WorkspacePanelControls.svelte")) previous = previous.replace('<header ', '<header data-revision-available={revisionAvailable} ');
-            previous = previous.replace(/\s*import FilesToggle from [^;]+;/, "").replace(/<FilesToggle\b[^>]*\/>/g, "");
-            if (file.endsWith("FilesToggle.svelte")) await rm(join(ctx.tempDir, file));
-            else await writeFile(join(ctx.tempDir, file), previous);
+            await writeFile(join(ctx.tempDir, file), previous);
         }
         let backend = await startGG(ctx);
         async function request<T>(endpoint: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -90,14 +87,14 @@ describe("self-hosted development checkout", () => {
         await filter.fill(oldId.commit.hex);
         await filter.press("Tab");
         await ctx.page.locator('.graph [id^="Revision-"]').first().click();
-        let header = ctx.page.locator(".workspace-panels");
+        let header = ctx.page.locator(".workspace-topbar");
         function generation() {
             return ctx.page.evaluate(() => document.querySelector(".workspace-view")?.getAttribute("data-source-generation"));
         }
         await expect.poll(generation).toBe("current");
 
         for (let cycle = 0; cycle < 2; cycle++) {
-            await expect.poll(() => ctx.page.locator(".workspace-panels .revision-id").textContent()).toContain(oldId.change.hex.slice(0, 8));
+            await expect.poll(() => ctx.page.locator(".description-panel .revision-id").textContent()).toContain(oldId.change.hex.slice(0, 8));
             await ctx.page.waitForLoadState("networkidle");
             let actions = ctx.page.getByRole("button", { name: "Revision actions", exact: true });
             await actions.click();
@@ -113,8 +110,7 @@ describe("self-hosted development checkout", () => {
             await expect.poll(generation, { timeout: 10000 }).toBe("current");
             let bounds = (await header.boundingBox())!;
             expect(bounds.height).toBe(40);
-            expect((await ctx.page.locator(".two-pane").boundingBox())!.y).toBe(bounds.y + bounds.height);
-            expect(await ctx.page.locator('button:not([role="separator"])[aria-controls="changed-files"]').count()).toBe(1);
+            expect((await ctx.page.locator(".workspace-dock").boundingBox())!.y).toBe(bounds.y + bounds.height);
             expect(errors).toEqual([]);
         }
         let mountedAt = await ctx.page.evaluate(() => performance.timeOrigin);

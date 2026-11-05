@@ -11,6 +11,18 @@ pub struct RevChange {
     pub path: TreePath,
     pub has_conflict: bool,
     pub hunks: Vec<ChangeHunk>,
+    /// carried over from the summary; full diffs derive counts from hunks instead
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub stat: Option<LineStat>,
+}
+
+/// Added and removed line counts for one file.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct LineStat {
+    pub added: u32,
+    pub removed: u32,
 }
 
 /// Metadata available without materializing file contents.
@@ -20,6 +32,8 @@ pub struct RevChangeSummary {
     pub kind: ChangeKind,
     pub path: TreePath,
     pub has_conflict: bool,
+    /// absent for binary files and for revisions too large to stat cheaply
+    pub stat: Option<LineStat>,
 }
 
 #[derive(Serialize, Debug)]
@@ -160,4 +174,26 @@ pub struct LogRow {
 pub struct LogPage {
     pub rows: Vec<LogRow>,
     pub has_more: bool,
+}
+
+/// One working copy that shares the loaded repository.
+#[derive(Serialize, Debug, Clone)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct WorkspaceRecord {
+    pub name: String,
+    /// absent when this jj version has no recorded path for the workspace
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub path: Option<DisplayPath>,
+}
+
+/// The repository (project) and the working copy (workspace) currently open.
+#[derive(Serialize, Debug, Clone)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct WorkspaceContext {
+    pub project_name: String,
+    pub repo_path: DisplayPath,
+    pub workspace_name: String,
+    pub workspace_path: DisplayPath,
+    pub workspaces: Vec<WorkspaceRecord>,
 }

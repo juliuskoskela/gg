@@ -4,7 +4,7 @@ import type { RevsResult } from "../messages/RevsResult";
 import type { RevChange } from "../messages/RevChange";
 import RevisionChanges from "./RevisionChanges.svelte";
 
-export type RevisionContext = { focused?: boolean; selectedPath?: string; onSelectFile?: (change: RevChange) => void; onRequestFiles?: () => void; revs: Extract<RevsResult, { type: "Detail" }>; changes: RevChange[] };
+export type RevisionContext = { focused?: boolean; selectedPath?: string; onSelectFile?: (change: RevChange) => void; onRequestFiles?: (() => void) | null; revs: Extract<RevsResult, { type: "Detail" }>; changes: RevChange[] };
 export type RevisionModule = {
     id: string;
     label: string;

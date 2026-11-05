@@ -40,10 +40,32 @@ describe("history density", () => {
         expect(container.querySelector("circle")?.getAttribute("cy")).toBe("16");
         expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,20.5 L9,43.5");
         await rerender({ ...props, rowHeight: 60 });
-        expect(container.querySelector("circle")?.getAttribute("cy")).toBe("30");
-        expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,34.5 L9,85.5");
-        expect(container.querySelector('foreignObject[y="34.5"]')?.getAttribute("height")).toBe("51");
+        expect(container.querySelector("circle")?.getAttribute("cy")).toBe("20");
+        expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,24.5 L9,75.5");
+        expect(container.querySelector('foreignObject[y="24.5"]')?.getAttribute("height")).toBe("51");
         expect(container.querySelector("g:nth-child(2)")?.getAttribute("transform")).toContain("60");
+        await rerender({ ...props, rowHeight: 44 });
+        expect(container.querySelector("circle")?.getAttribute("cy")).toBe("22");
+        expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,26.5 L9,61.5");
+        await rerender(props);
+        expect(container.querySelector("path")?.getAttribute("d")).toBe("M9,20.5 L9,43.5");
+    });
+    it.each(["FromNode", "ToNode", "ToIntersection"] as const)("updates %s curves and drop zones without remounting", async type => {
+        let { default: GraphLine } = await import("./GraphLine.svelte");
+        let line: EnhancedLine = { key: 1, type, source: [0, 0], target: [1, 2], indirect: false, parent: header, child: header };
+        let { container, rerender } = render(GraphLine, { props: { line, rowHeight: 32 } });
+        let path = container.querySelector("path")!;
+        let previous = path.getAttribute("d");
+        await rerender({ line, rowHeight: 60 });
+        expect(container.querySelector("path")).toBe(path);
+        expect(path.getAttribute("d")).not.toBe(previous);
+        expect(path.getAttribute("d")).toContain("M9,24.5");
+        expect(path.getAttribute("d")).toContain("L27,135.5");
+        let bounds = () => [...container.querySelectorAll("foreignObject")].map(element => ["x", "y", "width", "height"].map(attribute => element.getAttribute(attribute)));
+        let zones = bounds();
+        await rerender({ line: { ...line, target: [2, 3] }, rowHeight: 60 });
+        expect(path.getAttribute("d")).toContain("L45,195.5");
+        expect(bounds()).not.toEqual(zones);
     });
     it("keeps tall authors quiet and emphasizes only the selected description", async () => {
         let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");

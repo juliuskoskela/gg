@@ -4,7 +4,6 @@
     import type { RevisionSelectionResult } from "./messages/RevisionSelectionResult";
     import { loadRevisionSummary, clearRevisionDiffCache, revisionIdentity } from "./revision/data";
     import { setCommandOperand, setDestinationCandidates, refreshCurrentWorkspaceIdentity } from "./commands/context";
-    import { executeOperandCommand } from "./commands/registry";
     import OperationFeedback from "./shell/OperationFeedback.svelte";
     import { autoHideScrollbars } from "./scrollbars";
     import { repositoryScope } from "./workspace/repository";
@@ -136,12 +135,6 @@
     setContext<Settings>("settings", settings);
 
     if (isTauri()) {
-        // web mode: mutations done directly by ContextMenu
-        // gui mode: mutations triggered by native context menu
-        onEvent("gg://context/revision", dispatchContext);
-        onEvent("gg://context/tree", dispatchContext);
-        onEvent("gg://context/bookmark", dispatchContext);
-        onEvent("gg://context/workspace", dispatchContext);
         onEvent("gg://menu/repo", mutateRepository);
         // gui mode: snapshot when window gains focus
         onEvent("gg://focus", handleFocus);
@@ -297,11 +290,6 @@
     async function queryRecentWorkspaces() {
         const result = await query<string[]>("query_recent_workspaces", null);
         recentWorkspaces = result.type === "data" ? result.value : [];
-    }
-
-    function dispatchContext(event: string) {
-        executeOperandCommand($currentContext, event);
-        $currentContext = null;
     }
 
     function mutateRepository(event: RepoEvent) {

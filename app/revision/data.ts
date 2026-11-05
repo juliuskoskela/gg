@@ -18,7 +18,7 @@ export async function loadRevisionSummary(set: RevSet): Promise<Ready<RevsResult
     if (result.type === "error") return result;
     if (result.value.type === "NotFound") return { type: "data", value: result.value };
     let summary = result.value;
-    let changes: RevChange[] = summary.changes.map(change => ({ ...change, hunks: [] }));
+    let changes: RevChange[] = summary.changes.map(({ stat, ...change }) => ({ ...change, hunks: [], ...(stat ? { stat } : {}) }));
     for (let path of summary.conflicts) {
         if (!changes.some(change => change.path.repo_path === path.repo_path)) changes.push({ kind: "None", path, has_conflict: true, hunks: [] });
     }

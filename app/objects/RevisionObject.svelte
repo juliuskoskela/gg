@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { revisionRowHeight } from "../graphLayout";
+    import { revisionAuthorHeight, revisionRowGap, revisionRowHeight } from "../graphLayout";
     import type { RevHeader } from "../messages/RevHeader";
     import type { Operand } from "../messages/Operand";
     import { ignoreToggled, currentTarget, revisionSelectEvent } from "../stores.js";
@@ -99,7 +99,7 @@
         </div>
     {:else}
         <Zone {operand} let:target let:hint={dropHint}>
-            <div class="layout" class:target class:tall class:own-wc={header.is_working_copy && header.working_copy_of == null} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`}>
+            <div class="layout" class:target class:tall class:own-wc={header.is_working_copy && header.working_copy_of == null} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-author-height={`${revisionAuthorHeight}px`} style:--history-row-gap={`${revisionRowGap}px`}>
                 <IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
@@ -155,7 +155,7 @@
         padding-left: var(--leftpad);
     }
 
-    .layout.tall { grid-template-areas: "id desc refs" ". author refs"; grid-template-rows: 22px 18px; row-gap: 2px; }
+    .layout.tall { grid-template-areas: "id desc refs" ". author ."; grid-template-rows: 22px var(--history-author-height); row-gap: var(--history-row-gap); }
     .author { grid-area: author; color: var(--muted); font-size: var(--type-caption); font-weight: 400; pointer-events: none; }
     .layout.target {
         outline: 2px solid var(--text);

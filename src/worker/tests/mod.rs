@@ -568,6 +568,51 @@ async fn forget_workspace_rejects_nonexistent() -> Result<()> {
 }
 
 #[tokio::test]
+async fn workspace_context_names_the_project_and_its_workspaces() -> Result<()> {
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let mut ws = session.load_workspace(repo.path()).await?;
+    let context = ws.workspace_context()?;
+    let project_name = repo
+        .path()
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+
+    assert_eq!(context.workspace_name, ws.name().as_symbol().to_string());
+    assert_eq!(context.project_name, project_name);
+    assert!(
+        context.repo_path.0.replace('\\', "/").ends_with(".jj/repo"),
+        "repo path was {}",
+        context.repo_path.0
+    );
+    assert!(
+        context
+            .workspaces
+            .iter()
+            .any(|record| { record.name == context.workspace_name && record.path.is_some() })
+    );
+
+    ws.add_workspace("alpha".to_owned(), repo.path().join("alpha"))
+        .await?;
+    let context = ws.workspace_context()?;
+    let alpha = context
+        .workspaces
+        .iter()
+        .find(|record| record.name == "alpha")
+        .expect("added workspace");
+    assert!(alpha.path.is_some());
+    assert_eq!(context.project_name, project_name);
+    assert_ne!(
+        context.workspace_path.0, context.repo_path.0,
+        "the working copy path is not the repository store path"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn list_workspaces_returns_sorted_names() -> Result<()> {
     let repo = mkrepo();
 

@@ -23,11 +23,8 @@ use log::LevelFilter;
 use tauri::TitleBarStyle;
 use tauri::async_runtime;
 use tauri::ipc::InvokeError;
-use tauri::menu::Menu;
 use tauri::webview::WebviewWindowBuilder;
-use tauri::{
-    AppHandle, Emitter, EventTarget, LogicalPosition, Manager, State, Window, WindowEvent, Wry,
-};
+use tauri::{AppHandle, Emitter, EventTarget, Manager, State, Window, WindowEvent};
 use tauri_plugin_log::{Target, TargetKind};
 use tauri_plugin_window_state::StateFlags;
 
@@ -94,10 +91,6 @@ impl AppState {
 struct WindowState {
     _worker: JoinHandle<()>,
     worker_channel: Sender<SessionEvent>,
-    revision_menu: Menu<Wry>,
-    tree_menu: Menu<Wry>,
-    ref_menu: Menu<Wry>,
-    workspace_menu: Menu<Wry>,
     selection: Option<messages::RevSet>,
     selection_headers: Option<Vec<messages::RevHeader>>,
     has_workspace: bool,
@@ -318,7 +311,6 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
         )
         .invoke_handler(tauri::generate_handler![
             forward_accelerator,
-            forward_context_menu,
             forward_clone_url,
             set_modifier_state,
             set_selection,
@@ -328,6 +320,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             clone_repository,
             query_workspace,
             query_workspace_identity,
+            query_workspace_context,
             query_recent_workspaces,
             query_log,
             query_log_next_page,
@@ -488,31 +481,6 @@ fn forward_accelerator(
         }
         _ => (),
     }
-}
-
-#[tauri::command]
-fn forward_context_menu(
-    window: Window,
-    app_state: State<AppState>,
-    context: messages::Operand,
-    x: f64,
-    y: f64,
-) -> Result<(), InvokeError> {
-    let ignore_immutable = {
-        let guard = app_state.windows.lock().expect("state mutex poisoned");
-        guard
-            .get(window.label())
-            .map(|s| s.ignore_immutable)
-            .unwrap_or(false)
-    };
-    menu::handle_context(
-        window,
-        context,
-        ignore_immutable,
-        LogicalPosition::new(x, y),
-    )
-    .map_err(InvokeError::from_anyhow)?;
-    Ok(())
 }
 
 #[tauri::command]
@@ -759,6 +727,21 @@ fn query_workspace_identity(
     app_state
         .get_session(window.label())
         .send(SessionEvent::QueryWorkspaceIdentity { tx })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_workspace_context(
+    window: Window,
+    app_state: State<AppState>,
+) -> Result<messages::queries::WorkspaceContext, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryWorkspaceContext { tx })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?
@@ -1253,17 +1236,12 @@ pub fn try_create_window(app_handle: &AppHandle, workspace: Option<PathBuf>) -> 
     });
 
     // setup command dependencies
-    let (revision_menu, tree_menu, ref_menu, workspace_menu) = menu::build_context(app_handle)?;
     let windows = app_state.windows.clone();
     windows.lock().unwrap().insert(
         window.label().to_owned(),
         WindowState {
             _worker: window_worker,
             worker_channel: sender,
-            revision_menu,
-            tree_menu,
-            ref_menu,
-            workspace_menu,
             selection: None,
             selection_headers: None,
             has_workspace: false,

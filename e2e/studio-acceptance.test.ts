@@ -28,10 +28,10 @@ describe("workspace complex-state acceptance", () => {
         let base = await startGG(ctx);
         for (let entry of entries) {
             await ctx.page.goto(`${base}/?inspect=${entry.commit}`);
-            await expect.poll(() => ctx.page.locator(".detail-region").textContent()).toContain(entry.description);
+            await expect.poll(() => ctx.page.locator(".description-panel").textContent()).toContain(entry.description);
             expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(entry.commit);
             await ctx.page.reload();
-            await expect.poll(() => ctx.page.locator(".detail-region").textContent()).toContain(entry.description);
+            await expect.poll(() => ctx.page.locator(".description-panel").textContent()).toContain(entry.description);
             expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(entry.commit);
         }
     });
@@ -71,14 +71,12 @@ describe("workspace complex-state acceptance", () => {
         let base = await startGG(ctx);
         await ctx.page.goto(base);
         await ctx.page.locator(".graph .selection-item").first().click();
-        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
-        await expect.poll(() => sheet.textContent()).toContain("a.txt");
-        await expect.poll(() => sheet.textContent()).toContain("binary.bin");
-        await sheet.getByRole("button", { name: "Open full revision" }).click();
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("a.txt");
+        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("binary.bin");
+        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
         await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).fill("binary.bin");
         await ctx.page.getByRole("option", { name: "binary.bin" }).click();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("file")).toBe("binary.bin");
+        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
         await ctx.page.getByRole("region", { name: "File diff" }).getByText(/binary/i).first().waitFor();
         let response = await fetch(`${base}/api/query/query_revision_summary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set: revset("@"), client_id: "complex-fixture" }) });
         let summary = await response.json();
@@ -91,7 +89,7 @@ describe("workspace complex-state acceptance", () => {
         await ctx.page.goto(await startGG(ctx));
         let row = ctx.page.locator(".graph .selection-item").filter({ hasText: "rename c.txt" }).first();
         await row.click();
-        await ctx.page.getByRole("region", { name: "Revision preview" }).waitFor();
+        await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).waitFor();
         let metrics = await ctx.page.evaluate(async () => {
             let loaded = await Promise.all([document.fonts.load('400 14px "IBM Plex Sans"'), document.fonts.load('500 14px "IBM Plex Sans"'), document.fonts.load('400 13px "JetBrains Mono"'), document.fonts.load('500 13px "JetBrains Mono"')]);
             let input = document.querySelector<HTMLInputElement>('[aria-label="Filter revisions with a revset"]')!;
@@ -101,7 +99,7 @@ describe("workspace complex-state acceptance", () => {
         expect(parseFloat(metrics.ui)).toBeGreaterThanOrEqual(14);
         expect(parseFloat(metrics.input)).toBeGreaterThanOrEqual(16);
         expect(metrics.width).toBeLessThanOrEqual(320);
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
         let code = ctx.page.locator('.diff-viewer [data-overflow="scroll"] [data-code]:not([data-diffs-scrollbar-measure])').first();
         await code.waitFor();
         expect(parseFloat(await code.evaluate(element => getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(13);
@@ -111,9 +109,7 @@ describe("workspace complex-state acceptance", () => {
         await ctx.page.setViewportSize({ width: 320, height: 640 });
         await ctx.page.goto(await startGG(ctx));
         await ctx.page.locator(".graph .selection-item").first().click();
-        let preview = ctx.page.getByRole("region", { name: "Revision preview" });
-        await preview.waitFor();
-        await preview.getByRole("button", { name: "Collapse revision preview" }).focus();
+        await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).focus();
         await ctx.page.keyboard.press("Tab");
         let checked = 0;
         for (let i = 0; i < 8; i++) {

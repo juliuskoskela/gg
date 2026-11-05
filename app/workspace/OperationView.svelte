@@ -42,7 +42,7 @@
 </section>
 
 <style>
-    section { display: grid; gap: 12px; font-size: var(--type-ui); }
+    section { display: grid; align-content: start; gap: 12px; padding: 12px var(--panel-inset); min-height: 0; overflow: auto; font-size: var(--type-ui); }
     h2 { font-size: var(--type-title); }
     p, span, small { overflow-wrap: anywhere; }
     .hint, small { color: var(--muted); }

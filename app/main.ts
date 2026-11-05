@@ -1,8 +1,10 @@
 import "./global.css";
 import { mount } from 'svelte';
-import App from "./App.svelte";
+let { default: App } = await (new URLSearchParams(location.search).has("design-system")
+  ? import("./design/DesignSystem.svelte")
+  : import("./App.svelte"));
 
-const app = mount(App, {
+let app = mount(App, {
   target: document.getElementById("app")!,
 });
 

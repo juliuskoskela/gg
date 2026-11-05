@@ -80,3 +80,62 @@ The UI and code stacks match `repo-docs/template/src/styles/palette.css`: IBM Pl
 Graph identifier columns scale with the font so enlarged identifiers cannot overlap revision descriptions.
 
 The final [accessibility and typography audit](accessibility-typography-audit.md) records measured contrast and browser zoom. Fixed-height chips and headings now grow with text, the Full identity yields space to its action controls, and virtual file rows measure the current type scale before calculating offsets.
+
+## Panel chrome and live component catalogue
+
+Open `/?design-system` on the frontend preview (currently http://127.0.0.1:7461/?design-system).
+The catalogue imports the production `PanelTabs`, `PanelHeader`, `RepositoryNavigation`,
+`ToggleTray`, `ToggleItem`, and `DiffDisplayOptions` components. It works without a repository
+connection and includes a light/dark switch, tab selection/closing, navigation and control states.
+Its code rows are illustrative specimens, not a live repository diff.
+
+- **No selection underlines or side stripes.** This applies to tabs, repository tools, navigation,
+  file rows and revision rows. Use a neutral selected surface and stronger text. Keyboard focus
+  retains a complete visible outline; repository data and diff additions/deletions retain their semantics.
+- **One panel, one title.** Files is the file navigator's title, with its count in the tab.
+  Do not repeat Files/Tree inside it. Diff is the reader title; its tools row shows file count,
+  additions and deletions without repeating a Changes heading.
+- **One close action at the trailing edge.** `PanelTabs` owns the full-width header with a single
+  close button for its active panel. It remains fixed while tabs overflow horizontally. Tabs support
+  arrow keys, Home/End and one tab stop for the selected tab. Dragging and docking remain available.
+- **Slim tabs.** The shadcn default filled-tab treatment is the reference, adapted to GG's existing
+  type and palette. `--panel-tabs-height: 32px`, 24px tab targets on desktop, 6px control radius;
+  narrow/touch headers expand to 44px. No new component library is required.
+- **Continuous chrome.** `PanelHeader` owns the full-width surface and bottom rule. Inset its contents
+  by `--panel-inset: 8px`; do not inset the header itself. `--panel-toolbar-height: 36px` sets tool
+  row density. Dock splitters use a single 1px divider with a wider invisible pointer hit area.
+  Pane bodies have no outer gutter that can interrupt nested headers, dividers or file surfaces.
+
+Reference: https://ui.shadcn.com/docs/components/base/tabs (default filled variant).
+
+## Description documents and metadata
+
+The Description panel is a top-aligned document, not a collapsible summary. Show the
+change's actual description title and body first, including for the working copy.
+Use Working copy or No description set only when the description is empty. Keep edit
+and revision actions beside the title; narrow panels place them on a trailing-aligned
+row below it. Preserve drafts and full-width editing. The old Details disclosure,
+stored overview visibility preference and independent metadata scroll cap are removed.
+
+`RevisionOverview` composes description text/editing and `RevisionMetadata`.
+`MetadataList` and `MetadataRow` own semantic definition lists and consistent label/value
+columns: 80px labels plus 16px gap on desktop, 68px plus 12px at narrow viewports.
+When the metadata container is 320px or narrower, every row stacks its label above its
+value. Top-align wrapped content, rather than vertically centering labels against chips.
+
+Use the same row structure for status, authorship, identifiers, bookmarks, tags and
+parents. Bookmark lifecycle text stays directly beneath its own chip. References wrap
+without clipping their names; parent revision objects retain their navigation and
+merge/drop semantics. The document owns one scroll area and keyboard scrolling, so
+long descriptions and extra metadata remain reachable in small dock panels.
+
+The design-system preview's Description specimen uses the production components with
+long local/remote bookmarks, a local-only reference, release tags and parent metadata.
+Open `/?design-system#description` to review it in either theme.
+
+Description redesign validation: 151 component tests and 13 workspace browser tests pass,
+including description editing, save/undo, draft retention, references, and metadata visibility.
+Production build, Svelte and Node/Vite type checks, formatting and Clippy pass. Browser
+measurements at 320/390/768/1440px in both themes confirm one value alignment edge and no
+horizontal overflow. Full-panel documents start 19px below the dock header in both themes.
+Screenshot evidence is under `.taste-skill/description-redesign/`.

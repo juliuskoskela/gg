@@ -36,7 +36,8 @@ describe.skipIf(!available)("Neovim development demo", () => {
         let diskBefore = readFileSync(join(ctx.tempDir, "d.txt"), "utf8");
         let before = execFileSync("jj", ["--ignore-working-copy", "file", "show", "-r", commit, "root-file:d.txt"], { cwd: ctx.tempDir, encoding: "utf8" });
         await ctx.page.goto(`${url}/?inspect=${commit}&file=d.txt`);
-        await ctx.page.getByRole("button", { name: "File", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
+        await ctx.page.getByRole("menuitemcheckbox", { name: "Edit", exact: true }).click();
         let screen = ctx.page.locator(".screen-text");
         await ctx.page.getByRole("textbox", { name: "Neovim scratch editor" }).waitFor();
         await expect.poll(() => screen.textContent()).toContain(before.trim().split("\n")[0]);
@@ -50,8 +51,8 @@ describe.skipIf(!available)("Neovim development demo", () => {
         await expect.poll(() => screen.textContent()).not.toContain("gg-demo-proof");
         await ctx.page.keyboard.type("Iretained-buffer ");
         await ctx.page.keyboard.press("Escape");
-        await ctx.page.getByRole("button", { name: "Diff", exact: true }).click();
-        await ctx.page.getByRole("button", { name: "File", exact: true }).click();
+        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
+        await ctx.page.getByRole("tab", { name: "Edit", exact: true }).click();
         await expect.poll(() => screen.textContent()).toContain("retained-buffer");
         expect(execFileSync("jj", ["--ignore-working-copy", "file", "show", "-r", commit, "root-file:d.txt"], { cwd: ctx.tempDir, encoding: "utf8" })).toBe(before);
         expect(readFileSync(join(ctx.tempDir, "d.txt"), "utf8")).toBe(diskBefore);
@@ -70,7 +71,8 @@ describe.skipIf(!available)("Neovim development demo", () => {
             } catch { /* Vite also has a websocket */ }
         }));
         await ctx.page.goto(`${url}/?inspect=@&file=Demo.svelte`);
-        await ctx.page.getByRole("button", { name: "File", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
+        await ctx.page.getByRole("menuitemcheckbox", { name: "Edit", exact: true }).click();
         await expect.poll(() => ({ language, warnings }), { timeout: 10000 }).toEqual({ language: "svelte", warnings: [] });
         let screen = ctx.page.locator(".screen-text");
         await expect.poll(() => screen.textContent()).toContain("Highlighted Svelte");

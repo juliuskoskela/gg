@@ -588,10 +588,16 @@ pub async fn query_revision_summary(
     let oldest_parents = oldest.parents().await?;
     let parent_tree = rewrite::merge_commit_trees(ws.repo(), &oldest_parents).await?;
     let final_tree = commits.first().ok_or(anyhow!("empty revision set"))?.tree();
-    let mut changes = Vec::new();
+    let mut entries = Vec::new();
     let mut stream = parent_tree.diff_stream(&final_tree, &EverythingMatcher);
     while let Some(TreeDiffEntry { path, values }) = stream.next().await {
-        let diff = values?;
+        entries.push((path, values?));
+    }
+    let store = ws.repo().store();
+    let labels = Diff::new(parent_tree.labels(), final_tree.labels());
+    let with_stats = entries.len() <= SUMMARY_STAT_FILE_LIMIT;
+    let mut changes = Vec::with_capacity(entries.len());
+    for (path, diff) in entries {
         let kind = if diff.before.is_present() && diff.after.is_present() {
             ChangeKind::Modified
         } else if diff.before.is_absent() {
@@ -599,10 +605,21 @@ pub async fn query_revision_summary(
         } else {
             ChangeKind::Deleted
         };
+        let has_conflict = !diff.after.is_resolved();
+        let stat = if with_stats && !has_conflict {
+            let before =
+                conflicts::materialize_tree_value(store, &path, diff.before, labels.before);
+            let after = conflicts::materialize_tree_value(store, &path, diff.after, labels.after);
+            let (before, after) = try_join!(before, after)?;
+            get_value_stat(&path, before, after).await?
+        } else {
+            None
+        };
         changes.push(RevChangeSummary {
             kind,
             path: ws.format_path(path)?,
-            has_conflict: !diff.after.is_resolved(),
+            has_conflict,
+            stat,
         });
     }
     let mut conflicts = Vec::new();
@@ -766,9 +783,53 @@ async fn format_tree_changes(
             kind,
             has_conflict,
             hunks,
+            stat: None,
         });
     }
     Ok(())
+}
+
+// stats read every changed file; beyond this the summary must stay metadata-only
+const SUMMARY_STAT_FILE_LIMIT: usize = 400;
+
+async fn get_value_stat(
+    path: &RepoPath,
+    left_value: MaterializedTreeValue,
+    right_value: MaterializedTreeValue,
+) -> Result<Option<LineStat>> {
+    let left_part = if left_value.is_absent() {
+        Some(Vec::new())
+    } else {
+        get_value_contents(path, left_value).await?
+    };
+    let right_part = if right_value.is_absent() {
+        Some(Vec::new())
+    } else {
+        get_value_contents(path, right_value).await?
+    };
+    let (Some(left), Some(right)) = (left_part, right_part) else {
+        return Ok(None);
+    };
+    let mut stat = LineStat {
+        added: 0,
+        removed: 0,
+    };
+    let options = UnifiedDiffOptions {
+        context: 0,
+        line_diff: LineDiffOptions {
+            compare_mode: LineCompareMode::Exact,
+        },
+    };
+    for hunk in unified_diff_hunks(&left, &right, &options) {
+        for (line_type, _) in hunk.lines {
+            match line_type {
+                DiffLineType::Added => stat.added += 1,
+                DiffLineType::Removed => stat.removed += 1,
+                DiffLineType::Context => {}
+            }
+        }
+    }
+    Ok(Some(stat))
 }
 
 async fn get_value_hunks(

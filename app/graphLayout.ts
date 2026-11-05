@@ -5,6 +5,8 @@ export let historyDensityKey = "gg.history-density";
 export let revisionRowHeight = 32;
 // shared with edge endpoints so smaller markers stay connected.
 export let revisionNodeRadius = 4.5;
+export let revisionAuthorHeight = 18;
+export let revisionRowGap = 2;
 
 export function createHistoryDensity(storage?: Pick<Storage, "getItem" | "setItem">) {
     let initial: HistoryDensity = "compact";
@@ -31,6 +33,11 @@ let coarsePointer = readable(false, set => {
 });
 export function historyRowSize(density: HistoryDensity, coarse: boolean) {
     return density === "tall" ? 60 : coarse ? 44 : revisionRowHeight;
+}
+export function revisionNodeOffset(rowHeight: number) {
+    // the author line sits below the title; stations follow the title, not the whole row.
+    let authorSpace = rowHeight === historyRowSize("tall", false) ? revisionAuthorHeight + revisionRowGap : 0;
+    return (rowHeight - authorSpace) / 2;
 }
 export let historyRowHeight = derived([historyDensity, coarsePointer], ([density, coarse]) => historyRowSize(density, coarse));
 export function anchoredHistoryScroll(scrollTop: number, fromHeight: number, toHeight: number) {
