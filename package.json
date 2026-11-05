@@ -4,6 +4,9 @@
   "version": "0.46.0",
   "type": "module",
   "scripts": {
+    "dev": "tauri dev -- -- gui --foreground",
+    "dev:frontend": "vite",
+    "dev:backend": "cargo watch -w src -w res -w Cargo.toml -w Cargo.lock -w build.rs -w Tauri.toml -x \"run --locked -- web --port 6974 --no-launch --foreground\"",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "prebuild": "npm run check",
     "build": "vite build",
