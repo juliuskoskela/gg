@@ -99,7 +99,7 @@
         </div>
     {:else}
         <Zone {operand} let:target let:hint={dropHint}>
-            <div class="layout" class:target class:tall style:--history-row-height={`${rowHeight}px`}>
+            <div class="layout" class:target class:tall class:own-wc={header.is_working_copy && header.working_copy_of == null} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`}>
                 <IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
@@ -206,10 +206,18 @@
         pointer-events: none;
     }
 
-    .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); }
-    .layout > :global(.id .change), .layout > :global(.id .hidden) { color: var(--muted); }
-    .desc { font-size: var(--type-ui); font-weight: 500; }
-    :global(.selection-item[aria-selected="true"]) .desc:not(.indescribable) { color: var(--text-strong); }
+    .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); color: var(--faint); }
+    .layout > :global(.id .change), .layout > :global(.id .hidden) { color: var(--text); }
+    /* prefix echoes its station; the mix toward strong text keeps 12px mono above 4.5:1 */
+    .layout { --id-tint: color-mix(in oklab, var(--lane, var(--text)) var(--graph-node-chroma, 100%), var(--muted)); }
+    .layout.own-wc { --id-tint: var(--positive); }
+    .layout.conflicted { --id-tint: var(--negative); }
+    .layout > :global(.id .prefix:is(.change, .hidden)) { color: color-mix(in oklab, var(--id-tint) 80%, var(--text-strong)); }
+    .desc { font-size: var(--type-ui); font-weight: 400; color: var(--text); }
+    :global(.selection-item[aria-selected="true"]) .desc:not(.indescribable) { color: var(--text-strong); font-weight: 500; }
+    :global(.selection-item[aria-selected="true"]) .layout > :global(.id .change:not(.prefix)) { color: var(--text-strong); }
+    @media (hover: hover) { :global(.selection-item:hover) .desc:not(.indescribable) { color: var(--text-strong); } }
+    :global(.selection-item.conflict[role]) .desc.text { color: var(--negative); }
     .compact { height: auto; min-height: max(36px, 2.75em); grid-template-areas: "id desc refs"; grid-template-rows: 1fr; padding-right: 0; }
     .compact.expanded { height: auto; min-height: 52px; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id refs" "desc desc"; grid-template-rows: auto auto; gap: 4px 8px; padding: 8px; }
     .expanded .desc { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }

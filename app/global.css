@@ -115,54 +115,69 @@
 }
 #shell {
   color-scheme: light dark;
-  --ground: light-dark(var(--neutral-50), #0b0c0f);
-  --surface: light-dark(var(--neutral-0), #111317);
-  --raised: light-dark(var(--neutral-25), #1a1d23);
-  --hover: light-dark(var(--neutral-100), #20242c);
-  --active: light-dark(var(--neutral-150), #2a303a);
-  --border: light-dark(var(--neutral-200), #2c323c);
-  --rule: light-dark(var(--neutral-150), #21262e);
+  /* luminance ladder: chrome sits below content, content below raised and selected rows. */
+  --ground: light-dark(#f3f4f7, #0a0b0e);
+  --surface: light-dark(var(--neutral-0), #111318);
+  --raised: light-dark(#f8f9fb, #181b21);
+  --hover: light-dark(#eef0f4, #1a1e25);
+  --active: light-dark(#e4e7ed, #232831);
+  --border: light-dark(#d9dde4, #262b34);
+  --rule: light-dark(#e6e9ee, #1c2027);
   --control: light-dark(var(--neutral-400), var(--neutral-500));
-  --control-border: light-dark(#89898b, #707b8c);
-  --input-border: light-dark(#89898b, #5d697a);
-  --input-surface: light-dark(#ffffff, #16191f);
-  --control-hover: light-dark(var(--neutral-500), #647185);
-  --scrollbar-thumb: light-dark(#00000055, #ffffff55);
-  --scrollbar-thumb-hover: light-dark(#00000080, #ffffff80);
-  --text: light-dark(var(--neutral-900), #bdc4cf);
-  --text-strong: light-dark(#111317, #e0e6ef);
-  --muted: light-dark(color-mix(in srgb, var(--neutral-600) 95%, var(--neutral-900)), #929ca9);
-  --faint: light-dark(var(--neutral-500), #7f8a99);
+  --control-border: light-dark(#8c929c, #5f6978);
+  --input-border: light-dark(#c3c8d1, #2c323c);
+  --input-surface: light-dark(#ffffff, #0e1014);
+  --control-hover: light-dark(#8c929c, #4a5361);
+  --scrollbar-thumb: light-dark(#00000040, #ffffff30);
+  --scrollbar-thumb-hover: light-dark(#00000070, #ffffff60);
+  --text: light-dark(#2a2f37, #c8ced8);
+  --text-strong: light-dark(#0f1217, #f0f3f7);
+  --muted: light-dark(#555d69, #98a1ae);
+  --faint: light-dark(#656d79, #818b99);
   --text-disabled: light-dark(var(--neutral-400), var(--neutral-500));
-  --accent: light-dark(var(--accent-600), var(--accent-400));
-  --selection-bg: light-dark(var(--neutral-100), #252e3c);
-  --selection-hover: light-dark(var(--neutral-150), #293344);
-  --selection-text: var(--text);
+  --accent: light-dark(#1769c7, #64b0f4);
+  --selection-bg: light-dark(#e8eef8, #1b2330);
+  --selection-hover: light-dark(#dfe7f4, #212b3a);
+  --selection-text: var(--text-strong);
   --control-pressed: color-mix(in srgb, var(--text) 12%, var(--active));
-  --accent-subtle: light-dark(var(--accent-50), var(--accent-900));
-  --accent-border: light-dark(var(--accent-200), var(--accent-500));
-  --accent-solid: var(--accent-600);
-  --accent-solid-hover: var(--accent-700);
+  --accent-subtle: light-dark(#e6f0fb, #14243a);
+  --accent-border: light-dark(#9cc2ec, #2f5f91);
+  --accent-solid: light-dark(#1769c7, #2f7fd4);
+  --accent-solid-hover: light-dark(#115aad, #3a8ce0);
   --text-on-accent: var(--neutral-0);
-  --positive: light-dark(#247647, #7bc89a);
-  --negative: light-dark(#b63545, #f294a0);
-  --warning: light-dark(#87650b, #e0c57f);
-  --graph-edge: light-dark(var(--neutral-400), #606d7e);
+  --positive: light-dark(#2e7d32, #66bb6a);
+  --negative: light-dark(#c62828, #ef6f6c);
+  --warning: light-dark(#9a6b00, #ffca28);
+  /* lanes borrow the material file icon hues so graph and file list read as one palette.
+     reds are left out so red keeps meaning conflict or divergence. */
+  --lane-0: light-dark(#1e88e5, #42a5f5);
+  --lane-1: light-dark(#8e24aa, #ba68c8);
+  --lane-2: light-dark(#00897b, #26a69a);
+  --lane-3: light-dark(#e65100, #ffa726);
+  --lane-4: light-dark(#00838f, #4dd0e1);
+  --lane-5: light-dark(#558b2f, #9ccc65);
+  --lane-6: light-dark(#3949ab, #7986cb);
+  --lane-7: light-dark(#a67c00, #ffca28);
+  /* wires stay neutral so colour belongs to the stations; raise the tint to bring lane colour back into them. */
+  --graph-wire-tint: 0%;
+  --graph-node-chroma: 84%;
+  --graph-edge: light-dark(#c3c8d0, #343a44);
   --graph-node: light-dark(var(--neutral-500), #a3afc0);
   --graph-immutable: light-dark(#587963, #8aa895);
-  --graph-context: light-dark(var(--neutral-600), #c2ccda);
-  --ref-bookmark: light-dark(#355e86, #97b2ce);
-  --ref-remote: light-dark(#596b80, #9ba7b7);
-  --ref-workspace: light-dark(#6c568a, #afa4ca);
-  --ref-tag: light-dark(#786032, #c0ad89);
+  --graph-context: var(--text-strong);
+  --ref-bookmark: light-dark(#1e88e5, #64b5f6);
+  --ref-remote: light-dark(#546e7a, #90a4ae);
+  --ref-workspace: light-dark(#8e24aa, #ce93d8);
+  --ref-tag: light-dark(#a66300, #ffb74d);
   --focus-ring: var(--accent);
   --sheet-surface: var(--surface);
   --sheet-border: var(--border);
-  --sheet-shadow-color: light-dark(#09090b14, #09090b38);
+  --sheet-shadow-color: light-dark(#09090b14, #00000066);
   --sheet-shadow: 0 -4px 20px var(--sheet-shadow-color);
-  --scrim: light-dark(#09090b38, #09090b99);
-  --shadow-float: 0 2px 8px #09090b14;
-  --shadow-overlay: 0 4px 8px -2px #09090b14, 0 16px 40px -8px #09090b33;
+  --scrim: light-dark(#09090b38, #000000a6);
+  --shadow-float: 0 1px 2px light-dark(#0f121714, #00000059), 0 4px 12px light-dark(#0f121712, #00000040);
+  --shadow-overlay: 0 1px 0 light-dark(#ffffff, #ffffff0a) inset, 0 4px 8px -2px light-dark(#0f121714, #00000059), 0 18px 44px -10px light-dark(#0f121733, #000000b3);
+
   --diff-addition: color-mix(in srgb, var(--positive) 8%, var(--surface));
   --diff-addition-emphasis: color-mix(in srgb, var(--positive) 14%, var(--surface));
   --diff-deletion: color-mix(in srgb, var(--negative) 8%, var(--surface));
@@ -185,7 +200,7 @@
 #shell.light { color-scheme: light; }
 #shell.dark { color-scheme: dark; }
 /* the native titlebar samples the root background on macos. */
-:root { color-scheme: light dark; background: light-dark(var(--neutral-50), #0b0c0f); }
+:root { color-scheme: light dark; background: light-dark(#f3f4f7, #0a0b0e); }
 html:has(#shell.light) { color-scheme: light; }
 html:has(#shell.dark) { color-scheme: dark; }
 html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }

@@ -95,18 +95,23 @@
                 class:placeholder={row === null}
                 height={rowHeight}
                 width={containerWidth - (row?.location[0] ?? 0) * columnWidth}
-                style="--leftpad: {(row?.padding ?? 0) * columnWidth + columnWidth + 6}px;">
+                style="--leftpad: {(row?.padding ?? 0) * columnWidth + columnWidth + 6}px; --lane: var(--lane-{(row?.location[0] ?? 0) % 8});">
                 <slot {row} />
             </foreignObject>
-
-            {#if row}
-                <GraphNode header={row.revision} {rowHeight} />
-            {/if}
         </g>
     {/each}
 
     {#each distinctLines as line (`${line.key}:${rowHeight}`)}
         <GraphLine {line} {rowHeight} />
+    {/each}
+
+    <!-- stations paint last so their halo sits over the lines -->
+    {#each visibleSlice as row, i (i)}
+        {#if row}
+            <g transform="translate({row.location[0] * columnWidth} {row.location[1] * rowHeight})">
+                <GraphNode header={row.revision} {rowHeight} lane={row.location[0]} />
+            </g>
+        {/if}
     {/each}
 </svg>
 
