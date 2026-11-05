@@ -98,6 +98,7 @@ pub enum SessionEvent {
         tx: Sender<Result<messages::queries::RevisionDiffResult>>,
         set: messages::RevSet,
         path: messages::TreePath,
+        full_context: bool,
     },
     /// List Git remotes, optionally filtered to those tracking a bookmark.
     QueryRemotes {
@@ -320,9 +321,12 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryRevisionSummary { tx, set } => {
                     tx.send(queries::query_revision_summary(&self, set).await)?
                 }
-                SessionEvent::QueryRevisionDiff { tx, set, path } => {
-                    tx.send(queries::query_revision_diff(&self, set, path).await)?
-                }
+                SessionEvent::QueryRevisionDiff {
+                    tx,
+                    set,
+                    path,
+                    full_context,
+                } => tx.send(queries::query_revision_diff(&self, set, path, full_context).await)?,
                 SessionEvent::QueryRemotes {
                     tx,
                     tracking_bookmark,
@@ -535,8 +539,13 @@ impl Session for QuerySession<'_, '_> {
                 Ok(SessionEvent::QueryRevisionSummary { tx, set }) => {
                     tx.send(queries::query_revision_summary(self.ws, set).await)?
                 }
-                Ok(SessionEvent::QueryRevisionDiff { tx, set, path }) => {
-                    tx.send(queries::query_revision_diff(self.ws, set, path).await)?
+                Ok(SessionEvent::QueryRevisionDiff {
+                    tx,
+                    set,
+                    path,
+                    full_context,
+                }) => {
+                    tx.send(queries::query_revision_diff(self.ws, set, path, full_context).await)?
                 }
                 Ok(SessionEvent::QueryRemotes {
                     tx,

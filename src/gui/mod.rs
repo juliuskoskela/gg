@@ -733,11 +733,17 @@ fn query_revision_diff(
     app_state: State<AppState>,
     set: messages::RevSet,
     path: messages::TreePath,
+    full_context: Option<bool>,
 ) -> Result<messages::queries::RevisionDiffResult, InvokeError> {
     let (tx, rx) = channel();
     app_state
         .get_session(window.label())
-        .send(SessionEvent::QueryRevisionDiff { tx, set, path })
+        .send(SessionEvent::QueryRevisionDiff {
+            tx,
+            set,
+            path,
+            full_context: full_context.unwrap_or(false),
+        })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?

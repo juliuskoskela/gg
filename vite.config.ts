@@ -1,3 +1,4 @@
+import { neovimDemo } from "./demo/neovim/plugin";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { playwright } from "@vitest/browser-playwright";
@@ -6,7 +7,7 @@ import { playwright } from "@vitest/browser-playwright";
 export default defineConfig(async () => ({
   // editing this repository can replace components and their imports together.
   // reload the component tree instead of retaining incompatible HMR instances.
-  plugins: [svelte({ compilerOptions: { hmr: false } })],
+  plugins: [neovimDemo(), svelte({ compilerOptions: { hmr: false } })],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

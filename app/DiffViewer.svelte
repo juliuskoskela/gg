@@ -16,6 +16,7 @@
 
     export let change: RevChange;
     export let readingKey = "";
+    export let fullContext = false;
     let renderedKey = "";
     let disconnectColumns = () => {};
     let host: HTMLDivElement;
@@ -30,6 +31,7 @@
         themeType: $effectiveTheme,
         diffStyle: resolvedStyle,
         overflow: $diffWrap ? "wrap" as const : "scroll" as const,
+        expandUnchanged: fullContext,
         lineDiffType: "word-alt" as const,
         enableLineSelection: true,
         disableFileHeader: true,
@@ -68,6 +70,8 @@
             } else {
                 let fileDiff = parsePatchFiles(changePatch(change))[0]?.files[0];
                 if (!fileDiff) { error = "No text diff available. This file may be binary or have only metadata changes."; return; }
+                // the full-context query includes both complete sides, unlike an ordinary patch.
+                if (fullContext) fileDiff.isPartial = false;
                 fileDiff.name = change.path.relative_path;
                 fileDiff.prevName = undefined;
                 viewer = new FileDiff(options);

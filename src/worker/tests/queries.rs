@@ -1017,7 +1017,7 @@ async fn staged_revision_queries_match_full_details() -> Result<()> {
                 change: Some(change),
                 conflict: None,
                 ..
-            } = queries::query_revision_diff(&ws, set.clone(), summary.path).await?
+            } = queries::query_revision_diff(&ws, set.clone(), summary.path, false).await?
             else {
                 panic!("file diff missing")
             };
@@ -1032,7 +1032,7 @@ async fn staged_revision_queries_match_full_details() -> Result<()> {
                 change: None,
                 conflict: Some(conflict),
                 ..
-            } = queries::query_revision_diff(&ws, set.clone(), path).await?
+            } = queries::query_revision_diff(&ws, set.clone(), path, false).await?
             else {
                 panic!("conflict missing")
             };
@@ -1122,7 +1122,7 @@ async fn missing_exact_revision_preserves_candidates_and_returns_not_found() -> 
         relative_path: "c.txt".into(),
     };
     assert!(matches!(
-        queries::query_revision_diff(&ws, set, path).await?,
+        queries::query_revision_diff(&ws, set, path, false).await?,
         RevisionDiffResult::NotFound { .. }
     ));
     Ok(())

@@ -63,4 +63,16 @@ describe("syntax diff viewer", () => {
         diffWrap.set(false);
     });
 
+    it("renders complete context with change highlighting without requesting patch hydration", async () => {
+        let { default: DiffViewer } = await import("./DiffViewer.svelte");
+        let change: RevChange = { kind: "Modified", has_conflict: false, path: { repo_path: "file.txt", relative_path: "file.txt" }, hunks: [{ location: { from_file: { start: 1, len: 40 }, to_file: { start: 1, len: 40 } }, lines: { lines: Array.from({ length: 40 }, (_, i) => i === 20 ? ["-old middle\n", "+new middle\n"] : [` context ${i}\n`]).flat() } }] };
+        let { container } = render(DiffViewer, { props: { change, fullContext: true } });
+        let root = () => container.querySelector("diffs-container")?.shadowRoot;
+        await waitFor(() => expect(root()?.textContent).toContain("context 39"));
+        expect(root()?.textContent).toContain("context 0");
+        expect(root()?.textContent).toContain("new middle");
+        expect(root()?.querySelector('[data-line-type="change-addition"]')).not.toBeNull();
+        expect(container.textContent).not.toContain("Couldn’t render");
+    });
+
 });

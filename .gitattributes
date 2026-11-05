@@ -1,0 +1,2 @@
+# upstream Vim continuation lines rely on trailing spaces between joined tokens.
+demo/neovim/runtime/**/*.vim -whitespace

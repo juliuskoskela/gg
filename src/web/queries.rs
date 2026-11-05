@@ -168,6 +168,8 @@ async fn query_revision_summary(
 struct QueryRevisionDiff {
     set: RevSet,
     path: crate::messages::TreePath,
+    #[serde(default, alias = "fullContext")]
+    full_context: bool,
 }
 async fn query_revision_diff(
     State(state): State<AppState>,
@@ -178,6 +180,7 @@ async fn query_revision_diff(
         tx,
         set: req.set,
         path: req.path,
+        full_context: req.full_context,
     })?;
     Ok(Json(rx.recv()??))
 }
