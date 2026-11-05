@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { enabled as neovimDemoEnabled } from "virtual:gg-neovim";
+    import NeovimEditor from "../editor/NeovimEditor.svelte";
     import { repositoryScope } from "../workspace/repository";
     import { onDestroy, tick } from "svelte";
     import { revisionIdentity, loadRevisionDiff, type RevisionDetail } from "./data";
@@ -16,6 +18,8 @@
     export let revs: RevisionDetail;
     export let changes: RevChange[];
     let width = 1200;
+    let readerMode: "diff" | "file" = "diff";
+    let editorStarted = false;
     export let selectedPath = "";
     export let onSelectFile: (change: RevChange) => void = change => changeSelectEvent.set(change);
     export let onRequestFiles: () => void = () => {};
@@ -68,10 +72,16 @@
                 <div class="diff-toolbar">
                     <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={onRequestFiles} />{/if}</div>
                     <div class="file-navigation"><button type="button" aria-label="Previous changed file" disabled={selectedIndex <= 0} on:click={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" disabled={selectedIndex >= changes.length - 1} on:click={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
-                    <DiffDisplayOptions compact={width < 620} />
+                    {#if neovimDemoEnabled}
+                        <div class="reader-modes" role="group" aria-label="File presentation"><button type="button" aria-pressed={readerMode === "diff"} on:click={() => readerMode = "diff"}>Diff</button><button type="button" aria-pressed={readerMode === "file"} on:click={() => { editorStarted = true; readerMode = "file"; }}>File</button></div>
+                    {/if}
+                    {#if readerMode === "diff"}<DiffDisplayOptions compact={width < 620} />{/if}
                 </div>
+                {#if neovimDemoEnabled && editorStarted && currentChange && $repoConfigEvent.type === "Workspace"}
+                    <NeovimEditor repository={$repoConfigEvent.absolute_path} commit={revs.set.to.commit.hex} path={currentChange.path.repo_path} visible={readerMode === "file"} />
+                {/if}
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex (overflow region needs keyboard scrolling) -->
-                <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} on:scroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
+                <div class="diff-scroll" class:reader-hidden={readerMode !== "diff"} role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} on:scroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
                     {#if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p><button type="button" on:click={onRequestFiles}>Choose another file</button></div>
                     {:else if loaded.type === "wait"}<p class="diff-message" role="status">Loading {currentChange.path.relative_path}…</p>
                     {:else if loaded.type === "error"}<div class="diff-message" role="alert"><p>Couldn’t load this file: {loaded.message}</p><button type="button" on:click={() => loadFile(revs, currentChange, repository)}>Retry file</button></div>
@@ -92,6 +102,9 @@
 </div>
 
 <style>
+    .reader-hidden { display: none; }
+    .reader-modes { display: flex; padding: 2px; background: var(--ground); border-radius: var(--radius-control); }
+    .reader-modes button[aria-pressed="true"] { background: var(--active); color: var(--text-strong); }
     .diff-message { padding: 16px; color: var(--muted); font-size: var(--type-ui); }
     .diff-message button { min-height: 44px; }
     .changes-module { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
