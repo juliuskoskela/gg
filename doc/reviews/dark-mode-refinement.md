@@ -1,5 +1,7 @@
 # Dark-mode hierarchy refinement
 
+Historical review: the palette and measurements below describe commit `bd470cf`. Later lane-color, revision-shape and navigation work supersedes those palette values. They are retained as a record of that review, not as contrast measurements for the current interface.
+
 The previous dark palette gave text and input outlines similar emphasis, while graph markers and references did not have a clear order. This pass follows the local frontend-design skill and keeps the existing IBM Plex Sans / JetBrains Mono typography and workspace layout.
 
 ## Visual roles
