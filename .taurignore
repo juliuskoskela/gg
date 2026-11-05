@@ -1,0 +1,8 @@
+.jj/
+.direnv/
+nix/
+flake.nix
+flake.lock
+doc/
+result
+result-*
