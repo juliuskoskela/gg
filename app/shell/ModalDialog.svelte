@@ -27,7 +27,7 @@
     }
 </script>
 
-<div id="dialog-chrome" role="dialog" aria-modal="true">
+<div id="dialog-chrome" role="dialog" aria-modal="true" aria-labelledby="dialog-header">
     <h3 id="dialog-header" class:error>{title}</h3>
 
     <div id="dialog-content">
@@ -40,69 +40,14 @@
 </div>
 
 <style>
-    #dialog-chrome {
-        grid-area: 2/2/2/2;
-
-        background: var(--ctp-mantle);
-        border-radius: 9px;
-        border: 3px solid var(--ctp-overlay1);
-
-        display: grid;
-        grid-template-columns: 30px 1fr 33px;
-        grid-template-rows: 30px auto 30px;
-    }
-
-    #dialog-header {
-        margin-top: 6px;
-        padding: 0 15px;
-        grid-area: 1/2/2/2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    #dialog-content {
-        grid-area: 2/2/2/2;
-        display: grid;
-        grid-template-columns: auto 1fr;
-        align-items: baseline;
-        gap: 3px 6px;
-    }
-
-    #dialog-content > :global(:nth-child(even)) {
-        justify-self: start;
-    }
-
-    #dialog-content :global(select),
-    #dialog-content :global(input) {
-        height: 30px;
-        min-width: 30px;
-
-        font-family: var(--stack-code);
-        font-size: 14px;
-    }
-    #dialog-content :global(select),
-    #dialog-content :global(input[type="text"]),
-    #dialog-content :global(input[type="password"]) {
-        min-width: 180px;
-    }
-    #dialog-content :global(input[type="url"]) {
-        min-width: 360px;
-    }
-    #dialog-content :global(input[type="checkbox"]) {
-        vertical-align: middle;
-    }
-
-    #dialog-commands {
-        margin-right: 3px;
-        grid-area: 3/1/3/4;
-        display: flex;
-        align-items: center;
-        justify-content: end;
-        gap: 6px;
-    }
-
-    .error {
-        color: var(--ctp-red);
-    }
+    #dialog-chrome { grid-area: 2/2/2/2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 80px); overflow-y: auto; overscroll-behavior: contain; background: var(--raised); border-radius: var(--radius-surface); border: 1px solid var(--border); box-shadow: var(--shadow-overlay); padding: 24px; gap: 20px; pointer-events: auto; }
+    #dialog-header { font-size: var(--type-ui); font-weight: 500; }
+    #dialog-content { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; font-size: var(--type-ui); min-width: 0; }
+    #dialog-content > :global(p) { grid-column: 1 / -1; line-height: 1.6; overflow-wrap: anywhere; }
+    #dialog-content :global(input), #dialog-content :global(select) { width: 100%; min-width: 0; min-height: var(--control-height); font-family: var(--stack-ui); font-size: var(--type-ui); }
+    #dialog-content :global(code) { font-size: 12px; overflow-wrap: anywhere; }
+    #dialog-commands { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .error { color: var(--negative); }
+    @media (max-width: 600px) { #dialog-chrome { padding: 20px; } #dialog-content { grid-template-columns: minmax(0, 1fr); } }
+    @media (pointer: coarse), (max-width: 600px) { #dialog-content :global(input), #dialog-content :global(select) { min-height: 44px; font-size: max(16px, 1rem); } }
 </style>

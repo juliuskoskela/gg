@@ -20,11 +20,11 @@
 </script>
 
 {#if workspaces.length > 0}
-    <h3>Recent Workspaces</h3>
+    <h3>Recent workspaces</h3>
     <ul>
         {#each workspaces as workspace}
             <li>
-                <button on:click={() => openWorkspace(workspace)} title="open this workspace">
+                <button on:click={() => openWorkspace(workspace)} title="Open this workspace">
                     {workspace}
                 </button>
             </li>
@@ -33,34 +33,10 @@
 {/if}
 
 <style>
-    h3 {
-        grid-column: 1/3;
-        justify-self: center;
-    }
-
-    ul {
-        margin-top: 9px;
-        grid-column: 1/3;
-        list-style-type: none;
-    }
-
-    li {
-        margin: 9px 0;
-    }
-
-    button {
-        background: none;
-        border: none;
-        color: var(--ctp-blue);
-        cursor: pointer;
-        text-decoration: none;
-        font-family: var(--stack-code);
-        font-size: 18px;
-        padding: 0;
-
-        &:hover {
-            color: var(--ctp-sky);
-            text-decoration: underline;
-        }
-    }
+    h3 { grid-column: 1/-1; font-size: 13px; color: var(--muted); }
+    ul { grid-column: 1/-1; list-style: none; display: grid; gap: 4px; }
+    button { background: transparent; border: 0; border-radius: var(--radius-control); color: var(--text); cursor: pointer; font-family: var(--stack-ui); font-size: var(--type-ui); min-height: 32px; padding: 6px 8px; text-align: start; overflow-wrap: anywhere; width: 100%; }
+    @media (hover: hover) { button:hover { background: var(--hover); } }
+    button:active { background: var(--control-pressed); }
+    @media (pointer: coarse), (max-width: 600px) { button { min-height: 44px; } }
 </style>

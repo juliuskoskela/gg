@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { shortFilename } from "../paths";
     import type { RevChange } from "../messages/RevChange";
     import type { RevHeader } from "../messages/RevHeader";
     import type { Operand } from "../messages/Operand";
@@ -15,31 +16,23 @@
     export let headers: RevHeader[] | null;
     export let change: RevChange;
     export let selected: boolean;
+    export let tree = false;
+    export let wrap = false;
+    export let compactPath = false;
+    export let setSize: number | undefined = undefined;
+    export let position: number | undefined = undefined;
+    export let onSelected: () => void = () => {};
 
-    let operand: Operand | null = headers ? { type: "Change", headers, path: change.path, hunk: null } : null;
+    $: operand = headers ? { type: "Change", headers, path: change.path, hunk: null } as Operand : null;
 
     $: hasDiffTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool;
     $: hasMergeTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool;
 
-    let icon = "file";
-    let state: "add" | "change" | "remove" | null = null;
-    switch (change.kind) {
-        case "Added":
-            icon = "file-plus";
-            state = "add";
-            break;
-        case "Deleted":
-            icon = "file-minus";
-            state = "remove";
-            break;
-        case "Modified":
-            icon = "file";
-            state = "change";
-            break;
-    }
-
+    $: icon = change.kind === "Added" ? "file-plus" : change.kind === "Deleted" ? "file-minus" : "file";
+    $: state = (change.kind === "Added" ? "add" : change.kind === "Deleted" ? "remove" : null) as "add" | "change" | "remove" | null;
     function onSelect() {
         changeSelectEvent.set(change);
+        onSelected();
     }
 
     function onExternalDiff() {
@@ -61,7 +54,10 @@
 
 <Object
     {operand}
+    {setSize}
+    {position}
     {selected}
+    tabIndex={tree ? 0 : -1}
     suffix={change.path.repo_path}
     conflicted={change.has_conflict}
     label={change.path.relative_path}
@@ -69,9 +65,9 @@
     let:context
     let:hint>
     <Zone {operand} let:target>
-        <div class="layout" class:target>
+        <div class="layout" class:target class:wrap>
             <Icon name={icon} state={context ? null : state} />
-            <span>{hint ?? change.path.relative_path}</span>
+            <span dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
             {#if hasMergeTool && change.has_conflict && operand}
                 <ActionWidget tip="resolve in merge tool" onClick={onExternalResolve}>
                     <Icon name="external-link" /> Resolve
@@ -87,19 +83,31 @@
 
 <style>
     .layout {
-        height: 30px;
+        min-height: 36px;
+        padding: 6px 8px;
+        font-size: var(--type-ui);
+        line-height: 1.4;
+        min-width: 0;
         display: flex;
         align-items: center;
         gap: 6px;
-        padding-left: 3px;
+        padding-inline-start: 3px;
     }
 
     .layout span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         flex: 1;
     }
 
+    @media (pointer: coarse), (max-width: 600px) { .layout { min-height: 44px; } }
+    .layout.wrap span { white-space: normal; overflow-wrap: anywhere; }
+
     .layout.target {
-        background: var(--ctp-flamingo);
-        color: black;
+        outline: 2px solid var(--text);
+        outline-offset: -2px;
+        border-radius: var(--radius-control);
+        color: var(--text);
     }
 </style>

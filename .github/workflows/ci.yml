@@ -33,6 +33,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo build
+      # concurrent-operation fixtures use the CLI matching the embedded jj version
+      - run: cargo install --locked jj-cli --version 0.46.0
 
       # get extra test deps and run everything
       - run: npx playwright install --with-deps chromium

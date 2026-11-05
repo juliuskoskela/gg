@@ -2,9 +2,9 @@
     import { lastFocus } from "../stores";
     export let timestamp: string;
 
-    let datetime = new Date(timestamp);
+    $: datetime = new Date(timestamp);
 
-    function relativeDate(now: number) {
+    function relativeDate(now: number, datetime: Date) {
         const cutoffs = [60, 3600, 86400, 86400 * 7, 86400 * 30, 86400 * 365, Infinity];
         const units: Intl.RelativeTimeFormatUnit[] = ["second", "minute", "hour", "day", "week", "month", "year"];
         const formatter = new Intl.RelativeTimeFormat(undefined, {
@@ -21,12 +21,13 @@
 </script>
 
 <span class="timestamp" title={datetime.toLocaleString()}>
-    {relativeDate($lastFocus)}
+    {relativeDate($lastFocus, datetime)}
 </span>
 
 <style>
     .timestamp {
-        color: var(--ctp-subtext0);
+        color: var(--muted);
+        font-size: var(--type-caption);
         white-space: nowrap;
         pointer-events: auto;
     }

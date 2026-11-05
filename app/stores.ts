@@ -1,3 +1,4 @@
+import { workspaceController } from "./workspace/state";
 import type { MutationResult } from "./messages/MutationResult";
 import type { ProgressEvent } from "./messages/ProgressEvent";
 import type { RepoConfig } from "./messages/RepoConfig";
@@ -5,7 +6,7 @@ import type { RepoStatus } from "./messages/RepoStatus";
 import type { RevHeader } from "./messages/RevHeader";
 import type { RevSet } from "./messages/RevSet";
 import type { Operand } from "./messages/Operand";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { event, type Query } from "./events";
 import type { InputRequest } from "./messages/InputRequest";
 import type { InputResponse } from "./messages/InputResponse";
@@ -26,14 +27,49 @@ export const currentInput = writable<InputRequest & { callback: (response: Input
 export const hasModal = writable<boolean>(false);
 export const hasMenu = writable<{ x: number; y: number; } | null>(null);
 export const logQueryRequest = writable<string | null>(null);
+export let activeLogQuery = writable<string | null>(null);
+export let compactWorkspace = writable(false);
 export const lastFocus = writable<number>(Date.now());
 export const ignoreToggled = writable<boolean>(false);
 
 export const selectionHeaders = writable<RevHeader[]>([]);
 
-export const descriptionDraft = writable<{ changeKey: string; text: string; } | null>(null);
+export let descriptionDrafts = writable<Record<string, string>>({});
+export let revisionReviewState = new Map<string, { path: string; scrollTop: number }>();
+export let fileScrollPositions = new Map<string, number>();
+export let fileHorizontalPositions = new Map<string, number[]>();
+
+export function selectWorkingCopy() {
+    let status = get(repoStatusEvent);
+    if (!status) return;
+    let id = {
+        change: { type: "ChangeId" as const, hex: "@", prefix: "@", rest: "", offset: null, is_divergent: false },
+        commit: status.working_copy,
+    };
+    revisionSelectEvent.set({ from: id, to: id });
+    workspaceController.selectRevision({ from: id, to: id });
+    if (get(paneMode) === "history") paneMode.set("both");
+}
 
 export function dragOverWidget(event: DragEvent) {
     event.stopPropagation();
     currentTarget.set(null);
 }
+
+function preference<T extends string | boolean | number>(key: string, initial: T) {
+    let value = initial;
+    try { let saved = JSON.parse(localStorage.getItem(key) ?? "null"); if (typeof saved === typeof initial) value = saved; } catch { /* storage can be unavailable in private webviews */ }
+    let store = writable<T>(value);
+    store.subscribe(value => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* preferences remain usable in memory */ } });
+    return store;
+}
+export let paneMode = preference<"both" | "history" | "change">("gg.panes", "both");
+export let fileTreeVisible = preference<boolean>("gg.layout.files", true);
+export let fileTreeWidth = preference<number>("gg.layout.files-width", 200);
+export let mobileFilesVisible = writable(false);
+export let diffStyle = preference<"auto" | "split" | "unified">("gg.diff-style", "auto");
+export let diffWrap = preference<boolean>("gg.diff-wrap", false);
+
+export let revisionMetadataVisible = preference<boolean>("gg.layout.overview", true);
+
+export let navigationExpanded = preference<boolean>("gg.navigation.expanded", false);

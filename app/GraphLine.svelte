@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { revisionNodeRadius, revisionRowHeight } from "./graphLayout";
     import type { EnhancedLine } from "./GraphLog.svelte";
     import type { Operand } from "./messages/Operand";
     import Zone from "./objects/Zone.svelte";
@@ -18,8 +19,8 @@
     // draw path downward, from child to parent
     let path: string;
 
-    let childY = r1 * 30 + 21;
-    let parentY = r2 * 30 + 9;
+    let childY = r1 * revisionRowHeight + revisionRowHeight / 2 + revisionNodeRadius;
+    let parentY = r2 * revisionRowHeight + revisionRowHeight / 2 - revisionNodeRadius;
 
     type Block = { x: number; y: number; w: number; h: number };
     let blocks: Block[] = [];
@@ -62,9 +63,9 @@
 
         blocks.push({
             x: c1 * 18 + 2,
-            y: r1 * 30 + 21,
+            y: childY,
             w: 14,
-            h: (r2 - r1) * 30 - 12,
+            h: parentY - childY,
         });
     } else {
         // different-column, curved line
@@ -115,7 +116,8 @@
 <style>
     path {
         pointer-events: none;
-        stroke: var(--ctp-blue);
+        stroke: var(--graph-edge);
+        stroke-width: 1;
     }
 
     foreignObject > :global(*) {
@@ -127,8 +129,9 @@
         height: 100%;
     }
 
-    .target {
-        stroke: black;
-        background-color: var(--ctp-flamingo);
+    path.target { stroke: var(--text); }
+    .backdrop.target {
+        outline: 2px solid var(--text);
+        outline-offset: -2px;
     }
 </style>

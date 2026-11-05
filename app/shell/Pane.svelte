@@ -3,9 +3,11 @@
 
     // the header shares space with the macos titlebar
     export let titlebar = false;
+    export let headerHeight = 40;
+    export let flexibleHeader = false;
 </script>
 
-<section inert={$hasModal} class:titlebar>
+<section inert={$hasModal} class:titlebar style="--pane-header-height: {flexibleHeader ? "auto" : `${headerHeight}px`}">
     <div class="header">
         {#if titlebar}
             <div class="drag-region" data-tauri-drag-region></div>
@@ -20,18 +22,24 @@
 <style>
     section {
         display: grid;
-        grid-template-rows: 40px 1fr;
+        grid-template-rows: var(--pane-header-height) minmax(0, 1fr);
+        min-width: 0;
+        min-height: 0;
         grid-template-columns: 100%;
         overflow: hidden;
     }
 
     .header {
-        border-bottom: 1px solid var(--ctp-overlay0);
-        padding: 6px 6px 3px 6px;
+        min-height: 40px;
+        border-bottom: 1px solid var(--rule);
+        padding: 4px var(--pane-inset);
+        min-width: 0;
     }
 
     .body {
-        padding: 3px 6px 6px 6px;
+        padding: 0 8px 8px;
+        min-height: 0;
+        min-width: 0;
         display: grid;
         overflow: hidden;
     }
@@ -40,28 +48,8 @@
         display: none;
     }
 
-    /* the body lines up with content below the titlebar, which gets 6px of header padding to our 3px */
-    :global(.overlay-titlebar) .titlebar {
-        grid-template-rows: calc(var(--titlebar-height) + 3px) 1fr;
-    }
-
-    /* the content keeps its usual offset, so it overhangs the shortened row by a pixel */
-    :global(.overlay-titlebar) .titlebar > .header {
-        position: relative;
-        z-index: 0;
-        border-bottom: none;
-    }
-
-    /* header content is click-through, so the window can be dragged from between its controls */
-    :global(.overlay-titlebar) .titlebar > .header > :global(:not(.drag-region)) {
-        pointer-events: none;
-    }
-
-    :global(.overlay-titlebar) .titlebar .drag-region {
-        display: block;
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        pointer-events: auto;
+    @media (max-width: 900px) {
+        .header { padding: 4px var(--pane-inset); }
+        .body { padding: 0 8px 8px; }
     }
 </style>

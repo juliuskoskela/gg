@@ -14,10 +14,8 @@ Abstraction of dubious utility - it's only used in one place, because most IPC d
 
     export let query: Query<T>;
 
-    let type = query.type;
 </script>
 
-{#key query}
     {#if query.type == "wait"}
         <slot name="wait" />
     {:else if query.type == "error"}
@@ -27,10 +25,9 @@ Abstraction of dubious utility - it's only used in one place, because most IPC d
     {:else}
         <slot data={query.value} />
     {/if}
-{/key}
 
 <style>
     .red {
-        color: #d20f39;
+        color: var(--negative);
     }
 </style>

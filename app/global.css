@@ -1,235 +1,266 @@
 @import "modern-normalize";
-@import "@catppuccin/palette/css/catppuccin.css";
+@import "./scrollbars.css";
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("./assets/fonts/ibm-plex-sans-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("./assets/fonts/ibm-plex-sans-500.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("./assets/fonts/ibm-plex-sans-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./assets/fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./assets/fonts/jetbrains-mono-500.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./assets/fonts/jetbrains-mono-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
 
 :root {
-  overscroll-behavior: none;
-  font-synthesis: none;
+  --stack-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --stack-code: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --stack-industrial: var(--stack-ui);
+  font-family: var(--stack-ui);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-
-  /* system fonts */
-  --stack-code: ui-monospace,
-    'Cascadia Code',
-    'Source Code Pro',
-    Menlo,
-    Consolas,
-    'DejaVu Sans Mono',
-    monospace;
-  --stack-industrial: Bahnschrift,
-    "DIN Alternate",
-    "Franklin Gothic Medium",
-    "Roboto",
-    "Nimbus Sans",
-    sans-serif-condensed,
-    sans-serif;
+  overscroll-behavior: none;
 }
-
-#shell,
-#shell.light {
-  color-scheme: light;
-  /* catppuccin latte */
-  --ctp-crust: var(--ctp-latte-crust);
-  --ctp-mantle: var(--ctp-latte-mantle);
-  --ctp-base: var(--ctp-latte-base);
-  --ctp-surface0: var(--ctp-latte-surface0);
-  --ctp-surface1: var(--ctp-latte-surface1);
-  --ctp-surface2: var(--ctp-latte-surface2);
-  --ctp-overlay0: var(--ctp-latte-overlay0);
-  --ctp-overlay0-rgb: var(--ctp-latte-overlay0-rgb);
-  --ctp-overlay1: var(--ctp-latte-overlay1);
-  --ctp-overlay1-rgb: var(--ctp-latte-overlay1-rgb);
-  --ctp-overlay2: var(--ctp-latte-overlay2);
-  --ctp-overlay2-rgb: var(--ctp-latte-overlay2-rgb);
-  --ctp-subtext0: var(--ctp-latte-subtext0);
-  --ctp-subtext1: var(--ctp-latte-subtext1);
-  --ctp-text: var(--ctp-latte-text);
-  --ctp-lavender: var(--ctp-latte-lavender);
-  --ctp-blue: var(--ctp-latte-blue);
-  --ctp-sapphire: var(--ctp-latte-sapphire);
-  --ctp-sky: var(--ctp-latte-sky);
-  --ctp-teal: var(--ctp-latte-teal);
-  --ctp-green: var(--ctp-latte-green);
-  --ctp-yellow: var(--ctp-latte-yellow);
-  --ctp-peach: var(--ctp-latte-peach);
-  --ctp-maroon: var(--ctp-latte-maroon);
-  --ctp-red: var(--ctp-latte-red);
-  --ctp-mauve: var(--ctp-latte-mauve);
-  --ctp-pink: var(--ctp-latte-pink);
-  --ctp-flamingo: var(--ctp-latte-flamingo);
-  --ctp-rosewater: var(--ctp-latte-rosewater);
+/* primitives stay private; components consume the role tokens below. */
+:root {
+  --neutral-0: #ffffff;
+  --neutral-25: #fafafd;
+  --neutral-50: #f6f6f9;
+  --neutral-100: #eeeef1;
+  --neutral-150: #e6e6e9;
+  --neutral-200: #dadadd;
+  --neutral-250: #c9cbd0;
+  --neutral-300: #b7b7ba;
+  --neutral-350: #a5a7ae;
+  --neutral-400: #89898b;
+  --neutral-500: #6b6b6e;
+  --neutral-600: #555557;
+  --neutral-700: #38383a;
+  --neutral-750: #2d2e30;
+  --neutral-800: #252527;
+  --neutral-850: #1e1e20;
+  --neutral-900: #18181a;
+  --neutral-950: #111113;
+  --accent-50: #edf4f9;
+  --accent-200: #c9dbe9;
+  --accent-400: #9ebbd4;
+  --accent-500: #6c93b4;
+  --accent-600: #215a8a;
+  --accent-700: #19486f;
+  --accent-900: #1b2c3c;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --touch-target: 44px;
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --motion-feedback: 140ms;
+  --motion-sheet-duration: 220ms;
+  --motion-sheet-ease: cubic-bezier(.2, .8, .2, 1);
+  --sheet-radius: 12px;
+  --inspector-peek-height: 72px;
+  --sheet-half: 50%;
+  --sheet-handle-width: 32px;
+  --sheet-handle-height: 4px;
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-surface: 8px;
+  --control-height: 32px;
+  --control-padding-inline: 8px;
+  --control-gap: 6px;
+  --pane-inset: 12px;
+  --icon-size: 16px;
+  --icon-stroke: 1.75;
+  --type-caption: .75rem;
+  --type-ui: .8125rem;
+  --type-body: .875rem;
+  --type-title: 1rem;
+  --type-code: .75rem;
+  --code-leading: 1.6667;
 }
-
-#shell.dark {
-  color-scheme: dark;
-  --ctp-crust: var(--ctp-macchiato-crust);
-  --ctp-mantle: var(--ctp-macchiato-mantle);
-  --ctp-base: var(--ctp-macchiato-base);
-  --ctp-surface0: var(--ctp-macchiato-surface0);
-  --ctp-surface1: var(--ctp-macchiato-surface1);
-  --ctp-surface2: var(--ctp-macchiato-surface2);
-  --ctp-overlay0: var(--ctp-macchiato-overlay0);
-  --ctp-overlay0-rgb: var(--ctp-latte-overlay0-rgb);
-  --ctp-overlay1: var(--ctp-macchiato-overlay1);
-  --ctp-overlay1-rgb: var(--ctp-latte-overlay1-rgb);
-  --ctp-overlay2: var(--ctp-macchiato-overlay2);
-  --ctp-overlay2-rgb: var(--ctp-latte-overlay2-rgb);
-  --ctp-subtext0: var(--ctp-macchiato-subtext0);
-  --ctp-subtext1: var(--ctp-macchiato-subtext1);
-  --ctp-text: var(--ctp-macchiato-text);
-  --ctp-lavender: var(--ctp-macchiato-lavender);
-  --ctp-blue: var(--ctp-macchiato-blue);
-  --ctp-sapphire: var(--ctp-macchiato-sapphire);
-  --ctp-sky: var(--ctp-macchiato-sky);
-  --ctp-teal: var(--ctp-macchiato-teal);
-  --ctp-green: var(--ctp-macchiato-green);
-  --ctp-yellow: var(--ctp-macchiato-yellow);
-  --ctp-peach: var(--ctp-macchiato-peach);
-  --ctp-maroon: var(--ctp-macchiato-maroon);
-  --ctp-red: var(--ctp-macchiato-red);
-  --ctp-mauve: var(--ctp-macchiato-mauve);
-  --ctp-pink: var(--ctp-macchiato-pink);
-  --ctp-flamingo: var(--ctp-macchiato-flamingo);
-  --ctp-rosewater: var(--ctp-macchiato-rosewater);
+#shell {
+  color-scheme: light dark;
+  --ground: light-dark(var(--neutral-50), var(--neutral-950));
+  --surface: light-dark(var(--neutral-0), var(--neutral-900));
+  --raised: light-dark(var(--neutral-25), var(--neutral-850));
+  --hover: light-dark(var(--neutral-100), var(--neutral-800));
+  --active: light-dark(var(--neutral-150), var(--neutral-750));
+  --border: light-dark(var(--neutral-200), var(--neutral-700));
+  --rule: light-dark(var(--neutral-150), var(--neutral-800));
+  --control: light-dark(var(--neutral-400), var(--neutral-500));
+  --control-border: var(--neutral-400);
+  --control-hover: light-dark(var(--neutral-500), var(--neutral-400));
+  --scrollbar-thumb: light-dark(#00000055, #ffffff55);
+  --scrollbar-thumb-hover: light-dark(#00000080, #ffffff80);
+  --text: light-dark(var(--neutral-900), var(--neutral-250));
+  --muted: light-dark(color-mix(in srgb, var(--neutral-600) 95%, var(--neutral-900)), var(--neutral-350));
+  --faint: var(--neutral-400);
+  --text-disabled: light-dark(var(--neutral-400), var(--neutral-500));
+  --accent: light-dark(var(--accent-600), var(--accent-400));
+  --selection-bg: light-dark(var(--neutral-100), var(--neutral-750));
+  --selection-hover: light-dark(var(--neutral-150), var(--neutral-700));
+  --selection-text: var(--text);
+  --control-pressed: color-mix(in srgb, var(--text) 12%, var(--active));
+  --accent-subtle: light-dark(var(--accent-50), var(--accent-900));
+  --accent-border: light-dark(var(--accent-200), var(--accent-500));
+  --accent-solid: var(--accent-600);
+  --accent-solid-hover: var(--accent-700);
+  --text-on-accent: var(--neutral-0);
+  --positive: light-dark(#247647, #7bc89a);
+  --negative: light-dark(#b63545, #f294a0);
+  --warning: light-dark(#87650b, #e0c57f);
+  --graph-edge: light-dark(var(--neutral-400), #666a70);
+  --graph-node: light-dark(var(--neutral-500), #84888f);
+  --graph-immutable: light-dark(#587963, #789181);
+  --graph-context: light-dark(var(--neutral-600), var(--neutral-300));
+  --focus-ring: var(--accent);
+  --sheet-surface: var(--surface);
+  --sheet-border: var(--border);
+  --sheet-shadow-color: light-dark(#09090b14, #09090b38);
+  --sheet-shadow: 0 -4px 20px var(--sheet-shadow-color);
+  --scrim: light-dark(#09090b38, #09090b99);
+  --shadow-float: 0 2px 8px #09090b14;
+  --shadow-overlay: 0 4px 8px -2px #09090b14, 0 16px 40px -8px #09090b33;
+  --diff-addition: color-mix(in srgb, var(--positive) 8%, var(--surface));
+  --diff-addition-emphasis: color-mix(in srgb, var(--positive) 14%, var(--surface));
+  --diff-deletion: color-mix(in srgb, var(--negative) 8%, var(--surface));
+  --diff-deletion-emphasis: color-mix(in srgb, var(--negative) 14%, var(--surface));
+  --diffs-foreground: var(--text);
+  --diffs-background: var(--surface);
+  --diff-buffer: color-mix(in srgb, var(--text) 4%, var(--surface));
+  --diffs-token-comment: var(--muted);
+  --diffs-token-string: var(--positive);
+  --diffs-token-string-expression: var(--positive);
+  --diffs-token-keyword: var(--accent);
+  --diffs-token-constant: light-dark(#8a4b15, #edbc88);
+  --diffs-token-parameter: var(--text);
+  --diffs-token-function: var(--text);
+  --diffs-token-punctuation: var(--muted);
+  --diffs-token-link: var(--accent);
+  --diffs-token-inserted: var(--positive);
+  --diffs-token-deleted: var(--negative);
 }
-
-@media (prefers-color-scheme: dark) {
-  #shell {
-    color-scheme: dark;
-    --ctp-crust: var(--ctp-macchiato-crust);
-    --ctp-mantle: var(--ctp-macchiato-mantle);
-    --ctp-base: var(--ctp-macchiato-base);
-    --ctp-surface0: var(--ctp-macchiato-surface0);
-    --ctp-surface1: var(--ctp-macchiato-surface1);
-    --ctp-surface2: var(--ctp-macchiato-surface2);
-    --ctp-overlay0: var(--ctp-macchiato-overlay0);
-    --ctp-overlay0-rgb: var(--ctp-latte-overlay0-rgb);
-    --ctp-overlay1: var(--ctp-macchiato-overlay1);
-    --ctp-overlay1-rgb: var(--ctp-latte-overlay1-rgb);
-    --ctp-overlay2: var(--ctp-macchiato-overlay2);
-    --ctp-overlay2-rgb: var(--ctp-latte-overlay2-rgb);
-    --ctp-subtext0: var(--ctp-macchiato-subtext0);
-    --ctp-subtext1: var(--ctp-macchiato-subtext1);
-    --ctp-text: var(--ctp-macchiato-text);
-    --ctp-lavender: var(--ctp-macchiato-lavender);
-    --ctp-blue: var(--ctp-macchiato-blue);
-    --ctp-sapphire: var(--ctp-macchiato-sapphire);
-    --ctp-sky: var(--ctp-macchiato-sky);
-    --ctp-teal: var(--ctp-macchiato-teal);
-    --ctp-green: var(--ctp-macchiato-green);
-    --ctp-yellow: var(--ctp-macchiato-yellow);
-    --ctp-peach: var(--ctp-macchiato-peach);
-    --ctp-maroon: var(--ctp-macchiato-maroon);
-    --ctp-red: var(--ctp-macchiato-red);
-    --ctp-mauve: var(--ctp-macchiato-mauve);
-    --ctp-pink: var(--ctp-macchiato-pink);
-    --ctp-flamingo: var(--ctp-macchiato-flamingo);
-    --ctp-rosewater: var(--ctp-macchiato-rosewater);
-  }
-}
-
-/* on the macos 26 sdk, the titlebar floats over webkit's scroll pocket,
-   which is filled with the root background rather than #shell's */
-html {
-  background: var(--ctp-latte-crust);
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    background: var(--ctp-macchiato-crust);
-  }
-}
-
-html:has(#shell.light) {
-  background: var(--ctp-latte-crust);
-}
-
-html:has(#shell.dark) {
-  background: var(--ctp-macchiato-crust);
-}
-
-::selection {
-  background-color: transparent;
-  color: var(--ctp-rosewater);
-}
-
-textarea,
-select,
-input {
+#shell.light { color-scheme: light; }
+#shell.dark { color-scheme: dark; }
+/* the native titlebar samples the root background on macos. */
+:root { color-scheme: light dark; background: light-dark(var(--neutral-50), var(--neutral-950)); }
+html:has(#shell.light) { color-scheme: light; }
+html:has(#shell.dark) { color-scheme: dark; }
+html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+* { box-sizing: border-box; }
+::selection { background: var(--active); color: var(--text); }
+button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button, a, input, select, textarea, summary { transition: background-color var(--motion-feedback) ease-out; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+textarea, select, input {
   outline: none;
-  border: 1px solid var(--ctp-overlay0);
-  border-radius: 3px;
-  padding: 1px;
-
-  &:focus-visible {
-    border-color: var(--ctp-lavender);
-    border-width: 2px;
-    padding: 0;
-  }
-
-  caret-color: var(--ctp-rosewater);
-
-  background-color: var(--ctp-base);
-  color: var(--ctp-text);
-  scrollbar-color: var(--ctp-text) var(--ctp-base);
-
-  &:disabled {
-    background-color: transparent;
-  }
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: var(--ctp-text);
-    border-radius: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background-color: var(--ctp-base);
-  }
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  padding: 5px var(--control-padding-inline); min-height: var(--control-height); font-size: var(--type-ui); line-height: 1.54;
+  min-width: 0;
+  background: var(--surface);
+  color: var(--text);
+  caret-color: var(--accent);
+}
+textarea:focus-visible, select:focus-visible, input:focus-visible { border-color: var(--accent); outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+textarea:disabled, input:disabled, select:disabled { background: var(--raised); color: var(--text-disabled); cursor: default; }
+input[type="checkbox"] { min-height: 16px; width: 16px; height: 16px; padding: 0; accent-color: var(--accent-solid); }
+input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
+select { cursor: pointer; }
+select:disabled { cursor: default; }
+select:not(:disabled):active { border-color: var(--control-hover); background: var(--control-pressed); }
+h1, h2, h3, p { margin: 0; }
+h2, h3 { font-size: var(--type-ui); font-weight: 500; }
+ul, ol { margin: 0; padding: 0; }
+pre, code { font-family: var(--stack-code); }
+/* repository zones receive drops through their non-interactive contents. */
+div, span, section, h3 { pointer-events: none; }
+textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
 
+@media (hover: hover) {
+  input:not(:disabled):hover, textarea:not(:disabled):hover, select:not(:disabled):hover { border-color: var(--control-hover); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [role="dialog"] button.primary:not(:disabled):active { scale: .985; }
+}
+
+/* one row treatment for navigation, revisions and changed files. */
+.selection-item { border-radius: var(--radius-control); }
+.selection-item.selection-item:is([aria-selected="true"], [aria-current="page"]) { background: var(--selection-bg); color: var(--selection-text); }
+.selection-item:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
+.selection-item:not(:disabled):active { background: var(--active); }
+@media (hover: hover) {
+  .selection-item.selection-item:hover { background: var(--hover); color: var(--text); }
+  .selection-item.selection-item:is([aria-selected="true"], [aria-current="page"]):hover { background: var(--selection-hover); }
+}
+/* customisable native selects retain native keyboard and form behavior. */
 @supports (appearance: base-select) {
-  ::picker(select) {
-    outline: none;
-    border: 1px solid var(--ctp-overlay0);
-    border-radius: 3px;
-    padding: 1px;
-
-    background-color: var(--ctp-base);
-    color: var(--ctp-text);
+  select, select::picker(select) { appearance: base-select; }
+  select { display: flex; align-items: center; gap: var(--control-gap); white-space: nowrap; }
+  select::picker-icon { flex-shrink: 0; color: var(--muted); margin-inline-start: auto; }
+  select:disabled::picker-icon { display: none; }
+  select > button { flex: 1; min-width: 0; min-height: 0; height: auto; display: block; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; text-align: start; box-shadow: none; overflow: hidden; }
+  selectedcontent { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  select::picker(select) { margin-block-start: 4px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--raised); color: var(--text); font: var(--type-ui)/1.54 var(--stack-ui); box-shadow: var(--shadow-overlay); max-width: calc(100vw - 32px); max-height: min(320px, 60dvh); overflow: auto; overscroll-behavior: contain; }
+  select option { min-height: 32px; padding: 6px 8px; border-radius: var(--radius-control); gap: 8px; outline: none; }
+  select option:checked { background: var(--selection-bg); color: var(--selection-text); font-weight: 500; }
+  select option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  select hr { margin: 4px; border: 0; border-block-start: 1px solid var(--rule); }
+  @media (hover: hover) {
+    select option:hover { background: var(--hover); }
+    select option:checked:hover { background: var(--selection-hover); }
   }
+  @media (pointer: coarse), (max-width: 600px) { select option { min-height: 44px; } }
 }
 
-h1,
-h2,
-h3 {
-  margin: 0;
+@media (pointer: coarse), (max-width: 600px) {
+  textarea, select, input:not([type="checkbox"]):not([type="radio"]) { font-size: max(16px, 1rem); min-height: var(--touch-target); }
+}
+@media (forced-colors: active) {
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .selection-item:focus-visible { outline-color: Highlight; }
+  .selection-item[aria-selected="true"]:not(:focus-visible), button[aria-pressed="true"]:not(:focus-visible) { outline: 1px solid Highlight; outline-offset: -1px; }
 }
 
-ul,
-ol {
-  margin: 0;
-  padding: 0;
-}
-
-/* make generic elements drop-transparent */
-div,
-span,
-section,
-h3 {
-  pointer-events: none;
-}
-
-textarea,
-select,
-input,
-button,
-ol,
-ul,
-label {
-  pointer-events: all;
+/* reading on a phone needs more generous type than the desktop workbench. */
+@media (max-width: 600px) {
+  :root { --type-ui: .875rem; --type-body: .9375rem; --type-code: .8125rem; }
 }

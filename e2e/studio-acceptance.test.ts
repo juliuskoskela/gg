@@ -1,0 +1,141 @@
+import { execFileSync } from "node:child_process";
+import { unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+
+function revset(expression: string) {
+    let id = { change: { type: "ChangeId", hex: expression, prefix: expression, rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId", hex: "", prefix: "", rest: "" } };
+    return { from: id, to: id };
+}
+
+describe("workspace complex-state acceptance", () => {
+    let ctx: TestContext;
+    beforeEach(async () => { ctx = await createContext(); extractTestRepo(ctx.tempDir); await ctx.page.setViewportSize({ width: 390, height: 844 }); });
+    afterEach(async () => destroyContext(ctx));
+
+    it("restores the exact commit when two visible revisions share a change ID", async () => {
+        // Separate operation branches deliberately rewrite the same source change.
+        let run = (...args: string[]) => execFileSync("jj", ["--no-pager", ...args], { cwd: ctx.tempDir, encoding: "utf8", env: { ...process.env, XDG_CONFIG_HOME: join(ctx.tempDir, ".jj", "test-config") }, stdio: ["ignore", "pipe", "pipe"] }).trim();
+        let op = run("op", "log", "--no-graph", "-n", "1", "-T", "id");
+        run("describe", "-r", "wnpusytq", "-m", "Divergent version one");
+        run("--at-op", op, "describe", "-r", "wnpusytq", "-m", "Divergent version two");
+        let lines = run("log", "-r", "divergent()", "--no-graph", "-T", 'change_id ++ " " ++ commit_id ++ " " ++ description.first_line() ++ "\\n"').split("\n").filter(line => line.includes("Divergent version"));
+        expect(lines).toHaveLength(2);
+        let entries = lines.map(line => { let [change, commit, ...description] = line.split(" "); return { change, commit, description: description.join(" ") }; });
+        expect(entries[0].change).toBe(entries[1].change);
+        expect(entries[0].commit).not.toBe(entries[1].commit);
+        let base = await startGG(ctx);
+        for (let entry of entries) {
+            await ctx.page.goto(`${base}/?inspect=${entry.commit}`);
+            await expect.poll(() => ctx.page.locator(".detail-region").textContent()).toContain(entry.description);
+            expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(entry.commit);
+            await ctx.page.reload();
+            await expect.poll(() => ctx.page.locator(".detail-region").textContent()).toContain(entry.description);
+            expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(entry.commit);
+        }
+    });
+
+    it("restores both exact commit endpoints of a historical range", async () => {
+        let base = await startGG(ctx);
+        let query = async (expression: string) => {
+            let response = await fetch(`${base}/api/query/query_revisions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set: revset(expression), client_id: "range-acceptance" }) });
+            return response.json();
+        };
+        await fetch(`${base}/api/query/query_workspace`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: ctx.tempDir, client_id: "range-acceptance" }) });
+        let from = (await query("@--")).headers[0].id.commit.hex as string;
+        let to = (await query("@-")).headers[0].id.commit.hex as string;
+        expect(from).not.toBe(to);
+        let seen: Array<{ from: string; to: string; headers: string[] }> = [];
+        let onResponse = async (response: import("@playwright/test").Response) => {
+            if (!response.url().includes("/api/query/query_revision_summary") || !response.ok()) return;
+            try {
+                let req = response.request().postDataJSON();
+                let result = await response.json();
+                if (result.type === "Detail") seen.push({ from: req.set.from.change.hex, to: req.set.to.change.hex, headers: result.headers.map((header: any) => header.id.commit.hex) });
+            } catch { /* navigation may cancel an obsolete response */ }
+        };
+        ctx.page.on("response", onResponse);
+        await ctx.page.goto(`${base}/?inspect=${to}&inspectFrom=${from}`);
+        await expect.poll(() => seen.some(value => value.from === from && value.to === to && value.headers.includes(from) && value.headers.includes(to))).toBe(true);
+        await ctx.page.reload();
+        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspectFrom")).toBe(from);
+        expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(to);
+        await expect.poll(() => seen.filter(value => value.from === from && value.to === to).length).toBeGreaterThanOrEqual(2);
+        ctx.page.off("response", onResponse);
+    });
+
+    it("exposes deleted and binary files as distinct changes through the real reader", async () => {
+        unlinkSync(join(ctx.tempDir, "a.txt"));
+        writeFileSync(join(ctx.tempDir, "binary.bin"), Buffer.from([0, 1, 2, 3, 255, 0, 7]));
+        let base = await startGG(ctx);
+        await ctx.page.goto(base);
+        await ctx.page.locator(".graph .selection-item").first().click();
+        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
+        await expect.poll(() => sheet.textContent()).toContain("a.txt");
+        await expect.poll(() => sheet.textContent()).toContain("binary.bin");
+        await sheet.getByRole("button", { name: "Open full revision" }).click();
+        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).fill("binary.bin");
+        await ctx.page.getByRole("option", { name: "binary.bin" }).click();
+        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("file")).toBe("binary.bin");
+        await ctx.page.getByRole("region", { name: "File diff" }).getByText(/binary/i).first().waitFor();
+        let response = await fetch(`${base}/api/query/query_revision_summary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set: revset("@"), client_id: "complex-fixture" }) });
+        let summary = await response.json();
+        expect(summary.changes.find((c: any) => c.path.repo_path === "a.txt")?.kind).toBe("Deleted");
+        expect(summary.changes.find((c: any) => c.path.repo_path === "binary.bin")?.kind).toBe("Added");
+    });
+
+    it("loads the bundled faces and keeps phone text and inputs readable at 320px", async () => {
+        await ctx.page.setViewportSize({ width: 320, height: 800 });
+        await ctx.page.goto(await startGG(ctx));
+        let row = ctx.page.locator(".graph .selection-item").filter({ hasText: "rename c.txt" }).first();
+        await row.click();
+        await ctx.page.getByRole("region", { name: "Revision preview" }).waitFor();
+        let metrics = await ctx.page.evaluate(async () => {
+            let loaded = await Promise.all([document.fonts.load('400 14px "IBM Plex Sans"'), document.fonts.load('500 14px "IBM Plex Sans"'), document.fonts.load('400 13px "JetBrains Mono"'), document.fonts.load('500 13px "JetBrains Mono"')]);
+            let input = document.querySelector<HTMLInputElement>('[aria-label="Filter revisions with a revset"]')!;
+            return { loaded: loaded.map(faces => faces.some(face => face.status === "loaded")), ui: getComputedStyle(document.querySelector(".graph .desc")!).fontSize, input: getComputedStyle(input).fontSize, width: document.documentElement.scrollWidth };
+        });
+        expect(metrics.loaded).toEqual([true, true, true, true]);
+        expect(parseFloat(metrics.ui)).toBeGreaterThanOrEqual(14);
+        expect(parseFloat(metrics.input)).toBeGreaterThanOrEqual(16);
+        expect(metrics.width).toBeLessThanOrEqual(320);
+        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        let code = ctx.page.locator('.diff-viewer [data-overflow="scroll"] [data-code]:not([data-diffs-scrollbar-measure])').first();
+        await code.waitFor();
+        expect(parseFloat(await code.evaluate(element => getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(13);
+    });
+
+    it("keeps keyboard focus visible and reachable in a 320px compact workspace", async () => {
+        await ctx.page.setViewportSize({ width: 320, height: 640 });
+        await ctx.page.goto(await startGG(ctx));
+        await ctx.page.locator(".graph .selection-item").first().click();
+        let preview = ctx.page.getByRole("region", { name: "Revision preview" });
+        await preview.waitFor();
+        await preview.getByRole("button", { name: "Collapse revision preview" }).focus();
+        await ctx.page.keyboard.press("Tab");
+        let checked = 0;
+        for (let i = 0; i < 8; i++) {
+            let state = await ctx.page.evaluate(() => {
+                let element = document.activeElement as HTMLElement;
+                let box = element.getBoundingClientRect();
+                let style = getComputedStyle(element);
+                return { tag: element.tagName, name: element.getAttribute("aria-label") ?? element.textContent?.trim().slice(0, 80), width: box.width, height: box.height, top: box.top, bottom: box.bottom, left: box.left, right: box.right, inert: !!element.closest("[inert], [aria-hidden=true]"), outline: style.outlineStyle, shadow: style.boxShadow };
+            });
+            if (state.tag === "BODY") break; // Tab may leave document for browser chrome.
+            checked++;
+            expect(state.inert).toBe(false);
+            expect(state.width).toBeGreaterThan(0);
+            expect(state.height).toBeGreaterThan(0);
+            expect(state.top).toBeLessThan(640);
+            expect(state.bottom).toBeGreaterThan(0);
+            expect(state.left).toBeLessThan(320);
+            expect(state.right).toBeGreaterThan(0);
+            expect(state.outline !== "none" || state.shadow !== "none", JSON.stringify(state)).toBe(true);
+            await ctx.page.keyboard.press("Tab");
+        }
+        expect(checked).toBeGreaterThanOrEqual(3);
+    });
+
+});

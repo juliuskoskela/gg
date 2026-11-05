@@ -109,7 +109,9 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
                 repoConfigEvent.set(value.new_config);
             } else if (value.type == "Updated") {
                 repoStatusEvent.set(value.new_status);
-                if (value.new_selection) {
+                // recovery follows the inspected change; the backend working copy is only a fallback.
+                let recoveringSelection = (command === "undo_operation" || command === "redo_operation") && !!get(revisionSelectEvent);
+                if (value.new_selection && !recoveringSelection) {
                     revisionSelectEvent.set({
                         from: value.new_selection.id,
                         to: value.new_selection.id,

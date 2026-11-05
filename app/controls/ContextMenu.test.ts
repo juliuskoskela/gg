@@ -45,7 +45,7 @@ describe("ContextMenu (revert)", () => {
         await cleanupMocks();
     });
 
-    it("clicking 'Revert into working copy' calls backout_revisions", async () => {
+    it("clicking 'Back out into working copy' calls backout_revisions", async () => {
         const { default: ContextMenu } = await import("./ContextMenu.svelte");
         const { selectionHeaders } = await import("../stores");
         selectionHeaders.set([mockHeader]);
@@ -59,7 +59,7 @@ describe("ContextMenu (revert)", () => {
 
         let buttons = container.querySelectorAll("button");
         let revertButton = Array.from(buttons).find(
-            (b) => b.textContent === "Revert into working copy",
+            (b) => b.textContent === "Back out into working copy",
         );
 
         expect(revertButton).toBeTruthy();
@@ -95,14 +95,14 @@ describe("ContextMenu (revert)", () => {
 
         let buttons = container.querySelectorAll("button");
         let revertButton = Array.from(buttons).find(
-            (b) => b.textContent === "Revert into working copy",
+            (b) => b.textContent === "Back out into working copy",
         );
 
         expect(revertButton).toBeTruthy();
         expect(revertButton!.disabled).toBe(false);
     });
 
-    it("clicking 'Create bookmark...' calls create_ref with the entered name", async () => {
+    it("clicking 'Create bookmark…' calls create_ref with the entered name", async () => {
         const { default: ContextMenu } = await import("./ContextMenu.svelte");
         const { selectionHeaders, currentInput } = await import("../stores");
         const { get } = await import("svelte/store");
@@ -116,7 +116,7 @@ describe("ContextMenu (revert)", () => {
         });
 
         let buttons = container.querySelectorAll("button");
-        let bookmarkButton = Array.from(buttons).find((b) => b.textContent === "Create bookmark...");
+        let bookmarkButton = Array.from(buttons).find((b) => b.textContent?.startsWith("Create bookmark…"));
 
         expect(bookmarkButton).toBeTruthy();
         expect(bookmarkButton!.disabled).toBe(false);
@@ -160,7 +160,7 @@ describe("ContextMenu (revert)", () => {
         });
 
         let buttons = container.querySelectorAll("button");
-        let bookmarkButton = Array.from(buttons).find((b) => b.textContent === "Create bookmark...");
+        let bookmarkButton = Array.from(buttons).find((b) => b.textContent?.startsWith("Create bookmark…"));
 
         bookmarkButton!.click();
 
@@ -194,10 +194,10 @@ describe("ContextMenu (revert)", () => {
         });
 
         let buttons = container.querySelectorAll("button");
-        let bookmarkButton = Array.from(buttons).find((b) => b.textContent === "Create bookmark...");
+        let bookmarkButton = Array.from(buttons).find((b) => b.textContent?.startsWith("Create bookmark…"));
 
         expect(bookmarkButton).toBeTruthy();
-        expect(bookmarkButton!.disabled).toBe(true);
+        expect(bookmarkButton!.getAttribute("aria-disabled")).toBe("true");
     });
 
     it("revert is enabled for multi-revision selection", async () => {
@@ -221,7 +221,7 @@ describe("ContextMenu (revert)", () => {
 
         let buttons = container.querySelectorAll("button");
         let revertButton = Array.from(buttons).find(
-            (b) => b.textContent === "Revert into working copy",
+            (b) => b.textContent === "Back out into working copy",
         );
 
         expect(revertButton).toBeTruthy();
