@@ -10,7 +10,6 @@ Core component for direct-manipulation objects. A drag&drop source.
     import type { Operand } from "../messages/Operand";
     import { setCommandOperand } from "../commands/context";
     import { executeOperandCommand } from "../commands/registry";
-    import { trigger, isTauri } from "../ipc";
     import { currentContext, currentSource, selectionHeaders, hasMenu, ignoreToggled } from "../stores";
     import { createEventDispatcher } from "svelte";
     import { get } from "svelte/store";
@@ -87,16 +86,9 @@ Core component for direct-manipulation objects. A drag&drop source.
             currentContext.set(effectiveOperand);
             setCommandOperand(effectiveOperand);
 
+            // the in-app menu is used everywhere; native menus can't carry the app's styling or symbols
             let mouseEvent = event as MouseEvent;
-            if (isTauri()) {
-                trigger("forward_context_menu", {
-                    context: effectiveOperand,
-                    x: mouseEvent.clientX,
-                    y: mouseEvent.clientY,
-                });
-            } else {
-                hasMenu.set({ x: mouseEvent.clientX, y: mouseEvent.clientY });
-            }
+            hasMenu.set({ x: mouseEvent.clientX, y: mouseEvent.clientY });
         }
     }
 

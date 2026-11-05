@@ -26,7 +26,8 @@ function currentProtectionVersion() {
     return protectionVersion;
 }
 
-export type Command = { id: string; label: string; icon: string; scope: string; shortcut?: string; reason: string | null; execute: () => void | Promise<void> };
+// group orders context menu sections; destructive items sit last and render in red.
+export type Command = { id: string; label: string; icon: string; scope: string; shortcut?: string; group?: number; destructive?: boolean; reason: string | null; execute: () => void | Promise<void> };
 
 export function revisionLabel(header: RevHeader): string {
     let description = header.description.lines[0]?.trim() || "(no description)";
@@ -49,19 +50,19 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
     let ignore = get(ignoreToggled);
     let capabilities = revisionCapabilities(headers, ignore);
     let immutable = !ignore && headers.some(h => h.is_immutable);
-    let definitions: [keyof typeof capabilities | "move" | "insert" | "add_parent" | "remove_parent", string, string][] = [
-        ["new_child", "New child", "plus"], ["new_parent", "New inserted parent", "plus"],
-        ["edit", "Edit as working copy", "edit-2"], ["revert", "Back out into working copy", "corner-up-left"],
-        ["duplicate", "Duplicate", "copy"], ["abandon", "Abandon", "trash-2"],
-        ["squash", "Squash into parent", "arrow-up"], ["restore", "Restore from parent", "rotate-ccw"],
-        ["bookmark", "Create bookmark…", "bookmark"], ["move", "Move revisions…", "move"], ["insert", "Insert revisions between…", "git-merge"], ["add_parent", "Add as merge parent…", "git-merge"], ["remove_parent", "Remove a parent…", "git-merge"],
+    let definitions: [keyof typeof capabilities | "move" | "insert" | "add_parent" | "remove_parent", string, string, number][] = [
+        ["new_child", "New child", "plus", 0], ["edit", "Edit as working copy", "edit-3", 0],
+        ["new_parent", "New inserted parent", "plus-circle", 0], ["duplicate", "Duplicate", "copy", 0], ["bookmark", "Create bookmark…", "bookmark", 0],
+        ["squash", "Squash into parent", "chevrons-up", 1], ["restore", "Restore from parent", "rotate-ccw", 1], ["revert", "Back out into working copy", "corner-up-left", 1],
+        ["move", "Move revisions…", "move", 1], ["insert", "Insert revisions between…", "git-commit", 1], ["add_parent", "Add as merge parent…", "git-merge", 1], ["remove_parent", "Remove a parent…", "scissors", 1],
+        ["abandon", "Abandon", "trash-2", 2],
     ];
-    return definitions.map(([id, label, icon]) => {
+    return definitions.map(([id, label, icon, group]) => {
         let permitted = id === "add_parent" ? headers.length > 0 : id === "move" || id === "insert" ? headers.length > 0 && !immutable : id === "remove_parent" ? headers.length === 1 && headers[0].parent_ids.length > 1 && !immutable : capabilities[id];
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : !headers.length ? "Select a revision" :
             checkSelection && !selectionCurrent(headers) ? "Selection has changed" : !permitted ?
             (immutable && ["move", "insert", "add_parent", "remove_parent", "new_parent", "edit", "abandon", "squash", "restore"].includes(id) ? "Immutable revisions are protected" : "This action requires a different selection or one parent") : null;
-        return { id, label, icon, scope: "Revision", reason, execute: () => {
+        return { id, label, icon, scope: "Revision", group, destructive: id === "abandon", reason, execute: () => {
             // Re-evaluate at invocation, including after the palette has opened.
             if (revisionCommands(headers, checkSelection).find(c => c.id === id)?.reason) return;
             let status = get(repoStatusEvent);
@@ -137,6 +138,16 @@ async function manipulateRevisions(action: "insert" | "add_parent" | "remove_par
     if (confirm?.Action === "Apply" && valid() && mutator.canDrop().type === "yes") mutator.doDrop();
 }
 
+// symbol, group, destructive. groups follow apple's guidance: frequent first, at most three, destructive last.
+let contextPresentation: Record<string, [string, number, boolean]> = {
+    "File:file_history": ["clock", 0, false], "File:external_diff": ["external-link", 0, false], "File:external_resolve": ["tool", 0, false],
+    "File:squash": ["chevrons-up", 1, false], "File:restore": ["rotate-ccw", 1, false], "File:move_to": ["move", 1, false], "File:copy_to": ["copy", 1, false],
+    "Bookmark:push-all": ["arrow-up", 0, false], "Bookmark:push-single": ["upload-cloud", 0, false], "Bookmark:fetch-all": ["arrow-down", 0, false], "Bookmark:fetch-single": ["download-cloud", 0, false],
+    "Bookmark:track": ["link", 1, false], "Bookmark:untrack": ["slash", 1, false], "Bookmark:rename": ["type", 1, false], "Bookmark:move_to": ["move", 1, false],
+    "Bookmark:delete": ["trash-2", 2, true],
+    "Workspace:open": ["folder", 0, false], "Workspace:rename": ["type", 0, false], "Workspace:forget": ["x-circle", 2, true],
+};
+
 export function contextCommands(operand: Operand | null | undefined, ..._dependencies: unknown[]): Command[] {
     if (!operand || (operand.type !== "Change" && operand.type !== "Ref" && operand.type !== "Workspace")) return [];
     let entries: { id: string; label: string; scope: string; reason?: string }[] = [];
@@ -177,7 +188,8 @@ export function contextCommands(operand: Operand | null | undefined, ..._depende
     }
     return entries.map(entry => {
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : entry.reason ?? null;
-        return { id: `context-${entry.id}`, label: entry.label, scope: entry.scope, icon: "file", reason, execute: () => {
+        let [icon, group, destructive] = contextPresentation[`${entry.scope}:${entry.id}`] ?? ["file", 0, false];
+        return { id: `context-${entry.id}`, label: entry.label, scope: entry.scope, icon, group, destructive, reason, execute: () => {
             if (contextCommands(operand).find(c => c.id === `context-${entry.id}`)?.reason) return;
             let status = get(repoStatusEvent), config = get(repoConfigEvent), selected = get(commandOperand), selection = get(revisionSelectEvent);
             let protection = currentProtectionVersion();
