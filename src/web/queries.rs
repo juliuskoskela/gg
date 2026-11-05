@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::messages::{
     RepoConfig, RepoStatus, RevSet,
-    queries::{LogPage, RevsResult},
+    queries::{LogPage, RevisionDiffResult, RevisionSummaryResult, RevsResult},
 };
 use crate::worker::SessionEvent;
 
@@ -18,12 +18,24 @@ use super::state::AppState;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/query_workspace", post(query_workspace))
+        .route("/query_workspace_identity", post(query_workspace_identity))
         .route("/query_log", post(query_log))
         .route("/query_log_next_page", post(query_log_next_page))
         .route("/query_revisions", post(query_revisions))
+        .route("/query_revision_summary", post(query_revision_summary))
+        .route(
+            "/resolve_revision_selection",
+            post(resolve_revision_selection),
+        )
+        .route("/query_revision_diff", post(query_revision_diff))
+        .route(
+            "/query_operation_preflight",
+            post(query_operation_preflight),
+        )
         .route("/query_remotes", post(query_remotes))
         .route("/query_recent_workspaces", post(query_recent_workspaces))
         .route("/query_snapshot", post(query_snapshot))
+        .route("/query_current_status", post(query_current_status))
 }
 
 #[derive(Deserialize)]
@@ -57,6 +69,14 @@ async fn query_workspace(
     };
 
     Ok(Json(config))
+}
+
+async fn query_workspace_identity(State(state): State<AppState>) -> Result<Json<String>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryWorkspaceIdentity { tx })?;
+    Ok(Json(rx.recv()??))
 }
 
 #[derive(Deserialize)]
@@ -104,6 +124,65 @@ async fn query_revisions(
 }
 
 #[derive(Deserialize)]
+struct QueryOperationPreflight {
+    redo: bool,
+}
+async fn query_operation_preflight(
+    State(state): State<AppState>,
+    Json(req): Json<QueryOperationPreflight>,
+) -> Result<Json<crate::messages::queries::OperationPreflight>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryOperationPreflight { tx, redo: req.redo })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct ResolveRevisionSelection {
+    id: crate::messages::RevId,
+}
+async fn resolve_revision_selection(
+    State(state): State<AppState>,
+    Json(req): Json<ResolveRevisionSelection>,
+) -> Result<Json<crate::messages::queries::RevisionSelectionResult>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::ResolveRevisionSelection { tx, id: req.id })?;
+    Ok(Json(rx.recv()??))
+}
+
+async fn query_revision_summary(
+    State(state): State<AppState>,
+    Json(req): Json<QueryRevisions>,
+) -> Result<Json<RevisionSummaryResult>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryRevisionSummary { tx, set: req.set })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct QueryRevisionDiff {
+    set: RevSet,
+    path: crate::messages::TreePath,
+}
+async fn query_revision_diff(
+    State(state): State<AppState>,
+    Json(req): Json<QueryRevisionDiff>,
+) -> Result<Json<RevisionDiffResult>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::QueryRevisionDiff {
+        tx,
+        set: req.set,
+        path: req.path,
+    })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
 pub struct QueryRemotes {
     tracking_bookmark: Option<String>,
 }
@@ -140,4 +219,12 @@ async fn query_snapshot(
     state.worker_tx.send(SessionEvent::ExecuteSnapshot { tx })?;
     let result = rx.recv()?;
     Ok(Json(result))
+}
+
+async fn query_current_status(State(state): State<AppState>) -> Result<Json<RepoStatus>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryCurrentStatus { tx })?;
+    Ok(Json(rx.recv()??))
 }

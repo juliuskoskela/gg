@@ -13,6 +13,64 @@ pub struct RevChange {
     pub hunks: Vec<ChangeHunk>,
 }
 
+/// Metadata available without materializing file contents.
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct RevChangeSummary {
+    pub kind: ChangeKind,
+    pub path: TreePath,
+    pub has_conflict: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(tag = "type")]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub enum RevisionSummaryResult {
+    NotFound {
+        set: RevSet,
+    },
+    Detail {
+        set: RevSet,
+        headers: Vec<RevHeader>,
+        parents: Vec<RevHeader>,
+        changes: Vec<RevChangeSummary>,
+        conflicts: Vec<TreePath>,
+    },
+}
+
+#[derive(Serialize, Debug)]
+#[serde(tag = "type")]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+#[allow(clippy::large_enum_variant)]
+pub enum RevisionDiffResult {
+    NotFound {
+        set: RevSet,
+    },
+    Detail {
+        set: RevSet,
+        path: TreePath,
+        change: Option<RevChange>,
+        conflict: Option<RevConflict>,
+    },
+}
+
+/// Exact commit and currently visible commits for the same logical change.
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct RevisionSelectionResult {
+    pub exact: Option<RevHeader>,
+    pub candidates: Vec<RevHeader>,
+}
+
+/// Current operation state before the mutation takes its working-copy snapshot.
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct OperationPreflight {
+    pub eligible: bool,
+    pub description: Option<String>,
+    pub reason: Option<String>,
+}
+
 /// A file-level conflict in a revision's parent tree.
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]

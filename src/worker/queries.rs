@@ -2,11 +2,10 @@ use std::{borrow::Borrow, collections::HashSet, io::Write, mem, ops::Range, pin:
 
 use anyhow::{Result, anyhow};
 use futures_util::{AsyncReadExt, Stream, StreamExt, try_join};
-use gix::bstr::ByteVec;
 use itertools::Itertools;
 use jj_cli::diff_util::LineDiffOptions;
 use jj_lib::{
-    backend::{CommitId, MergedTreeValueExt as _},
+    backend::{BackendError, CommitId, MergedTreeValueExt as _},
     conflict_labels::ConflictLabels,
     conflicts::{
         self, ConflictMarkerStyle, ConflictMaterializeOptions, MaterializedFileValue,
@@ -19,9 +18,10 @@ use jj_lib::{
     diff_presentation::LineCompareMode,
     files::FileMergeHunkLevel,
     graph::{GraphEdgeType, GraphNode, TopoGroupedGraph},
-    matchers::EverythingMatcher,
+    matchers::{EverythingMatcher, FilesMatcher},
     merge::{Diff, SameChange},
     merged_tree::{TreeDiffEntry, TreeDiffStream},
+    object_id::ObjectId as _,
     ref_name::{RefNameBuf, RemoteNameBuf, RemoteRefSymbol},
     repo::Repo,
     repo_path::RepoPath,
@@ -448,6 +448,254 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
     })
 }
 
+pub fn resolve_revision_selection(
+    ws: &WorkspaceSession<'_>,
+    id: crate::messages::RevId,
+) -> Result<RevisionSelectionResult> {
+    let exact = if id.commit.hex.is_empty() {
+        let set = RevSet {
+            from: id.clone(),
+            to: id.clone(),
+        };
+        resolve_exact_set(ws, &set)?
+            .and_then(|(commits, _)| commits.into_iter().next())
+            .map(|commit| ws.format_header(&commit, None))
+            .transpose()?
+    } else {
+        exact_commit(ws, &id.commit)?
+            .map(|commit| ws.format_header(&commit, None))
+            .transpose()?
+    };
+    let candidates = match ws.evaluate_revset_changes(std::slice::from_ref(&id.change)) {
+        Ok(revset) => ws
+            .resolve_multiple(revset)?
+            .iter()
+            .map(|commit| ws.format_header(commit, None))
+            .collect::<Result<Vec<_>, _>>()?,
+        Err(super::gui_util::RevsetError::Resolution(
+            jj_lib::revset::RevsetResolutionError::DivergentChangeId {
+                visible_targets, ..
+            },
+        )) => visible_targets
+            .into_iter()
+            .map(|(_, id)| {
+                ws.get_commit(&id)
+                    .and_then(|commit| ws.format_header(&commit, None))
+            })
+            .collect::<Result<Vec<_>>>()?,
+        Err(super::gui_util::RevsetError::Resolution(
+            jj_lib::revset::RevsetResolutionError::NoSuchRevision { .. },
+        )) => Vec::new(),
+        Err(err) => return Err(err.into()),
+    };
+    let exact = if id.commit.hex.is_empty() && candidates.len() > 1 {
+        None
+    } else {
+        exact
+    };
+    Ok(RevisionSelectionResult { exact, candidates })
+}
+
+fn exact_commit(
+    ws: &WorkspaceSession<'_>,
+    id: &crate::messages::CommitId,
+) -> Result<Option<jj_lib::commit::Commit>> {
+    let commit_id = CommitId::try_from_hex(&id.hex).ok_or_else(|| anyhow!("invalid commit ID"))?;
+    match ws.repo().store().get_commit(&commit_id) {
+        Ok(_) => {}
+        Err(BackendError::ObjectNotFound { object_type, .. }) if object_type == "commit" => {
+            return Ok(None);
+        }
+        Err(err) => return Err(err.into()),
+    }
+    let revset = match ws.evaluate_revset_commits(std::slice::from_ref(id)) {
+        Ok(revset) => revset,
+        Err(super::gui_util::RevsetError::Resolution(
+            jj_lib::revset::RevsetResolutionError::NoSuchRevision { .. },
+        )) => return Ok(None),
+        Err(err) => return Err(err.into()),
+    };
+    let mut commits = ws.resolve_multiple(revset)?;
+    Ok(if commits.len() == 1 {
+        commits.pop()
+    } else {
+        None
+    })
+}
+
+fn resolve_exact_set(
+    ws: &WorkspaceSession<'_>,
+    set: &RevSet,
+) -> Result<Option<(Vec<jj_lib::commit::Commit>, RevSet)>> {
+    fn endpoint(
+        ws: &WorkspaceSession<'_>,
+        id: &crate::messages::RevId,
+    ) -> Result<Option<jj_lib::commit::Commit>> {
+        let revset = if id.commit.hex.is_empty() {
+            let expression = match id.change.offset {
+                Some(offset) => format!("{}/{}", id.change.hex, offset),
+                None => id.change.hex.clone(),
+            };
+            match ws.evaluate_revset_str(&expression) {
+                Ok(revset) => revset,
+                Err(super::gui_util::RevsetError::Resolution(
+                    jj_lib::revset::RevsetResolutionError::NoSuchRevision { .. }
+                    | jj_lib::revset::RevsetResolutionError::DivergentChangeId { .. },
+                )) => return Ok(None),
+                Err(err) => return Err(err.into()),
+            }
+        } else {
+            return exact_commit(ws, &id.commit);
+        };
+        let mut commits = ws.resolve_multiple(revset)?;
+        if commits.len() == 1 {
+            Ok(commits.pop())
+        } else {
+            Ok(None)
+        }
+    }
+    let Some(from) = endpoint(ws, &set.from)? else {
+        return Ok(None);
+    };
+    let Some(to) = endpoint(ws, &set.to)? else {
+        return Ok(None);
+    };
+    let resolved = RevSet {
+        from: ws.format_header(&from, None)?.id,
+        to: ws.format_header(&to, None)?.id,
+    };
+    if from.id() == to.id() {
+        return Ok(Some((vec![from], resolved)));
+    }
+    let expression = format!("{}::{}", from.id().hex(), to.id().hex());
+    let commits = ws.resolve_multiple(ws.evaluate_revset_str(&expression)?)?;
+    if commits.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some((commits, resolved)))
+    }
+}
+
+pub async fn query_revision_summary(
+    ws: &WorkspaceSession<'_>,
+    set: RevSet,
+) -> Result<RevisionSummaryResult> {
+    let commits = resolve_exact_set(ws, &set)?;
+    let Some((commits, set)) = commits else {
+        return Ok(RevisionSummaryResult::NotFound { set });
+    };
+    let oldest = commits.last().ok_or(anyhow!("empty revision set"))?;
+    let oldest_parents = oldest.parents().await?;
+    let parent_tree = rewrite::merge_commit_trees(ws.repo(), &oldest_parents).await?;
+    let final_tree = commits.first().ok_or(anyhow!("empty revision set"))?.tree();
+    let mut changes = Vec::new();
+    let mut stream = parent_tree.diff_stream(&final_tree, &EverythingMatcher);
+    while let Some(TreeDiffEntry { path, values }) = stream.next().await {
+        let diff = values?;
+        let kind = if diff.before.is_present() && diff.after.is_present() {
+            ChangeKind::Modified
+        } else if diff.before.is_absent() {
+            ChangeKind::Added
+        } else {
+            ChangeKind::Deleted
+        };
+        changes.push(RevChangeSummary {
+            kind,
+            path: ws.format_path(path)?,
+            has_conflict: !diff.after.is_resolved(),
+        });
+    }
+    let mut conflicts = Vec::new();
+    for (path, entry) in final_tree.entries() {
+        if !entry?.is_resolved() {
+            conflicts.push(ws.format_path(path)?);
+        }
+    }
+    let conflicted_paths: HashSet<_> = conflicts
+        .iter()
+        .map(|path| path.repo_path.as_str())
+        .collect();
+    changes.retain(|change| !conflicted_paths.contains(change.path.repo_path.as_str()));
+    let mut headers = Vec::new();
+    let mut known_immutable = None;
+    for commit in &commits {
+        let header = ws.format_header(commit, known_immutable)?;
+        if known_immutable.is_none() && header.is_immutable {
+            known_immutable = Some(true);
+        }
+        headers.push(header);
+    }
+    let parents = oldest_parents
+        .iter()
+        .map(|p| ws.format_header(p, known_immutable))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(RevisionSummaryResult::Detail {
+        set,
+        headers,
+        parents,
+        changes,
+        conflicts,
+    })
+}
+
+pub async fn query_revision_diff(
+    ws: &WorkspaceSession<'_>,
+    set: RevSet,
+    path: crate::messages::TreePath,
+) -> Result<RevisionDiffResult> {
+    let commits = resolve_exact_set(ws, &set)?;
+    let Some((commits, set)) = commits else {
+        return Ok(RevisionDiffResult::NotFound { set });
+    };
+    let oldest = commits.last().ok_or(anyhow!("empty revision set"))?;
+    let parent_tree = rewrite::merge_commit_trees(ws.repo(), &oldest.parents().await?).await?;
+    let final_tree = commits.first().ok_or(anyhow!("empty revision set"))?.tree();
+    let repo_path = RepoPath::from_internal_string(&path.repo_path)?;
+    let matcher = FilesMatcher::new([repo_path]);
+    let mut changes = Vec::new();
+    format_tree_changes(
+        ws,
+        &mut changes,
+        parent_tree.diff_stream(&final_tree, &matcher),
+        Diff::new(parent_tree.labels(), final_tree.labels()),
+    )
+    .await?;
+    let mut conflict = None;
+    for (entry_path, entry) in final_tree.entries_matching(&matcher) {
+        let entry = entry?;
+        if !entry.is_resolved() {
+            let value = conflicts::materialize_tree_value(
+                ws.repo().store(),
+                &entry_path,
+                entry,
+                final_tree.labels(),
+            )
+            .await?;
+            let content = get_value_contents(&entry_path, value).await?;
+            if let Some(hunk) = match content {
+                Some(content) => get_unified_hunks(3, &content, &[])?.pop(),
+                None => None,
+            } {
+                conflict = Some(RevConflict {
+                    path: ws.format_path(entry_path)?,
+                    hunk,
+                });
+            }
+        }
+    }
+    let change = if conflict.is_some() {
+        None
+    } else {
+        changes.into_iter().next()
+    };
+    Ok(RevisionDiffResult::Detail {
+        set,
+        path,
+        change,
+        conflict,
+    })
+}
+
 pub fn query_remotes(
     ws: &WorkspaceSession,
     tracking_bookmark: Option<String>,
@@ -526,20 +774,26 @@ async fn get_value_hunks(
     left_value: MaterializedTreeValue,
     right_value: MaterializedTreeValue,
 ) -> Result<Vec<ChangeHunk>> {
-    if left_value.is_absent() {
-        let right_part = get_value_contents(path, right_value).await?;
-        get_unified_hunks(num_context_lines, &[], &right_part)
-    } else if right_value.is_present() {
-        let left_part = get_value_contents(path, left_value).await?;
-        let right_part = get_value_contents(path, right_value).await?;
-        get_unified_hunks(num_context_lines, &left_part, &right_part)
+    let left_part = if left_value.is_absent() {
+        Some(Vec::new())
     } else {
-        let left_part = get_value_contents(path, left_value).await?;
-        get_unified_hunks(num_context_lines, &left_part, &[])
+        get_value_contents(path, left_value).await?
+    };
+    let right_part = if right_value.is_absent() {
+        Some(Vec::new())
+    } else {
+        get_value_contents(path, right_value).await?
+    };
+    match (left_part, right_part) {
+        (Some(left), Some(right)) => get_unified_hunks(num_context_lines, &left, &right),
+        _ => Ok(Vec::new()),
     }
 }
 
-async fn get_value_contents(path: &RepoPath, value: MaterializedTreeValue) -> Result<Vec<u8>> {
+async fn get_value_contents(
+    path: &RepoPath,
+    value: MaterializedTreeValue,
+) -> Result<Option<Vec<u8>>> {
     match value {
         MaterializedTreeValue::Absent => Err(anyhow!(
             "Absent path {path:?} in diff should have been handled by caller"
@@ -550,14 +804,10 @@ async fn get_value_contents(path: &RepoPath, value: MaterializedTreeValue) -> Re
 
             let start = &contents[..8000.min(contents.len())]; // same heuristic git uses
             let is_binary = start.contains(&b'\0');
-            if is_binary {
-                contents.clear();
-                contents.push_str("(binary)");
-            }
-            Ok(contents)
+            Ok((!is_binary).then_some(contents))
         }
-        MaterializedTreeValue::Symlink { target, .. } => Ok(target.into_bytes()),
-        MaterializedTreeValue::GitSubmodule(_) => Ok("(submodule)".to_owned().into_bytes()),
+        MaterializedTreeValue::Symlink { target, .. } => Ok(Some(target.into_bytes())),
+        MaterializedTreeValue::GitSubmodule(_) => Ok(Some("(submodule)".to_owned().into_bytes())),
         MaterializedTreeValue::FileConflict(file) => {
             let mut hunk_content = vec![];
             conflicts::materialize_merge_result(
@@ -573,10 +823,10 @@ async fn get_value_contents(path: &RepoPath, value: MaterializedTreeValue) -> Re
                     },
                 },
             )?;
-            Ok(hunk_content)
+            Ok(Some(hunk_content))
         }
         MaterializedTreeValue::OtherConflict { id, labels } => {
-            Ok(id.describe(&labels).into_bytes())
+            Ok(Some(id.describe(&labels).into_bytes()))
         }
         MaterializedTreeValue::Tree(_) => Err(anyhow!("Unexpected tree in diff at path {path:?}")),
         MaterializedTreeValue::AccessDenied(error) => Err(anyhow!(error)),
@@ -845,4 +1095,39 @@ fn diff_by_line<'input, T: AsRef<[u8]> + ?Sized + 'input>(
 
 fn commit_id_identity(commit_id: &CommitId) -> &CommitId {
     commit_id
+}
+
+#[cfg(test)]
+mod binary_hunk_tests {
+    use super::*;
+    use jj_lib::backend::{CopyId, FileId};
+
+    fn file(bytes: &[u8]) -> MaterializedTreeValue {
+        MaterializedTreeValue::File(MaterializedFileValue {
+            id: FileId::new(vec![0; 20]),
+            executable: false,
+            copy_id: CopyId::placeholder(),
+            reader: Box::pin(futures_util::io::Cursor::new(bytes.to_vec())),
+        })
+    }
+
+    #[tokio::test]
+    async fn binary_content_never_produces_editable_hunks() -> Result<()> {
+        let path = RepoPath::from_internal_string("binary.dat")?;
+        for (left, right) in [
+            (file(b"a\0one"), file(b"b\0two")),
+            (MaterializedTreeValue::Absent, file(b"a\0one")),
+            (file(b"a\0one"), MaterializedTreeValue::Absent),
+            (file(b"text\n"), file(b"a\0one")),
+            (file(b"a\0one"), file(b"text\n")),
+        ] {
+            assert!(get_value_hunks(3, path, left, right).await?.is_empty());
+        }
+        assert!(
+            !get_value_hunks(3, path, file(b"(binary)"), file(b"text\n"))
+                .await?
+                .is_empty()
+        );
+        Ok(())
+    }
 }
