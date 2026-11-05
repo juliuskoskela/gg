@@ -112,13 +112,15 @@
     {/each}
 {/if}
 
-<path d={path} fill="none" stroke-dasharray={line.indirect ? "1,2" : "none"} class:target={$currentTarget == operand} />
+<path d={path} fill="none" stroke-dasharray={line.indirect ? "1,3" : "none"} class:target={$currentTarget == operand} style="--lane: var(--lane-{Math.max(c1, c2) % 8})" />
 
 <style>
     path {
         pointer-events: none;
-        stroke: var(--graph-edge);
-        stroke-width: 1;
+        stroke: color-mix(in oklab, var(--lane, var(--graph-edge)) var(--graph-wire-tint), var(--graph-edge));
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
 
     foreignObject > :global(*) {
@@ -130,9 +132,11 @@
         height: 100%;
     }
 
-    path.target { stroke: var(--text); }
+    path.target { stroke: var(--text-strong); stroke-width: 2; }
     .backdrop.target {
         outline: 2px solid var(--text);
         outline-offset: -2px;
     }
+
+    @media (forced-colors: active) { path { stroke: GrayText; } }
 </style>
