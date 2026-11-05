@@ -1,4 +1,5 @@
 <script lang="ts">
+    export let tone: "neutral" | "bookmark" | "remote" | "tag" | "workspace" = "neutral";
     export let context: boolean;
     export let target: boolean;
     export let disconnected: boolean = false;
@@ -6,7 +7,7 @@
     export let tip: string = "";
 </script>
 
-<div class="chip" class:context class:target class:disconnected class:immobile title={tip}>
+<div class="chip" data-tone={tone} class:context class:target class:disconnected class:immobile title={tip}>
     <slot />
 </div>
 
@@ -22,17 +23,29 @@
 
         display: flex;
         align-items: center;
-        border: 1px solid var(--rule);
+        --ref-tone: var(--muted);
+        color: var(--muted);
+        border: 1px solid color-mix(in srgb, var(--ref-tone) 15%, transparent);
         border-radius: var(--radius-sm);
         padding: 0 6px;
-        background: transparent;
+        background: color-mix(in srgb, var(--ref-tone) 6%, transparent);
         white-space: nowrap;
         gap: 4px;
     }
 
+    .chip[data-tone="bookmark"] { --ref-tone: var(--ref-bookmark, var(--muted)); }
+    .chip[data-tone="remote"] { --ref-tone: var(--ref-remote, var(--muted)); }
+    .chip[data-tone="tag"] { --ref-tone: var(--ref-tag, var(--muted)); }
+    .chip[data-tone="workspace"] { --ref-tone: var(--ref-workspace, var(--muted)); }
+    .chip:not(.context):not(.target) > :global(svg:first-child) { color: var(--ref-tone); }
+
+    :global(.selection-item[aria-selected="true"]) .chip { color: var(--text); }
+    @media (hover: hover) { :global(.selection-item:hover) .chip { color: var(--text); } }
+
     .context {
         color: inherit;
         border-color: var(--control);
+        background: var(--hover);
     }
 
     .target {
@@ -46,7 +59,7 @@
         border-style: dashed;
     }
 
-    .immobile {
-        border-style: none;
+    .immobile:not(.context):not(.target) {
+        border-color: transparent;
     }
 </style>

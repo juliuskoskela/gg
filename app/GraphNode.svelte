@@ -1,13 +1,14 @@
 <script lang="ts">
     import { revisionNodeRadius, revisionRowHeight } from "./graphLayout";
     import type { RevHeader } from "./messages/RevHeader";
-    import { currentContext } from "./stores.js";
+    import { currentContext, revisionSelectEvent } from "./stores.js";
 
     export let header: RevHeader;
     export let rowHeight = revisionRowHeight;
 
     let context = false;
     $: context = $currentContext?.type == "Revision" && header == $currentContext.header;
+    $: selected = $revisionSelectEvent?.from.commit.hex === header.id.commit.hex || $revisionSelectEvent?.to.commit.hex === header.id.commit.hex;
     $: wcClass = header.working_copy_of != null ? "other-wc" : "wc";
 </script>
 
@@ -23,6 +24,8 @@
         <circle class={wcClass} cx="9" cy={rowHeight / 2} r="2" />
     {/if}
 {/if}
+
+{#if selected}<circle class="selected" cx="9" cy={rowHeight / 2} r={revisionNodeRadius + 2} />{/if}
 
 {#if context}<circle class="context" cx="9" cy={rowHeight / 2} r={revisionNodeRadius + 3} />{/if}
 
@@ -46,5 +49,6 @@
         fill: var(--warning);
     }
 
+    .selected { stroke: var(--accent); stroke-width: 1.25; fill: none; }
     .context { stroke: var(--graph-context); fill: none; }
 </style>

@@ -207,7 +207,9 @@
     }
 
     .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); }
+    .layout > :global(.id .change), .layout > :global(.id .hidden) { color: var(--muted); }
     .desc { font-size: var(--type-ui); font-weight: 500; }
+    :global(.selection-item[aria-selected="true"]) .desc:not(.indescribable) { color: var(--text-strong); }
     .compact { height: auto; min-height: max(36px, 2.75em); grid-template-areas: "id desc refs"; grid-template-rows: 1fr; padding-right: 0; }
     .compact.expanded { height: auto; min-height: 52px; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id refs" "desc desc"; grid-template-rows: auto auto; gap: 4px 8px; padding: 8px; }
     .expanded .desc { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
