@@ -20,10 +20,6 @@
 
     $: label = ref.type === "LocalBookmark" ? ref.bookmark_name : `${ref.bookmark_name}@${ref.remote_name}`;
 
-    $: state = (
-        ref.type === "LocalBookmark" ? (ref.is_synced ? "change" : "add") : ref.is_tracked ? "remove" : "change"
-    ) as "add" | "change" | "remove";
-
     $: disconnected =
         settings.markUnpushedBookmarks &&
         (ref.type === "LocalBookmark"
@@ -38,9 +34,9 @@
 
 <Object {operand} label={bookmarkLabel(ref)} {defaultCommand} conflicted={ref.has_conflict} let:context let:hint={dragHint}>
     <Zone {operand} let:target let:hint={dropHint}>
-        <Chip {context} {target} {disconnected} {tip}>
-            <Icon name="bookmark" state={context ? null : state} />
-            {#if lifecycleIcon}<Icon name={lifecycleIcon} />{/if}
+        <Chip tone={ref.type === "LocalBookmark" ? "bookmark" : "remote"} {context} {target} {disconnected} {tip}>
+            <Icon name="bookmark" />
+            {#if lifecycleIcon}<Icon name={lifecycleIcon} state={ref.has_conflict ? "remove" : null} />{/if}
             <span>{dragHint ?? dropHint ?? label}</span>
         </Chip>
     </Zone>

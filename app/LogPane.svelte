@@ -502,8 +502,10 @@
     input {
         font-family: var(--stack-code);
         font-size: var(--type-ui);
+        color: var(--muted);
     }
     .graph-body { display: grid; grid-template-rows: 28px minmax(0, 1fr); min-width: 0; min-height: 0; }
+    input:focus-visible { color: var(--text-strong); }
     .graph-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; color: var(--muted); }
     .density-control { display: flex; align-items: center; gap: 6px; font-size: 12px; }
     .density-control select { min-height: 24px; padding: 0 4px; font-size: 12px; border: 0; background: transparent; }

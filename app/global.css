@@ -115,25 +115,28 @@
 }
 #shell {
   color-scheme: light dark;
-  --ground: light-dark(var(--neutral-50), var(--neutral-950));
-  --surface: light-dark(var(--neutral-0), var(--neutral-900));
-  --raised: light-dark(var(--neutral-25), var(--neutral-850));
-  --hover: light-dark(var(--neutral-100), var(--neutral-800));
-  --active: light-dark(var(--neutral-150), var(--neutral-750));
-  --border: light-dark(var(--neutral-200), var(--neutral-700));
-  --rule: light-dark(var(--neutral-150), var(--neutral-800));
+  --ground: light-dark(var(--neutral-50), #0b0c0f);
+  --surface: light-dark(var(--neutral-0), #111317);
+  --raised: light-dark(var(--neutral-25), #1a1d23);
+  --hover: light-dark(var(--neutral-100), #20242c);
+  --active: light-dark(var(--neutral-150), #2a303a);
+  --border: light-dark(var(--neutral-200), #2c323c);
+  --rule: light-dark(var(--neutral-150), #21262e);
   --control: light-dark(var(--neutral-400), var(--neutral-500));
-  --control-border: var(--neutral-400);
-  --control-hover: light-dark(var(--neutral-500), var(--neutral-400));
+  --control-border: light-dark(#89898b, #707b8c);
+  --input-border: light-dark(#89898b, #5d697a);
+  --input-surface: light-dark(#ffffff, #16191f);
+  --control-hover: light-dark(var(--neutral-500), #647185);
   --scrollbar-thumb: light-dark(#00000055, #ffffff55);
   --scrollbar-thumb-hover: light-dark(#00000080, #ffffff80);
-  --text: light-dark(var(--neutral-900), var(--neutral-250));
-  --muted: light-dark(color-mix(in srgb, var(--neutral-600) 95%, var(--neutral-900)), var(--neutral-350));
-  --faint: var(--neutral-400);
+  --text: light-dark(var(--neutral-900), #bdc4cf);
+  --text-strong: light-dark(#111317, #e0e6ef);
+  --muted: light-dark(color-mix(in srgb, var(--neutral-600) 95%, var(--neutral-900)), #929ca9);
+  --faint: light-dark(var(--neutral-500), #7f8a99);
   --text-disabled: light-dark(var(--neutral-400), var(--neutral-500));
   --accent: light-dark(var(--accent-600), var(--accent-400));
-  --selection-bg: light-dark(var(--neutral-100), var(--neutral-750));
-  --selection-hover: light-dark(var(--neutral-150), var(--neutral-700));
+  --selection-bg: light-dark(var(--neutral-100), #252e3c);
+  --selection-hover: light-dark(var(--neutral-150), #293344);
   --selection-text: var(--text);
   --control-pressed: color-mix(in srgb, var(--text) 12%, var(--active));
   --accent-subtle: light-dark(var(--accent-50), var(--accent-900));
@@ -144,10 +147,14 @@
   --positive: light-dark(#247647, #7bc89a);
   --negative: light-dark(#b63545, #f294a0);
   --warning: light-dark(#87650b, #e0c57f);
-  --graph-edge: light-dark(var(--neutral-400), #666a70);
-  --graph-node: light-dark(var(--neutral-500), #84888f);
-  --graph-immutable: light-dark(#587963, #789181);
-  --graph-context: light-dark(var(--neutral-600), var(--neutral-300));
+  --graph-edge: light-dark(var(--neutral-400), #606d7e);
+  --graph-node: light-dark(var(--neutral-500), #a3afc0);
+  --graph-immutable: light-dark(#587963, #8aa895);
+  --graph-context: light-dark(var(--neutral-600), #c2ccda);
+  --ref-bookmark: light-dark(#355e86, #97b2ce);
+  --ref-remote: light-dark(#596b80, #9ba7b7);
+  --ref-workspace: light-dark(#6c568a, #afa4ca);
+  --ref-tag: light-dark(#786032, #c0ad89);
   --focus-ring: var(--accent);
   --sheet-surface: var(--surface);
   --sheet-border: var(--border);
@@ -178,7 +185,7 @@
 #shell.light { color-scheme: light; }
 #shell.dark { color-scheme: dark; }
 /* the native titlebar samples the root background on macos. */
-:root { color-scheme: light dark; background: light-dark(var(--neutral-50), var(--neutral-950)); }
+:root { color-scheme: light dark; background: light-dark(var(--neutral-50), #0b0c0f); }
 html:has(#shell.light) { color-scheme: light; }
 html:has(#shell.dark) { color-scheme: dark; }
 html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -186,27 +193,28 @@ html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
 ::selection { background: var(--active); color: var(--text); }
 button, input, select, textarea { font: inherit; }
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-button, a, input, select, textarea, summary { transition: background-color var(--motion-feedback) ease-out; }
+button, a, input, select, textarea, summary { transition: background-color var(--motion-feedback) ease-out, border-color var(--motion-feedback) ease-out, color var(--motion-feedback) ease-out; }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
 textarea, select, input {
   outline: none;
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-control);
   padding: 5px var(--control-padding-inline); min-height: var(--control-height); font-size: var(--type-ui); line-height: 1.54;
   min-width: 0;
-  background: var(--surface);
+  background: var(--input-surface);
   color: var(--text);
   caret-color: var(--accent);
 }
-textarea:focus-visible, select:focus-visible, input:focus-visible { border-color: var(--accent); outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
-textarea:disabled, input:disabled, select:disabled { background: var(--raised); color: var(--text-disabled); cursor: default; }
+textarea:focus-visible, select:focus-visible, input:focus-visible { border-color: var(--accent); outline: 2px solid color-mix(in srgb, var(--focus-ring) 35%, transparent); outline-offset: 1px; background: var(--surface); }
+textarea:disabled, input:disabled, select:disabled { border-color: var(--rule); background: var(--raised); color: var(--text-disabled); cursor: default; }
 input[type="checkbox"] { min-height: 16px; width: 16px; height: 16px; padding: 0; accent-color: var(--accent-solid); }
 input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
 select { cursor: pointer; }
 select:disabled { cursor: default; }
+select:open { border-color: var(--accent); background: var(--raised); }
 select:not(:disabled):active { border-color: var(--control-hover); background: var(--control-pressed); }
 h1, h2, h3, p { margin: 0; }
-h2, h3 { font-size: var(--type-ui); font-weight: 500; }
+h2, h3 { font-size: var(--type-ui); font-weight: 500; color: var(--text-strong); }
 ul, ol { margin: 0; padding: 0; }
 pre, code { font-family: var(--stack-code); }
 /* repository zones receive drops through their non-interactive contents. */
@@ -217,7 +225,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
 }
 
 @media (hover: hover) {
-  input:not(:disabled):hover, textarea:not(:disabled):hover, select:not(:disabled):hover { border-color: var(--control-hover); }
+  input:not(:disabled):not(:focus-visible):hover, textarea:not(:disabled):not(:focus-visible):hover, select:not(:disabled):not(:focus-visible):not(:open):hover { border-color: var(--control-hover); }
 }
 @media (prefers-reduced-motion: no-preference) {
   [role="dialog"] button.primary:not(:disabled):active { scale: .985; }
