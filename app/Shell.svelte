@@ -330,6 +330,12 @@
                     <label for="workspace-path">Repository path</label>
                     <input id="workspace-path" bind:value={workspacePath} placeholder="/path/to/repository" on:keydown={(event) => { if (event.key === "Enter" && workspacePath.trim()) initialize(workspacePath.trim()); }} />
                     <ActionWidget safe primary disabled={!workspacePath.trim()} onClick={() => initialize(workspacePath.trim())}>Open workspace</ActionWidget>
+                    {#if isTauri()}
+                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: false })}>Choose repository…</ActionWidget>
+                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "n", ctrl: true, shift: true })}>Initialize repository…</ActionWidget>
+                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: true })}>Clone repository…</ActionWidget>
+                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "f5", ctrl: false, shift: false })}>Reopen repository</ActionWidget>
+                    {/if}
                     <RecentWorkspaces workspaces={recentWorkspaces} />
                 </ErrorDialog>
             </ModalOverlay>

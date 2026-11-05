@@ -7,6 +7,7 @@
     import { contextCommands, repositoryCommands, revisionCommands, type Command } from "./registry";
     import { workspaceViews } from "../workspace/views";
     import type { RevHeader } from "../messages/RevHeader";
+    import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
 
     export let headers: RevHeader[] | undefined = undefined;
     let open = false;
@@ -16,6 +17,7 @@
     let previous: HTMLElement | null = null;
     $: activeHeaders = headers ?? $selectionHeaders;
     $: commands = [
+        ...zoomCommands($appZoom, $nativeZoomEnabled),
         ...repositoryCommands("", $currentMutation, $mutationPending, $repoStatusEvent, $repoConfigEvent),
         ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),

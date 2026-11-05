@@ -3,12 +3,14 @@
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Icon from "../controls/Icon.svelte";
     import IdSpan from "../controls/IdSpan.svelte";
-    import { repositoryCommands } from "../commands/registry";
+    import { nativeRepositoryCommands, repositoryCommands } from "../commands/registry";
+    import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
+    import type { RepoConfig } from "../messages/RepoConfig";
     import type { Operand } from "../messages/Operand";
     import type { RichHint } from "../mutators/BinaryMutator";
     import BinaryMutator from "../mutators/BinaryMutator";
     import { currentMutation, ignoreToggled, currentSource, currentTarget, hasModal, repoConfigEvent, repoStatusEvent } from "../stores";
-    import { isTauri, trigger } from "../ipc";
+    import { isTauri, query, trigger } from "../ipc";
     import ToggleWidget from "../controls/ToggleWidget.svelte";
     import BookmarkSpan from "../controls/BookmarkSpan.svelte";
 
@@ -18,6 +20,20 @@
     let remoteName = "";
     let viewportWidth = 1440;
     let menuOpen = false;
+    let recent: string[] = [];
+    async function toggleMenu() {
+        menuOpen = !menuOpen;
+        if (menuOpen && isTauri()) {
+            let result = await query<string[]>("query_recent_workspaces", null);
+            if (result.type === "data") recent = result.value;
+        }
+    }
+    async function openRecent(path: string) {
+        menuOpen = false;
+        let result = await query<RepoConfig>("query_workspace", { path });
+        if (result.type === "data") repoConfigEvent.set(result.value);
+        else repoConfigEvent.set({ type: "LoadError", absolute_path: path, message: result.message });
+    }
     let toolbar: HTMLDivElement;
     $: remotes = $repoConfigEvent.type === "Workspace" ? $repoConfigEvent.git_remotes : [];
     $: if (!remotes.includes(remoteName)) remoteName = remotes[0] ?? "";
@@ -86,7 +102,7 @@
         <ActionWidget secondary tip="Undo the latest operation" disabled={!!$currentMutation} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
         {/if}
         <div class="more-actions">
-            <button class="more-button" aria-label="More repository actions" aria-expanded={menuOpen} on:click={() => menuOpen = !menuOpen}><Icon name="more-horizontal" /></button>
+            <button class="more-button" aria-label="More repository actions" aria-expanded={menuOpen} on:click={toggleMenu}><Icon name="more-horizontal" /></button>
             {#if menuOpen}
                 <div class="action-menu">
                     {#if viewportWidth <= 600}
@@ -94,6 +110,24 @@
                         <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || !!$currentMutation} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
                         <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || !!$currentMutation} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
                         <ActionWidget secondary tip="Undo the latest operation" disabled={!!$currentMutation} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
+                        <hr />
+                    {/if}
+                    {#if isTauri()}
+                        {#each nativeRepositoryCommands() as command}
+                            <button type="button" on:click={() => { menuOpen = false; command.execute(); }}>{command.label}</button>
+                        {/each}
+                        {#if recent.length}
+                            <span class="menu-heading">Recent workspaces</span>
+                            {#each recent as path}
+                                <button type="button" class="recent" title={path} on:click={() => openRecent(path)}>{path}</button>
+                            {/each}
+                        {/if}
+                        {#if $nativeZoomEnabled}
+                            <span class="menu-heading">App zoom · {Math.round($appZoom.level * 100)}%</span>
+                            {#each zoomCommands($appZoom, true) as command}
+                                <button type="button" disabled={!!command.reason} on:click={() => command.execute()}>{command.label}</button>
+                            {/each}
+                        {/if}
                         <hr />
                     {/if}
                     <ActionWidget secondary tip="Refresh" disabled={refreshing} onClick={() => { onRefresh(); menuOpen = false; }}><Icon name="refresh-cw" /> {refreshing ? "Refreshing…" : "Refresh"}</ActionWidget>
@@ -136,6 +170,11 @@
     .more-button:active { background: var(--control-pressed); }
     .action-menu { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 6px); z-index: 70; width: min(300px, calc(100vw - 32px)); max-height: calc(100dvh - var(--workspace-topbar-height, 60px) - 20px); overflow: auto; overscroll-behavior: contain; padding: 5px; display: grid; gap: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--raised); box-shadow: var(--shadow-overlay); pointer-events: auto; }
     .action-menu :global(button) { justify-content: flex-start; }
+    .action-menu > button { border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); padding: 6px 8px; text-align: start; cursor: pointer; }
+    .action-menu > button:hover { background: var(--hover); }
+    .action-menu > button:disabled { opacity: .5; cursor: default; }
+    .menu-heading { padding: 5px 8px; font-size: var(--type-caption); color: var(--muted); }
+    .recent { overflow-wrap: anywhere; }
     .action-menu .action-label { display: inline; }
     .protection { padding: 8px 7px 4px; margin-block-start: 4px; border-block-start: 1px solid var(--rule); display: flex; align-items: center; gap: var(--space-2); font-size: var(--type-ui); color: var(--text); }
     .protection.overriding { color: var(--warning); }

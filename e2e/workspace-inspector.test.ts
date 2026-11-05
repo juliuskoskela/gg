@@ -469,25 +469,71 @@ describe("compact workspace inspector", () => {
         await expect.poll(() => column.evaluate(el => el.scrollLeft)).toBe(saved);
     });
 
-    it("aligns the graph node, ID, and description in a 44px row", async () => {
+    it("switches persisted history density while keeping graph geometry and reading position", async () => {
         await ctx.page.goto(backend);
+        let density = ctx.page.getByRole("combobox", { name: "History density" });
         let row = ctx.page.locator(".graph .selection-item").first();
         await row.waitFor();
+        expect(await ctx.page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
+        expect(await density.inputValue()).toBe("compact");
         let metrics = await row.evaluate(element => {
             let center = (rect: DOMRect) => rect.y + rect.height / 2;
             let bounds = element.getBoundingClientRect();
             let id = element.querySelector(".id")!.getBoundingClientRect();
             let description = element.querySelector(".desc")!.getBoundingClientRect();
             let node = element.closest("g")!.querySelector("circle")!.getBoundingClientRect();
-            return { height: bounds.height, row: center(bounds), id: center(id), description: center(description), node: center(node), text: element.textContent };
+            return { height: bounds.height, row: center(bounds), id: center(id), description: center(description), node: center(node) };
         });
-        expect(metrics.height).toBe(44);
+        expect(metrics.height).toBe(32);
         expect(Math.abs(metrics.row - metrics.id)).toBeLessThanOrEqual(2);
         expect(Math.abs(metrics.row - metrics.description)).toBeLessThanOrEqual(2);
         expect(Math.abs(metrics.row - metrics.node)).toBeLessThanOrEqual(2);
-        expect(await row.locator(".email").count()).toBe(0);
-        await row.click();
-        await expect.poll(() => ctx.page.locator(".revision-preview .authorship").textContent()).not.toBe("");
+        expect(await row.locator(".author").count()).toBe(0);
+        let list = ctx.page.getByRole("listbox", { name: "Revision List" });
+        await list.evaluate(element => { element.scrollTop = 320; });
+        await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(320);
+        let topLabel = () => list.evaluate(element => {
+            let top = element.getBoundingClientRect().top;
+            return [...element.querySelectorAll('.graph .selection-item')]
+                .filter(row => row.getBoundingClientRect().bottom > top + 1)
+                .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0]?.getAttribute("aria-label");
+        });
+        let anchor = await topLabel();
+        await density.selectOption("tall");
+        await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(600);
+        expect(await topLabel()).toBe(anchor);
+        let tallMetrics = await row.evaluate(element => {
+            let id = element.querySelector(".id")!.getBoundingClientRect();
+            let description = element.querySelector(".desc")!.getBoundingClientRect();
+            let author = element.querySelector(".author")!;
+            return { height: element.getBoundingClientRect().height, id: id.y + id.height / 2, description: description.y + description.height / 2, authorTop: author.getBoundingClientRect().top, descriptionBottom: description.bottom, authorWeight: getComputedStyle(author).fontWeight, author: author.textContent };
+        });
+        expect(tallMetrics.height).toBe(60);
+        expect(Math.abs(tallMetrics.id - tallMetrics.description)).toBeLessThanOrEqual(2);
+        expect(tallMetrics.authorTop).toBeGreaterThanOrEqual(tallMetrics.descriptionBottom);
+        expect(tallMetrics.authorWeight).toBe("400");
+        expect(tallMetrics.author).toBeTruthy();
+        await ctx.page.reload();
+        await row.waitFor();
+        expect(await density.inputValue()).toBe("tall");
+        expect((await row.boundingBox())!.height).toBe(60);
+    });
+
+    it("keeps compact history touch rows at 44px", async () => {
+        let touch = await ctx.browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 } });
+        try {
+            let page = await touch.newPage();
+            await page.goto(backend);
+            let row = page.locator(".graph .selection-item").first();
+            await row.waitFor();
+            expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
+            expect((await row.boundingBox())!.height).toBe(44);
+            await page.getByRole("combobox", { name: "History density" }).selectOption("tall");
+            await expect.poll(async () => (await row.boundingBox())?.height).toBe(60);
+            expect(await row.locator(".author").textContent()).toBeTruthy();
+        } finally {
+            await touch.close();
+        }
     });
 
     it("captures responsive light and dark workspace states without page overflow", async () => {

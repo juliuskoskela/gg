@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { revisionRowHeight } from "../graphLayout";
     import type { RevHeader } from "../messages/RevHeader";
     import type { Operand } from "../messages/Operand";
     import { ignoreToggled, currentTarget, revisionSelectEvent } from "../stores.js";
@@ -17,9 +18,13 @@
     export let selected: boolean; // same as the imported event, but parent may want to force a value
     export let noBookmarks: boolean = false;
     export let expanded = false;
+    export let tall = false;
+    export let rowHeight = revisionRowHeight;
     export let onClick: ((header: RevHeader) => void) | undefined = undefined;
     export let onShiftClick: ((header: RevHeader) => void) | undefined = undefined;
 
+    $: referenceNames = header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name);
+    $: accessibleLabel = [revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; ");
     $: operand = (child ? { type: "Parent", header, child } : { type: "Revision", header }) as Operand;
 
     /*
@@ -51,7 +56,7 @@
     suffix={header.id.commit.prefix}
     conflicted={header.has_conflict}
     {selected}
-    label={revisionLabel(header)}
+    label={accessibleLabel}
     on:click={onSelect}
     on:dblclick={onEdit}
     let:context
@@ -94,7 +99,7 @@
         </div>
     {:else}
         <Zone {operand} let:target let:hint={dropHint}>
-            <div class="layout" class:target>
+            <div class="layout" class:target class:tall style:--history-row-height={`${rowHeight}px`}>
                 <IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
@@ -104,6 +109,7 @@
                         (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}
                 </span>
 
+                {#if tall}<span class="author truncate">{header.author.name || header.author.email || "Unknown author"}</span>{/if}
                 <span class="refs" role="group" aria-label="Bookmarks and workspaces">
                     {#each header.refs as ref}
                         {#if ref.type != "Tag"}
@@ -134,21 +140,23 @@
         pointer-events: auto;
         /* layout summary components along a text line */
         width: 100%;
-        height: 44px;
+        height: var(--history-row-height, 32px);
         display: grid;
         grid-template-areas: "id desc refs";
-        grid-template-columns: 4.75rem minmax(0, 1fr) fit-content(40%);
+        grid-template-columns: max-content minmax(0, 1fr) fit-content(40%);
         grid-template-rows: 1fr;
         align-content: center;
         padding-right: 12px;
         align-items: center;
-        column-gap: 10px;
+        column-gap: 8px;
         row-gap: 0;
 
         /* skip past svg lines when used in a graph */
         padding-left: var(--leftpad);
     }
 
+    .layout.tall { grid-template-areas: "id desc refs" ". author refs"; grid-template-rows: 22px 18px; row-gap: 2px; }
+    .author { grid-area: author; color: var(--muted); font-size: var(--type-caption); font-weight: 400; pointer-events: none; }
     .layout.target {
         outline: 2px solid var(--text);
         outline-offset: -2px;
@@ -167,6 +175,7 @@
     }
 
     .desc.indescribable {
+        font-weight: 400;
         color: var(--muted);
     }
 
@@ -198,11 +207,15 @@
     }
 
     .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); }
-    .desc { font-size: var(--type-ui); font-weight: 400; }
-    :global(.selection-item[aria-selected="true"]) .desc:not(.indescribable) { font-weight: 500; }
+    .desc { font-size: var(--type-ui); font-weight: 500; }
     .compact { height: auto; min-height: max(36px, 2.75em); grid-template-areas: "id desc refs"; grid-template-rows: 1fr; padding-right: 0; }
     .compact.expanded { height: auto; min-height: 52px; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id refs" "desc desc"; grid-template-rows: auto auto; gap: 4px 8px; padding: 8px; }
     .expanded .desc { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
-    @container timeline (max-width: 400px) { .layout:not(.compact) { grid-template-columns: 4rem minmax(0, 1fr) fit-content(40%); grid-template-areas: "id desc refs"; column-gap: 8px; } }
-    @media (max-width: 900px) { .layout:not(.compact) { grid-template-columns: 4rem minmax(0, 1fr) fit-content(40%); grid-template-areas: "id desc refs"; column-gap: 8px; } }
+    @container timeline (max-width: 400px) {
+        .layout:not(.compact) { grid-template-columns: max-content minmax(0, 1fr) fit-content(25%); }
+        .layout:not(.compact) .refs { max-width: 64px; }
+        .layout:not(.compact) .refs :global(.chip) { padding-inline: 4px; }
+        .layout:not(.compact) .refs :global(.chip > span),
+        .layout:not(.compact) .refs :global(.chip > svg:not(:first-child)) { display: none; }
+    }
 </style>

@@ -6,6 +6,7 @@
     import { currentTarget } from "./stores";
 
     export let line: EnhancedLine;
+    export let rowHeight = revisionRowHeight;
 
     let isMerge = line.type == "ToIntersection";
     let allowEarlyBreak = line.type == "FromNode";
@@ -19,8 +20,8 @@
     // draw path downward, from child to parent
     let path: string;
 
-    let childY = r1 * revisionRowHeight + revisionRowHeight / 2 + revisionNodeRadius;
-    let parentY = r2 * revisionRowHeight + revisionRowHeight / 2 - revisionNodeRadius;
+    let childY = r1 * rowHeight + rowHeight / 2 + revisionNodeRadius;
+    let parentY = r2 * rowHeight + rowHeight / 2 - revisionNodeRadius;
 
     type Block = { x: number; y: number; w: number; h: number };
     let blocks: Block[] = [];

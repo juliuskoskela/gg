@@ -1,7 +1,7 @@
 <script lang="ts">
     import { setDestinationCandidates } from "./commands/context";
-    import { revisionRowHeight } from "./graphLayout";
-    import { onMount } from "svelte";
+    import { anchoredHistoryScroll, historyDensity, historyRowHeight } from "./graphLayout";
+    import { onMount, tick } from "svelte";
     import type { LogPage } from "./messages/LogPage.js";
     import type { LogRow } from "./messages/LogRow.js";
     import type { RevHeader } from "./messages/RevHeader";
@@ -64,6 +64,17 @@
     let logHeight = 0;
     let logWidth = 0;
     let logScrollTop = 0;
+    let graphBody: HTMLDivElement;
+    let previousRowHeight = $historyRowHeight;
+    $: if ($historyRowHeight !== previousRowHeight) preserveHistoryAnchor($historyRowHeight);
+    async function preserveHistoryAnchor(height: number) {
+        let box = graphBody?.querySelector<HTMLElement>(".listbox");
+        let top = anchoredHistoryScroll(box?.scrollTop ?? logScrollTop, previousRowHeight, height);
+        previousRowHeight = height;
+        await tick();
+        if (box) box.scrollTop = top;
+        logScrollTop = box?.scrollTop ?? top;
+    }
 
     /**
      * Helper to set selection with proper topological ordering.
@@ -426,11 +437,11 @@
     </div>
 
     </div>
-    <div slot="body" class="graph-body">
-        <div class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span></div>
+    <div slot="body" class="graph-body" bind:this={graphBody}>
+        <div class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span><label class="density-control"><span>Density</span><select aria-label="History density" value={$historyDensity} on:change={event => historyDensity.set(event.currentTarget.value === "tall" ? "tall" : "compact")}><option value="compact">Compact</option><option value="tall">Tall</option></select></label></div>
     <ListWidget
         type="Revision"
-        rowHeight={revisionRowHeight}
+        rowHeight={$historyRowHeight}
         scrollPaddingBottom={overlayInset}
         descendant={$revisionSelectEvent?.to.commit.prefix}
         {list}
@@ -442,6 +453,7 @@
         {:else if graphRows}
             {#if graphRows.length}
             <GraphLog
+                rowHeight={$historyRowHeight}
                 containerHeight={logHeight}
                 endInset={reservedInset}
                 containerWidth={logWidth}
@@ -450,6 +462,8 @@
                 let:row>
                 {#if row}
                     <RevisionObject
+                        rowHeight={$historyRowHeight}
+                        tall={$historyDensity === "tall"}
                         header={row.revision}
                         selected={isInSelectedRange(row, $revisionSelectEvent)}
                         onClick={handleClick}
@@ -491,6 +505,9 @@
     }
     .graph-body { display: grid; grid-template-rows: 28px minmax(0, 1fr); min-width: 0; min-height: 0; }
     .graph-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; color: var(--muted); }
+    .density-control { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .density-control select { min-height: 24px; padding: 0 4px; font-size: 12px; border: 0; background: transparent; }
+    @media (pointer: coarse) { .graph-body { grid-template-rows: 44px minmax(0, 1fr); } .density-control select { min-height: 44px; font-size: 16px; } }
     .graph-caption > span:first-child { color: var(--muted); }
     .empty-graph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--muted); text-align: center; }
     .empty-graph h3 { color: var(--text); font-size: 14px; }

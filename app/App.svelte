@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, tick } from "svelte";
+    import DisplayZoom from "./display/DisplayZoom.svelte";
     import { compactWorkspace, paneMode, revisionSelectEvent, mobileFilesVisible, hasModal, hasMenu, repoConfigEvent } from "./stores";
     import { workspaceController } from "./workspace/state";
     import InspectorSheet from "./workspace/InspectorSheet.svelte";
@@ -111,6 +112,8 @@
         event.preventDefault();
     }
 </script>
+
+<DisplayZoom />
 
 <svelte:window on:keydown={escape} bind:innerHeight={viewportHeight} />
 

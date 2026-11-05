@@ -157,6 +157,7 @@ impl AppState {
         }
     }
 
+    #[cfg(target_os = "macos")]
     fn window_entries(&self) -> Vec<(String, String)> {
         let mut entries: Vec<(String, String)> = self
             .windows
@@ -257,14 +258,16 @@ fn enable_menu_items(app_handle: &AppHandle) -> Result<()> {
 }
 
 pub fn run_gui(options: super::RunOptions) -> Result<()> {
-    let recent_workspaces = options.settings.ui_recent_workspaces();
-    let initial_recent = recent_workspaces.clone();
+    let initial_recent = options.settings.ui_recent_workspaces();
 
     let app = tauri::Builder::default();
 
     // must be first - a second instance exits during this plugin's setup
     #[cfg(any(target_os = "macos", windows))]
     let app = app.plugin(tauri_plugin_single_instance::init(open_forwarded_launch));
+
+    #[cfg(target_os = "macos")]
+    let app = app.menu(|handle| menu::build_main(handle, &[]));
 
     let app = app
         .plugin(tauri_plugin_shell::init())
@@ -367,7 +370,6 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             redo_operation,
             write_config_table,
         ])
-        .menu(move |handle| menu::build_main(handle, &recent_workspaces, &[]))
         .manage(AppState::new(
             options.settings,
             options.ignore_immutable,
@@ -1490,18 +1492,19 @@ fn title_candidates(path: Option<&str>) -> Vec<String> {
 }
 
 fn rebuild_menu(app_handle: &AppHandle) {
-    let app_state = app_handle.state::<AppState>();
-    let recent = app_state.recent_workspaces.lock().unwrap().clone();
-    let open_windows = app_state.window_entries();
-    let handle = app_handle.clone();
-    let handle2 = handle.clone();
-    handle
-        .run_on_main_thread(move || {
-            handler::nonfatal!(menu::rebuild_main(&handle2, recent, &open_windows));
-            // the new menu has everything enabled
-            handler::nonfatal!(enable_menu_items(&handle2));
-        })
-        .ok();
+    #[cfg(target_os = "macos")]
+    {
+        let open_windows = app_handle.state::<AppState>().window_entries();
+        let handle = app_handle.clone();
+        let target = handle.clone();
+        handle
+            .run_on_main_thread(move || {
+                handler::nonfatal!(menu::rebuild_main(&target, &open_windows));
+            })
+            .ok();
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = app_handle;
 }
 
 // only macos has a window menu listing open repositories

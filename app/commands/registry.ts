@@ -1,12 +1,13 @@
 import { get } from "svelte/store";
 import { mutationPending } from "../operations";
-import { getInput, mutate, query } from "../ipc";
+import { getInput, isTauri, mutate, query, trigger } from "../ipc";
 import { chooseDestination } from "./destination";
 import { commandOperand, currentWorkspaceIdentity, destinationCandidates } from "./context";
 import type { OperationPreflight } from "../messages/OperationPreflight";
 import type { Operand } from "../messages/Operand";
 import type { RevHeader } from "../messages/RevHeader";
 import type { RevsResult } from "../messages/RevsResult";
+import type { RepoConfig } from "../messages/RepoConfig";
 import { changeSelectEvent, currentMutation, ignoreToggled, repoConfigEvent, repoStatusEvent, revisionSelectEvent } from "../stores";
 import BinaryMutator from "../mutators/BinaryMutator";
 import RevisionMutator from "../mutators/RevisionMutator";
@@ -210,12 +211,40 @@ async function moveOperand(operand: Operand, valid: () => boolean, copy = false)
     if (result?.Action === "Move" && valid() && mutator.canDrop().type === "yes") mutator.doDrop();
 }
 
+export function nativeRepositoryCommands(enabled = isTauri()): Command[] {
+    if (!enabled) return [];
+    let actions = [
+        ["open", "Open repository…", "o", false, "Ctrl/⌘ O"],
+        ["init", "Initialize repository…", "n", true, "Ctrl/⌘ Shift N"],
+        ["clone", "Clone repository…", "o", true, "Ctrl/⌘ Shift O"],
+        ["reopen", "Reopen repository", "f5", false, "F5"],
+    ] as const;
+    let commands: Command[] = actions.map(([id, label, key, shift, shortcut]) => ({
+        id: `repository.${id}`, label, icon: "folder", scope: "Repository", shortcut, reason: null,
+        execute: () => trigger("forward_accelerator", { key, ctrl: key !== "f5", shift }),
+    }));
+    commands.push({ id: "repository.recent", label: "Open recent workspace…", icon: "folder", scope: "Repository", reason: null, execute: async () => {
+        let recent = await query<string[]>("query_recent_workspaces", null);
+        if (recent.type !== "data" || !recent.value.length) { await getInput("Recent workspaces", "No recent workspaces available.", []); return; }
+        let answer = await getInput("Open recent workspace", "", [{ label: "Workspace", choices: recent.value }]);
+        let path = answer?.Workspace;
+        if (!path || !recent.value.includes(path)) return;
+        let result = await query<RepoConfig>("query_workspace", { path });
+        if (result.type === "data") repoConfigEvent.set(result.value);
+        else repoConfigEvent.set({ type: "LoadError", absolute_path: path, message: result.message });
+    } });
+    commands.push({ id: "repository.close", label: "Close window", icon: "x", scope: "Repository", reason: null,
+        execute: async () => { let { getCurrentWindow } = await import("@tauri-apps/api/window"); await getCurrentWindow().close(); } });
+    return commands;
+}
+
 export function repositoryCommands(remoteName = "", ..._dependencies: unknown[]): Command[] {
     let config = get(repoConfigEvent);
     let remotes = config.type === "Workspace" ? config.git_remotes : [];
     let busy = !!get(currentMutation) || get(mutationPending);
     let status = get(repoStatusEvent);
     let commands: Command[] = [
+        ...nativeRepositoryCommands(),
         { id: "repository.undo", label: undoLabel(status?.operation_description), icon: "rotate-ccw", scope: "Repository", shortcut: "Ctrl/⌘ Z", reason: busy ? "Another operation is in progress" : null, execute: async () => { await executeRecovery(false); } },
         { id: "repository.redo", label: "Redo", icon: "rotate-cw", scope: "Repository", shortcut: "Ctrl/⌘ Shift Z", reason: busy ? "Another operation is in progress" : !status?.can_redo ? "Nothing to redo" : null, execute: async () => { await executeRecovery(true); } },
     ];
