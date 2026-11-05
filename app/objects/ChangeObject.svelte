@@ -29,8 +29,11 @@
     $: hasDiffTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool;
     $: hasMergeTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool;
 
-    $: icon = change.kind === "Added" ? "plus" : change.kind === "Deleted" ? "minus" : "edit-3";
-    $: state = (change.kind === "Added" ? "add" : change.kind === "Deleted" ? "remove" : null) as "add" | "change" | "remove" | null;
+    $: insertions = change.stat?.added ?? countLines(change, "+");
+    $: deletions = change.stat?.removed ?? countLines(change, "-");
+    function countLines(target: RevChange, sign: string) {
+        return target.hunks.reduce((total, hunk) => total + hunk.lines.lines.filter(line => line.startsWith(sign)).length, 0);
+    }
     function onSelect() {
         changeSelectEvent.set(change);
         onSelected();
@@ -66,18 +69,27 @@
     let:context
     let:hint>
     <Zone {operand} let:target>
-        <div class="layout" class:target class:wrap>
+        <div class="layout" class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
-            <span dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
-            <span class="change-status" role="img" aria-label={change.has_conflict ? "Unresolved conflict" : change.kind} title={change.has_conflict ? "Unresolved conflict" : change.kind}><Icon name={change.has_conflict ? "alert-triangle" : icon} state={context ? null : state} /></span>
+            <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
+            {#if change.has_conflict}
+                <span class="kind" role="img" aria-label="Unresolved conflict" title="Unresolved conflict"><Icon name="alert-triangle" state={context ? null : "remove"} /></span>
+            {:else if change.kind === "Added" || change.kind === "Deleted"}
+                <span class="kind" role="img" aria-label={change.kind} title={change.kind}><Icon name={change.kind === "Added" ? "file-plus" : "file-minus"} state={context ? null : change.kind === "Added" ? "add" : "remove"} /></span>
+            {/if}
+            {#if insertions || deletions}
+                <span class="stat" class:plain={context} aria-label="{insertions} added, {deletions} removed lines">{#if insertions}<span class="ins">+{insertions}</span>{/if}{#if deletions}<span class="del">−{deletions}</span>{/if}</span>
+            {:else if change.kind === "Modified" && !change.has_conflict}
+                <span class="kind modified" role="img" aria-label="Modified" title="Modified"></span>
+            {/if}
             {#if hasMergeTool && change.has_conflict && operand}
-                <ActionWidget tip="resolve in merge tool" onClick={onExternalResolve}>
+                <span class="tool"><ActionWidget tip="resolve in merge tool" onClick={onExternalResolve}>
                     <Icon name="external-link" /> Resolve
-                </ActionWidget>
+                </ActionWidget></span>
             {:else if hasDiffTool && operand}
-                <ActionLink tip="open in diff tool" onClick={onExternalDiff}>
+                <span class="tool"><ActionLink tip="open in diff tool" onClick={onExternalDiff}>
                     <Icon name="external-link" />
-                </ActionLink>
+                </ActionLink></span>
             {/if}
         </div>
     </Zone>
@@ -96,17 +108,25 @@
         padding-inline-start: 3px;
     }
 
-    .layout > span:not(.change-status) {
+    .name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        flex: 1;
+        flex: 0 1 auto;
+        min-width: 0;
     }
+    .deleted .name { color: var(--muted); }
 
-    .change-status { display: flex; flex: 0 0 auto; --icon-size: 14px; }
+    .kind { display: flex; flex: 0 0 auto; --icon-size: 13px; }
+    .kind.modified { width: 5px; height: 5px; border-radius: 50%; background: var(--faint); }
+    .stat { display: flex; flex: 0 0 auto; gap: 5px; font-size: var(--type-caption); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+    .ins { color: var(--positive); }
+    .del { color: var(--negative); }
+    .stat.plain span { color: inherit; }
+    .tool { display: flex; flex: 0 0 auto; margin-inline-start: auto; }
 
     @media (pointer: coarse), (max-width: 600px) { .layout { min-height: 44px; } }
-    .layout.wrap span { white-space: normal; overflow-wrap: anywhere; }
+    .layout.wrap .name { white-space: normal; overflow-wrap: anywhere; }
 
     .layout.target {
         outline: 2px solid var(--text);

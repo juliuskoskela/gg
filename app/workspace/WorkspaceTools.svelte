@@ -72,9 +72,10 @@
     .tool-header { display: flex; align-items: center; gap: 8px; min-height: 40px; border-block-end: 1px solid var(--rule); background: var(--ground); }
     .destination .tool-header { min-height: 52px; }
     .tool-header h1 { font-size: var(--type-ui); }
-    .tool-tabs { display: flex; flex: 1; min-width: 0; overflow-x: auto; }
+    .tool-tabs { padding: 3px var(--panel-inset); gap: 2px; display: flex; flex: 1; min-width: 0; overflow-x: auto; }
     button { flex-shrink: 0; min-height: 40px; padding: 6px 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
-    button[aria-current] { color: var(--text); box-shadow: inset 0 -2px var(--accent); }
+    .tool-tabs button { min-height: 24px; padding: 2px 8px; }
+    button[aria-current] { color: var(--text-strong); background: var(--surface); border-radius: var(--radius-control); }
     .tool-header > button { min-width: 40px; display: grid; place-items: center; }
     .destination .tool-header > button { min-width: 44px; min-height: 44px; }
     .tool-content { flex: 1; min-height: 0; overflow: auto; padding: 16px; }

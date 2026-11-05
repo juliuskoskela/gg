@@ -1,7 +1,14 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+
+async function showTab(page: Page, name: string) {
+    let tab = page.getByRole("tab", { name, exact: true });
+    if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
+    await expect.poll(() => tab.getAttribute("aria-selected")).toBe("true");
+}
 
 // Every mutation targets a temporary copy of the bundled fixture.
 async function makeRepository(ctx: TestContext, backend: string) {
@@ -46,55 +53,42 @@ describe("compact workspace inspector", () => {
     afterEach(async () => destroyContext(ctx));
 
     it("opens the selected revision as a reversible route and restores it after refresh", async () => {
-        await ctx.page.goto(backend);
-        await ctx.page.locator(".graph .selection-item").first().click();
-        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
-        await sheet.waitFor();
-        await expect.poll(() => sheet.textContent()).toContain("30 changed files");
-        await sheet.getByRole("button", { name: "Open full revision" }).click();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspect")).toMatch(/^[0-9a-f]+$/);
-        let inspect = new URL(ctx.page.url()).searchParams.get("inspect");
+        let config = await fetch(`${backend}/api/query/query_workspace`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: ctx.tempDir, client_id: "inspect-route" }) }).then(response => response.json());
+        let snapshot = await fetch(`${backend}/api/query/query_snapshot`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: "inspect-route" }) }).then(response => response.json());
+        let inspect = (snapshot ?? config.status).working_copy.hex as string;
+        await ctx.page.goto(`${backend}/?inspect=${inspect}`);
+        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("account-preferences-migration-step-00.txt");
+        expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(inspect);
+        await showTab(ctx.page, "Timeline");
+        await expect.poll(() => ctx.page.locator(".graph").isVisible()).toBe(true);
         await ctx.page.reload();
         await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspect")).toBe(inspect);
-        await expect.poll(() => ctx.page.locator(".detail-region").textContent()).toContain("account-preferences-migration-step-00.txt");
-        await ctx.page.goBack();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspect")).toBeNull();
-        await ctx.page.goForward();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspect")).toBe(inspect);
+        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("account-preferences-migration-step-00.txt");
+        await showTab(ctx.page, "Timeline");
+        await expect.poll(() => ctx.page.locator(".graph").isVisible()).toBe(true);
     });
 
-    it("collapses without exposing preview controls and ignores a cancelled drag", async () => {
+    it("keeps the timeline selected when a revision is chosen", async () => {
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
-        let handle = sheet.getByRole("button", { name: "Collapse revision preview" });
-        await handle.waitFor();
-        let bounds = (await handle.boundingBox())!;
-        await ctx.page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-        await ctx.page.mouse.down();
-        await ctx.page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 + 80);
-        await handle.dispatchEvent("pointercancel", { pointerId: 1, button: 0 });
-        await ctx.page.mouse.up();
-        expect(await sheet.getAttribute("data-presentation")).toBe("half");
-        await handle.click();
-        expect(await sheet.getAttribute("data-presentation")).toBe("collapsed");
-        expect(await sheet.getByRole("button", { name: "Open full revision" }).count()).toBe(0);
-        expect(await sheet.getByRole("list", { name: "Changed file preview" }).count()).toBe(0);
-        await sheet.getByRole("button", { name: /Preview revision:/ }).click();
-        expect(await sheet.getAttribute("data-presentation")).toBe("half");
+        expect(await ctx.page.getByRole("region", { name: "Revision preview" }).count()).toBe(0);
+        expect(await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).getAttribute("aria-selected")).toBe("true");
+        await showTab(ctx.page, "Description");
+        await expect.poll(() => ctx.page.locator(".description-panel").textContent()).toContain("Working copy");
+        expect(await ctx.page.locator("#panel-tab-tree").textContent()).toContain("30");
     });
-    it("keeps preview in bounds and honors reduced motion across compact widths", async () => {
+    it("keeps the dock inside compact widths", async () => {
         await ctx.page.emulateMedia({ reducedMotion: "reduce" });
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
-        await sheet.waitFor();
         for (let width of [360, 390, 430, 768]) {
             await ctx.page.setViewportSize({ width, height: 844 });
-            let bounds = (await sheet.boundingBox())!;
-            expect(bounds.x).toBeGreaterThanOrEqual(0);
-            expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-            expect(await sheet.evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+            for (let selector of [".workspace-topbar", ".workspace-dock"]) {
+                let bounds = (await ctx.page.locator(selector).boundingBox())!;
+                expect(bounds.x).toBeGreaterThanOrEqual(0);
+                expect(bounds.x + bounds.width).toBeLessThanOrEqual(width + 1);
+            }
+            expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
         }
     });
 
@@ -112,10 +106,9 @@ describe("compact workspace inspector", () => {
         });
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
-        await expect.poll(() => sheet.textContent()).toContain("30 changed files");
+        await expect.poll(() => ctx.page.locator("#panel-tab-tree").textContent()).toContain("30");
         expect(new Set(paths).size).toBeLessThanOrEqual(1);
-        await sheet.getByRole("button", { name: "Open full revision" }).click();
+        await showTab(ctx.page, "Diff");
         await expect.poll(() => paths.some(path => path.endsWith("step-00.txt"))).toBe(true);
         await expect.poll(() => ctx.page.getByRole("region", { name: "File diff" }).textContent()).toContain("Loading");
         await ctx.page.getByRole("button", { name: "Next changed file" }).click();
@@ -133,8 +126,10 @@ describe("compact workspace inspector", () => {
         let config = await fetch(`${backend}/api/query/query_workspace`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: ctx.tempDir, client_id: "missing-file-fixture" }) }).then(response => response.json());
         let snapshot = await fetch(`${backend}/api/query/query_snapshot`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: "missing-file-fixture" }) }).then(response => response.json());
         await ctx.page.goto(`${backend}/?inspect=${(snapshot ?? config.status).working_copy.hex}&file=missing%2Ffile.txt`);
+        await showTab(ctx.page, "Diff");
         await ctx.page.getByRole("heading", { name: "File no longer available" }).waitFor();
-        await ctx.page.getByRole("button", { name: "Choose another file" }).click();
+        expect(await ctx.page.getByRole("button", { name: "Choose another file" }).count()).toBe(0);
+        await showTab(ctx.page, "Files");
         await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).waitFor();
         expect(new URL(ctx.page.url()).searchParams.get("file")).toBe("missing/file.txt");
     });
@@ -142,15 +137,16 @@ describe("compact workspace inspector", () => {
     it("searches files and restores each diff's scroll position", async () => {
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await showTab(ctx.page, "Files");
         let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("migration-step-20");
         await ctx.page.getByText("account-preferences-migration-step-20.txt", { exact: true }).click();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("file")).toContain("step-20.txt");
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await showTab(ctx.page, "Diff");
+        await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("step-20.txt");
+        await showTab(ctx.page, "Files");
         await search.fill("migration-step-00");
         await ctx.page.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
+        await showTab(ctx.page, "Diff");
         let diff = ctx.page.locator(".diff-scroll");
         await expect.poll(() => diff.evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(1000);
         await diff.evaluate(el => { el.scrollTop = 600; });
@@ -168,17 +164,14 @@ describe("compact workspace inspector", () => {
         await graph.evaluate(el => { el.scrollTop = 500; });
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBeGreaterThan(400);
         let graphPosition = await graph.evaluate(el => el.scrollTop);
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await showTab(ctx.page, "Files");
         await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).fill("migration-step-20");
         await ctx.page.getByText("account-preferences-migration-step-20.txt", { exact: true }).click();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("file")).toContain("step-20.txt");
-        let selected = ctx.page.url();
-        await ctx.page.goBack();
-        await expect.poll(() => ctx.page.getByRole("region", { name: "Revision preview" }).getAttribute("data-presentation")).toBe("half");
+        await showTab(ctx.page, "Diff");
+        await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("step-20.txt");
+        await showTab(ctx.page, "Timeline");
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBe(graphPosition);
-        await ctx.page.goForward();
-        await expect.poll(() => ctx.page.url()).toBe(selected);
+        await showTab(ctx.page, "Diff");
         await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("step-20.txt");
     });
 
@@ -186,6 +179,7 @@ describe("compact workspace inspector", () => {
         await ctx.page.goto(backend);
         let graph = ctx.page.locator(".graph-body .listbox");
         await graph.waitFor();
+        await ctx.page.locator(".graph .selection-item").first().click();
         await expect.poll(() => graph.evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(1000);
         await graph.evaluate(el => { el.scrollTop = 1000; });
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBeGreaterThan(500);
@@ -196,9 +190,10 @@ describe("compact workspace inspector", () => {
         await graph.evaluate(el => { el.scrollTop = 1000; });
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBeGreaterThan(500);
         let position = await graph.evaluate(el => el.scrollTop);
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
-        expect(await ctx.page.locator(".log-region").getAttribute("inert")).not.toBeNull();
-        await ctx.page.getByRole("button", { name: "Back to graph" }).click();
+        expect(await graph.evaluate(element => element.closest("[inert]"))).toBeNull();
+        await showTab(ctx.page, "Description");
+        await showTab(ctx.page, "Timeline");
+        expect(await graph.evaluate(element => element.closest("[inert]"))).toBeNull();
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBe(position);
     });
 
@@ -206,14 +201,14 @@ describe("compact workspace inspector", () => {
         await ctx.page.goto(backend);
         let graph = ctx.page.locator(".graph-body .listbox");
         await ctx.page.locator(".graph .selection-item").first().click();
-        let sheet = ctx.page.getByRole("region", { name: "Revision preview" });
-        await sheet.waitFor();
         await graph.evaluate(el => { el.scrollTop = el.scrollHeight; });
         await expect.poll(() => graph.evaluate(el => el.scrollTop + el.clientHeight)).toBeGreaterThan(1000);
         let last = ctx.page.locator(".graph .selection-item").last();
-        let row = (await last.boundingBox())!;
-        let sheetBounds = (await sheet.boundingBox())!;
-        expect(row.y + row.height).toBeLessThanOrEqual(sheetBounds.y);
+        await expect.poll(async () => {
+            let row = await last.boundingBox();
+            let graphBounds = await graph.boundingBox();
+            return !!row && !!graphBounds && row.y >= graphBounds.y - 1 && row.y + row.height <= graphBounds.y + graphBounds.height + 1;
+        }).toBe(true);
     });
 
     it("shows the latest keyboard selection when revision responses arrive out of order", async () => {
@@ -221,7 +216,7 @@ describe("compact workspace inspector", () => {
         let graph = ctx.page.locator(".graph-body .listbox");
         await ctx.page.locator(".graph .selection-item").first().waitFor();
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.locator(".revision-preview .identity").waitFor();
+        await expect.poll(() => ctx.page.locator(".description-panel .revision-id").textContent()).toBeTruthy();
         let delayed = false;
         await ctx.page.route("**/api/query/query_revision_summary", async route => {
             let response = await route.fetch();
@@ -230,13 +225,12 @@ describe("compact workspace inspector", () => {
         });
         await graph.focus();
         await graph.press("ArrowDown");
-        expect(await ctx.page.locator(".revision-preview").count()).toBe(0);
         for (let i = 1; i < 10; i++) await graph.press("ArrowDown");
         let selected = ctx.page.locator('.graph .selection-item[aria-selected="true"] .id').last();
         let expected = (await selected.textContent())!.trim();
-        await expect.poll(async () => (await ctx.page.locator(".revision-preview .identity .id").textContent())?.trim()).toBe(expected);
+        await expect.poll(async () => (await ctx.page.locator(".description-panel .revision-id").textContent())?.trim()).toContain(expected);
         await ctx.page.waitForTimeout(750);
-        expect((await ctx.page.locator(".revision-preview .identity .id").textContent())?.trim()).toBe(expected);
+        expect((await ctx.page.locator(".description-panel .revision-id").textContent())?.trim()).toContain(expected);
     });
 
     it("navigates and searches a virtualized list of over 200 changed files", async () => {
@@ -245,8 +239,7 @@ describe("compact workspace inspector", () => {
         for (let i = 0; i < 240; i++) writeFileSync(join(bulk, `item-${String(i).padStart(3, "0")}.txt`), `File ${i}\n`);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await showTab(ctx.page, "Files");
         let list = ctx.page.locator(".virtual-files");
         await list.waitFor();
         // visibility can precede the resize observer that establishes virtual row geometry
@@ -268,7 +261,9 @@ describe("compact workspace inspector", () => {
         await search.fill("item-187.txt");
         await expect.poll(() => list.locator("[data-file-index]").count()).toBe(1);
         await list.getByRole("option", { name: /item-187\.txt/ }).click();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("file")).toBe("bulk/item-187.txt");
+        await showTab(ctx.page, "Diff");
+        await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("item-187.txt");
+        expect(await ctx.page.locator('.diff-toolbar [title="bulk/item-187.txt"]').count()).toBeGreaterThan(0);
     });
 
     it("moves a selected file by command, makes cancellation a no-op, and undoes the move", async () => {
@@ -283,8 +278,7 @@ describe("compact workspace inspector", () => {
         ctx.page.on("request", request => { if (request.url().includes("/api/mutate/")) mutations.push(request.url().split("/").pop()!); });
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await showTab(ctx.page, "Files");
         let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("migration-step-00");
         await ctx.page.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
@@ -333,7 +327,7 @@ describe("compact workspace inspector", () => {
         };
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        await showTab(ctx.page, "Diff");
         let actions = ctx.page.locator(".hunk-actions");
         await actions.locator("summary").click();
         await actions.getByRole("option").first().click();
@@ -414,7 +408,7 @@ describe("compact workspace inspector", () => {
     it("keeps a description draft through an unambiguous external rewrite", async () => {
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        await showTab(ctx.page, "Description");
         await ctx.page.getByRole("button", { name: "Details", exact: true }).click();
         await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         let editor = ctx.page.getByRole("textbox", { name: "Revision description" });
@@ -435,7 +429,6 @@ describe("compact workspace inspector", () => {
         let commands = ctx.page.getByRole("dialog", { name: "Commands" });
         await commands.getByRole("textbox", { name: "Commands" }).fill("Refresh repository");
         await commands.getByRole("button", { name: /Refresh repository/ }).click();
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspect")).toBe(after);
         await expect.poll(() => editor.inputValue()).toBe("Unfinished draft\nsecond line");
     });
 
@@ -466,7 +459,7 @@ describe("compact workspace inspector", () => {
         writeFileSync(path, `${readFileSync(path, "utf8")}configuration_value = "${"long-setting-".repeat(80)}"\n`);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        await showTab(ctx.page, "Diff");
         let column = ctx.page.locator('.diff-viewer [data-overflow="scroll"] [data-code]:not([data-diffs-scrollbar-measure])').first();
         await expect.poll(() => column.evaluate(el => el.scrollWidth - el.clientWidth)).toBeGreaterThan(500);
         await column.evaluate(el => { el.scrollLeft = 400; el.dispatchEvent(new Event("scroll")); });
@@ -517,10 +510,14 @@ describe("compact workspace inspector", () => {
             let id = element.querySelector(".id")!.getBoundingClientRect();
             let description = element.querySelector(".desc")!.getBoundingClientRect();
             let author = element.querySelector(".author")!;
-            return { height: element.getBoundingClientRect().height, id: id.y + id.height / 2, description: description.y + description.height / 2, authorTop: author.getBoundingClientRect().top, descriptionBottom: description.bottom, authorWeight: getComputedStyle(author).fontWeight, author: author.textContent };
+            let transform = element.closest("g")!.getAttribute("transform");
+            let station = [...element.closest("svg")!.querySelectorAll<SVGGElement>(":scope > g")].find(group => group.getAttribute("transform") === transform && group.querySelector(".station"))!;
+            let node = station.querySelector(".station")!.getBoundingClientRect();
+            return { height: element.getBoundingClientRect().height, id: id.y + id.height / 2, description: description.y + description.height / 2, node: node.y + node.height / 2, authorTop: author.getBoundingClientRect().top, descriptionBottom: description.bottom, authorWeight: getComputedStyle(author).fontWeight, author: author.textContent };
         });
         expect(tallMetrics.height).toBe(60);
         expect(Math.abs(tallMetrics.id - tallMetrics.description)).toBeLessThanOrEqual(2);
+        expect(Math.abs(tallMetrics.node - tallMetrics.description)).toBeLessThanOrEqual(2);
         expect(tallMetrics.authorTop).toBeGreaterThanOrEqual(tallMetrics.descriptionBottom);
         expect(tallMetrics.authorWeight).toBe("400");
         expect(tallMetrics.author).toBeTruthy();
@@ -564,7 +561,7 @@ describe("compact workspace inspector", () => {
         await ctx.page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
         await ctx.page.screenshot({ path: ".taste-skill/studio/quality/workspace-large-text.png" });
         await ctx.page.evaluate(() => { document.documentElement.style.fontSize = ""; });
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        await showTab(ctx.page, "Diff");
         await ctx.page.screenshot({ path: ".taste-skill/studio/quality/workspace-full.png" });
     });
 

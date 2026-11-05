@@ -1,39 +1,33 @@
 <script lang="ts">
     import { revisionIdentity } from "./data";
-    import { revisionStatuses, bookmarkStatus } from "../revisionStatus";
     import { repositoryScope } from "../workspace/repository";
     import { tick } from "svelte";
     import { get } from "svelte/store";
     import type { RevsResult } from "../messages/RevsResult";
     import { descriptionDrafts, dragOverWidget, ignoreToggled, currentMutation, repoConfigEvent } from "../stores";
     import RevisionMutator from "../mutators/RevisionMutator";
-    import RevisionObject from "../objects/RevisionObject.svelte";
-    import BookmarkObject from "../objects/BookmarkObject.svelte";
-    import AuthorSpan from "../controls/AuthorSpan.svelte";
-    import TimestampSpan from "../controls/TimestampSpan.svelte";
-    import IdSpan from "../controls/IdSpan.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
-    import Zone from "../objects/Zone.svelte";
+    import Icon from "../controls/Icon.svelte";
+    import RevisionActions from "../RevisionActions.svelte";
+    import RevisionMetadata from "./RevisionMetadata.svelte";
 
     export let revs: Extract<RevsResult, { type: "Detail" }>;
-    export let onEditingChange: (value: boolean) => void = () => {};
+    export let readOnly = false;
     let editing = false;
-    let width = 1000;
     let editableDescription = "";
     let baselineDescription = "";
     let previousKey = "";
     let resetAuthor = false;
     let textarea: HTMLTextAreaElement;
-    $: onEditingChange(editing);
 
-    export async function beginEditing() { editing = true; await tick(); textarea?.focus(); }
+    async function beginEditing() { editing = true; await tick(); textarea?.focus(); }
     $: singleton = revs.headers.length === 1;
     $: newest = revs.headers[0];
-    $: oldest = revs.headers[revs.headers.length - 1];
     $: immutable = newest.is_immutable && !$ignoreToggled;
     $: mutator = new RevisionMutator(revs.headers, $ignoreToggled);
     $: key = revisionIdentity(revs, repositoryScope($repoConfigEvent));
-    $: incomingDescription = oldest.description.lines.join("\n");
+    $: incomingDescription = newest.description.lines.join("\n");
+    $: title = singleton ? newest.description.lines[0] || (newest.is_working_copy ? "Working copy" : "No description set") : `${revs.headers.length} revisions`;
     $: descriptionBody = incomingDescription.split("\n").slice(1).join("\n").trim();
     $: {
         if (key !== previousKey) {
@@ -56,9 +50,6 @@
             return next;
         });
     }
-    $: authors = [...new Map(revs.headers.map(header => [header.author.email, header.author])).values()];
-    $: bookmarks = newest.refs.filter(ref => ref.type === "LocalBookmark" || ref.type === "RemoteBookmark");
-
     function focusEditButton() {
         tick().then(() => document.querySelector<HTMLButtonElement>('button[aria-label="Edit revision description"]')?.focus());
     }
@@ -79,7 +70,14 @@
     $: if (editing && textarea) tick().then(() => { if (editing && document.activeElement?.tagName !== "TEXTAREA") textarea?.focus(); });
 </script>
 
-<div class="overview-content" bind:clientWidth={width}>
+<div class="overview-content">
+    <div class="revision-heading">
+        <h2 class:undescribed={singleton && !incomingDescription} tabindex="-1">{title}</h2>
+        <div class="description-tools">
+            {#if singleton && !immutable && !editing && !readOnly}<ActionWidget secondary tip="Edit revision description" onClick={beginEditing}><Icon name="edit-2" /><span>Edit description</span></ActionWidget>{/if}
+            {#if !readOnly}<RevisionActions headers={revs.headers} hasChanges={revs.changes.length + revs.conflicts.length > 0} compact />{/if}
+        </div>
+    </div>
     {#if singleton}
         {#if editing}
             <div class="description-editor"><label class="field-label" for="revision-description">Description</label>
@@ -95,51 +93,26 @@
     {:else}
         <div class="description-list">{#each revs.headers as header}<p class:undescribed={!header.description.lines.join("\n")}>{header.description.lines.join("\n") || "(no description set)"}</p>{/each}</div>
     {/if}
-    {#if revs.headers.some(header => revisionStatuses(header).length)}
-        <dl class="revision-statuses" aria-label="Revision status">{#each revs.headers as header}{#if revisionStatuses(header).length}<div><dt>{singleton ? "Status" : header.id.change.prefix}</dt><dd>{revisionStatuses(header).join(" · ")}</dd></div>{/if}{/each}</dl>
-    {/if}
-    <dl class="metadata">
-        <div class="metadata-field"><dt>{authors.length === 1 ? "Author" : "Authors"}</dt><dd class="authors">{#each authors as author}<span class="author-detail"><AuthorSpan {author} /></span>{/each}</dd></div>
-        <div class="metadata-field"><dt>Authored</dt><dd><TimestampSpan timestamp={newest.author.timestamp} /></dd></div>
-        {#if singleton}<div class="metadata-field"><dt>Change</dt><dd class="commit-identity" title={newest.id.change.hex}><IdSpan selectable id={newest.id.change} /></dd></div><div class="metadata-field"><dt>Commit</dt><dd class="commit-identity" title={newest.id.commit.hex}><IdSpan selectable id={newest.id.commit} /></dd></div>{/if}
-    </dl>
-    {#if bookmarks.length}<div class="bookmarks" aria-label="Revision bookmarks">{#each bookmarks as ref}{#if ref.type === "LocalBookmark" || ref.type === "RemoteBookmark"}<div class="bookmark"><BookmarkObject {ref} header={newest} /><span class="bookmark-status">{bookmarkStatus(ref)}</span></div>{/if}{/each}</div>{/if}
-    {#if revs.parents.length}
-        <Zone operand={{ type: "Merge", header: oldest }} let:target>
-            <div class="parents" class:target><h3 class="field-label">{revs.parents.length === 1 ? "Parent" : "Parents"}</h3><div class="parent-list">{#each revs.parents as parent}<RevisionObject header={parent} child={oldest} selected={false} noBookmarks expanded={width < 600} />{/each}</div></div>
-        </Zone>
-    {/if}
+    <RevisionMetadata {revs} />
 </div>
 
 <style>
-    .overview-content { min-width: 0; width: 100%; padding: 0 var(--pane-inset) 12px; display: flex; flex-direction: column; }
-    .description-display { min-width: 0; user-select: text; pointer-events: auto; }
-    .description-body, .description-list p { margin: 8px 0 0; max-width: 80ch; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--type-body); font-weight: 400; line-height: 1.65; user-select: text; pointer-events: auto; }
-    .description-list p.undescribed { font-size: var(--type-ui); font-weight: 400; color: var(--muted); }
-    .description-list { display: grid; gap: 8px; }
-    .revision-statuses { display: grid; gap: 4px; margin: 12px 0 0; }
-    .revision-statuses > div { display: flex; flex-wrap: wrap; gap: 4px 8px; }
-    .bookmark-status { display: block; color: var(--muted); font-size: var(--type-caption); line-height: 1.5; overflow-wrap: anywhere; margin-block-start: 2px; }
-    .metadata { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 12px 0 0; min-width: 0; }
-    .metadata-field { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-    dt, .field-label { margin: 0; font-size: var(--type-caption); font-weight: 400; color: var(--muted); flex-shrink: 0; }
-    dd { margin: 0; min-width: 0; font-size: var(--type-ui); line-height: 1.5; overflow-wrap: anywhere; }
-    .authors { display: flex; flex-wrap: wrap; gap: 4px 12px; }
-    .author-detail { min-width: 0; }
-    .authors :global(.author) { white-space: normal; color: var(--text); }
-    .commit-identity { font-size: var(--type-caption); }
-    .bookmarks { display: flex; flex-wrap: wrap; gap: 4px; margin-block-start: 12px; }
-    .bookmark { min-width: 0; max-width: 100%; }
-    .bookmark :global(.chip) { max-width: 100%; }
-    .bookmark :global(.chip span) { overflow: hidden; text-overflow: ellipsis; }
-    .parents { display: flex; align-items: center; gap: 8px; margin-block-start: 8px; min-width: 0; }
-    .parent-list { flex: 1; min-width: 0; }
-    .parents.target { outline: 2px solid var(--text); outline-offset: -2px; border-radius: var(--radius-control); }
-    .description-editor { display: flex; flex-direction: column; min-width: 0; }
-    textarea { width: 100%; min-height: 96px; max-height: 240px; resize: vertical; font-size: var(--type-ui); line-height: 1.6; padding: 10px; margin-block-start: 6px; }
-    .description-commands { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding-block-start: 6px; }
+    .overview-content { display: flex; flex-direction: column; align-items: stretch; gap: 20px; width: 100%; min-width: 0; padding: 16px; }
+    .revision-heading { display: flex; align-items: start; gap: 12px; flex-shrink: 0; min-width: 0; }
+    h2 { flex: 1; min-width: 0; margin: 3px 0 0; max-width: 80ch; font-size: var(--type-title); font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; user-select: text; pointer-events: auto; }
+    h2.undescribed { color: var(--muted); font-weight: 400; }
+    .description-tools { margin-inline-start: auto; display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; gap: 4px; }
+    .description-tools > :global(button) { font-size: var(--type-ui); }
+    .description-display, .description-list { min-width: 0; }
+    .description-body, .description-list p { margin: 0; max-width: 80ch; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--type-body); line-height: 1.65; user-select: text; pointer-events: auto; }
+    .description-list { display: grid; gap: 12px; }
+    .description-list .undescribed { color: var(--muted); }
+    .overview-content > :global(.revision-metadata) { padding-block-start: 20px; border-block-start: 1px solid var(--rule); }
+    .description-editor { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .field-label { font-size: var(--type-ui); color: var(--muted); }
+    textarea { width: 100%; min-height: 144px; resize: vertical; font-size: var(--type-body); line-height: 1.65; padding: 10px; }
+    .description-commands { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
     .reset-author { display: inline-flex; align-items: center; gap: 6px; margin-inline-end: auto; font-size: var(--type-ui); color: var(--text); }
-    @container overview (max-width: 600px) { .parents { display: block; } .parent-list { margin-block-start: 4px; margin-inline: -8px; } }
-    @media (pointer: coarse) { textarea { font-size: 16px; } .reset-author { min-height: 44px; } }
-    @media (max-width: 600px) { textarea { font-size: 16px; } .overview-content { padding-inline: 12px; }  .metadata { gap: 6px 16px; } }
+    @container overview (max-width: 520px) { .revision-heading { flex-wrap: wrap; gap: 8px; } .revision-heading h2 { flex-basis: 100%; } .description-tools { margin-inline-start: auto; } }
+    @media (pointer: coarse), (max-width: 600px) { textarea { font-size: 16px; } .reset-author { min-height: 44px; } }
 </style>

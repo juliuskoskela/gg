@@ -30,14 +30,15 @@
     }
 
     .header {
-        min-height: 40px;
+        min-height: var(--panel-toolbar-height);
+        background: var(--panel-header-bg);
         border-bottom: 1px solid var(--rule);
         padding: 4px var(--pane-inset);
         min-width: 0;
     }
 
     .body {
-        padding: 0 8px 8px;
+        padding: 0;
         min-height: 0;
         min-width: 0;
         display: grid;
@@ -50,6 +51,6 @@
 
     @media (max-width: 900px) {
         .header { padding: 4px var(--pane-inset); }
-        .body { padding: 0 8px 8px; }
+        .body { padding: 0; }
     }
 </style>

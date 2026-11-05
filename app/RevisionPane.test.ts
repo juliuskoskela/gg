@@ -58,9 +58,8 @@ describe("RevisionPane", () => {
     beforeEach(async () => {
         setupMocks();
         localStorage.clear();
-        let { descriptionDrafts, revisionMetadataVisible } = await import("./stores");
+        let { descriptionDrafts } = await import("./stores");
         descriptionDrafts.set({});
-        revisionMetadataVisible.set(true);
     });
 
     afterEach(async () => {
@@ -93,24 +92,31 @@ describe("RevisionPane", () => {
         expect(container.textContent).toContain("Test User");
     });
 
-    it("keeps the description title outside collapsed metadata and updates it on selection", async () => {
+    it("keeps description and metadata visible and updates them on selection", async () => {
         let { default: RevisionPane } = await import("./RevisionPane.svelte");
         let revs = createMockRevs();
+        revs.headers[0].is_working_copy = true;
         revs.headers[0].description.lines = ["A useful title", "", "A longer description body."];
         let { container, rerender } = render(RevisionPane, { props: { revs } });
-        let disclosure = container.querySelector<HTMLButtonElement>(".overview .disclosure")!;
-        expect(disclosure.textContent).toBe("A useful title");
+        expect(container.querySelector(".overview h2")?.textContent).toBe("A useful title");
         expect(container.querySelector(".description-body")?.textContent).toBe("A longer description body.");
-        expect(container.querySelector("#revision-overview-content")?.textContent).not.toContain("A useful title");
-        await fireEvent.click(disclosure);
-        expect(disclosure.getAttribute("aria-expanded")).toBe("false");
-        expect(disclosure.textContent).toBe("A useful title");
-        expect(container.querySelector("#revision-overview-content")?.hasAttribute("hidden")).toBe(true);
+        expect(container.querySelector(".disclosure")).toBeNull();
+        expect(container.querySelector('[aria-label="Revision metadata"]')?.textContent).toContain("Test User");
         await rerender({ revs: createMockRevs("other", "other", "Another title") });
-        expect(disclosure.textContent).toBe("Another title");
-        expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+        expect(container.querySelector(".overview h2")?.textContent).toBe("Another title");
         await rerender({ revs: createMockRevs("empty", "empty", "") });
-        expect(disclosure.textContent).toBe("(no description set)");
+        expect(container.querySelector(".overview h2")?.textContent).toBe("No description set");
+    });
+
+    it("renders bookmarks, tags and parents in shared metadata rows", async () => {
+        let { default: RevisionPane } = await import("./RevisionPane.svelte");
+        let { revisionFixture } = await import("./design/revisionFixture");
+        let { container } = render(RevisionPane, { props: { revs: revisionFixture }, context: new Map([["settings", { markUnpushedBookmarks: true }]]) });
+        let rows = [...container.querySelectorAll(".metadata-row")];
+        expect(rows.map(row => row.querySelector("dt")?.textContent)).toEqual(["Status", "Author", "Authored", "Change", "Commit", "Bookmarks", "Tags", "Parent"]);
+        expect(container.querySelector('[aria-label="Revision tags"]')?.textContent).toContain("v0.46.0");
+        expect(container.querySelector('[aria-label="Revision bookmarks"]')?.textContent).toContain("Local only");
+        expect(container.querySelector(".parents")?.textContent).toContain("Keep repository context");
     });
 
     it("keeps a draft scoped to its exact commit and restores it on return", async () => {
@@ -189,10 +195,9 @@ describe("RevisionPane", () => {
         expect(container.querySelector("textarea")?.value).toBe("Unfinished description");
     });
 
-    it("keeps squash and restore available when the overview is collapsed", async () => {
+    it("keeps squash and restore available alongside visible metadata", async () => {
         let { default: RevisionPane } = await import("./RevisionPane.svelte");
-        let { revisionMetadataVisible, revisionSelectEvent } = await import("./stores");
-        revisionMetadataVisible.set(false);
+        let { revisionSelectEvent } = await import("./stores");
         let revs = createMockRevs();
         revs.headers[0].parent_ids = [{ type: "CommitId", hex: "parent", prefix: "p", rest: "arent" }];
         revs.changes = [{ kind: "Modified", has_conflict: false, path: { repo_path: "a.ts", relative_path: "a.ts" }, hunks: [] }];
@@ -201,10 +206,9 @@ describe("RevisionPane", () => {
         await fireEvent.click(getByRole("button", { name: "Revision actions" }));
         expect(getByRole("button", { name: "Squash into parent" }).hasAttribute("disabled")).toBe(false);
         expect(getByRole("button", { name: "Restore from parent" }).hasAttribute("disabled")).toBe(false);
-        expect(container.querySelector('#revision-overview-content')?.hasAttribute("hidden")).toBe(true);
+        expect(container.querySelector('[aria-label="Revision metadata"]')?.textContent).toContain("Test User");
         await rerender({ revs: { ...revs, changes: [{ ...revs.changes[0], path: { repo_path: "b.rs", relative_path: "b.rs" } }] } });
         expect(container.textContent).toContain("File no longer available");
-        revisionMetadataVisible.set(true);
     });
 
 });

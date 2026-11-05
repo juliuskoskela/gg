@@ -48,7 +48,6 @@ export function selectWorkingCopy() {
     };
     revisionSelectEvent.set({ from: id, to: id });
     workspaceController.selectRevision({ from: id, to: id });
-    if (get(paneMode) === "history") paneMode.set("both");
 }
 
 export function dragOverWidget(event: DragEvent) {
@@ -63,14 +62,10 @@ function preference<T extends string | boolean | number>(key: string, initial: T
     store.subscribe(value => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* preferences remain usable in memory */ } });
     return store;
 }
-export let paneMode = preference<"both" | "history" | "change">("gg.panes", "both");
-export let fileTreeVisible = preference<boolean>("gg.layout.files", true);
 export let fileTreeWidth = preference<number>("gg.layout.files-width", 200);
-export let mobileFilesVisible = writable(false);
 export let diffStyle = preference<"auto" | "split" | "unified">("gg.diff-style", "auto");
 export let diffFullContext = preference<boolean>("gg.diff-full-context", false);
 export let diffWrap = preference<boolean>("gg.diff-wrap", false);
 
-export let revisionMetadataVisible = preference<boolean>("gg.layout.overview", true);
 
 export let navigationExpanded = preference<boolean>("gg.navigation.expanded", false);

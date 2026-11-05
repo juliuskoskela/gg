@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::messages::{
     RepoConfig, RepoStatus, RevSet,
-    queries::{LogPage, RevisionDiffResult, RevisionSummaryResult, RevsResult},
+    queries::{LogPage, RevisionDiffResult, RevisionSummaryResult, RevsResult, WorkspaceContext},
 };
 use crate::worker::SessionEvent;
 
@@ -19,6 +19,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/query_workspace", post(query_workspace))
         .route("/query_workspace_identity", post(query_workspace_identity))
+        .route("/query_workspace_context", post(query_workspace_context))
         .route("/query_log", post(query_log))
         .route("/query_log_next_page", post(query_log_next_page))
         .route("/query_revisions", post(query_revisions))
@@ -76,6 +77,16 @@ async fn query_workspace_identity(State(state): State<AppState>) -> Result<Json<
     state
         .worker_tx
         .send(SessionEvent::QueryWorkspaceIdentity { tx })?;
+    Ok(Json(rx.recv()??))
+}
+
+async fn query_workspace_context(
+    State(state): State<AppState>,
+) -> Result<Json<WorkspaceContext>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryWorkspaceContext { tx })?;
     Ok(Json(rx.recv()??))
 }
 

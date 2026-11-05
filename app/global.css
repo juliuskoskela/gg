@@ -104,6 +104,11 @@
   --control-padding-inline: 8px;
   --control-gap: 6px;
   --pane-inset: 12px;
+  --panel-inset: 8px;
+  --panel-tabs-height: 32px;
+  --panel-toolbar-height: 36px;
+  --panel-header-bg: var(--ground);
+  --panel-tab-active: var(--surface);
   --icon-size: 16px;
   --icon-stroke: 1.75;
   --type-caption: .75rem;

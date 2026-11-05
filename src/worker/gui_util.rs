@@ -412,6 +412,41 @@ impl WorkspaceSession<'_> {
         names
     }
 
+    /// Names the shared repository separately from this working copy.
+    pub fn workspace_context(&self) -> Result<messages::queries::WorkspaceContext> {
+        let repo_path = dunce::canonicalize(self.workspace.repo_path())
+            .unwrap_or_else(|_| self.workspace.repo_path().to_path_buf());
+        let project_root = repo_path
+            .parent()
+            .filter(|directory| directory.file_name().is_some_and(|name| name == ".jj"))
+            .and_then(|directory| directory.parent())
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| repo_path.clone());
+        let project_name = project_root
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .filter(|name| !name.is_empty())
+            .unwrap_or_else(|| "Repository".to_owned());
+        let workspace_name = self.name().as_symbol().to_string();
+        let workspace_path = self.workspace_root(workspace_name.clone())?;
+        let workspaces = self
+            .list_workspaces()
+            .into_iter()
+            .map(|name| {
+                let path = self.workspace_root(name.clone()).ok().map(Into::into);
+                messages::queries::WorkspaceRecord { name, path }
+            })
+            .collect();
+
+        Ok(messages::queries::WorkspaceContext {
+            project_name,
+            repo_path: repo_path.into(),
+            workspace_name,
+            workspace_path: workspace_path.into(),
+            workspaces,
+        })
+    }
+
     pub(crate) fn sink(&self) -> Arc<dyn super::EventSink> {
         self.session.sink.clone()
     }

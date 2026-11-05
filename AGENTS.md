@@ -76,6 +76,10 @@ jj-lib and jj-cli dependencies are pinned to specific versions (see `Cargo.toml`
 
 ## Key Patterns
 
+### View Controls
+
+Place view toggles at the top trailing corner of the view they affect, inside its header. Keep summary information together before the controls: for example, `Changes 27 files +10 −13`. Group independent toggles separately from exclusive choices, such as `[hide | wrap] [auto | side by side | stacked]`. When space is tight, wrap the controls onto their own trailing-aligned row. Keep the header outside the content's scroll area so the controls stay in place.
+
 ### Tree Merge Semantics
 
 jj-lib's `MergedTree::merge()` performs 3-way merges:

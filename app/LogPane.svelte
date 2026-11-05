@@ -9,7 +9,7 @@
     import { getInput, query, trigger } from "./ipc.js";
     import { sameChange } from "./ids.js";
     import { workspaceController } from "./workspace/state";
-    import { activeLogQuery, selectWorkingCopy, ignoreToggled, logQueryRequest, repoStatusEvent, revisionSelectEvent } from "./stores.js";
+    import { activeLogQuery, ignoreToggled, logQueryRequest, repoStatusEvent, revisionSelectEvent } from "./stores.js";
     import RevisionMutator from "./mutators/RevisionMutator.js";
     import Pane from "./shell/Pane.svelte";
     import RevisionObject from "./objects/RevisionObject.svelte";
@@ -410,7 +410,7 @@
 
 <Pane flexibleHeader>
     <div slot="header" class="graph-header">
-        {#if !integrated}<div class="graph-title"><h2 tabindex="-1">History</h2><div class="graph-tools"><ActionWidget secondary tip="Jump to working copy" onClick={selectWorkingCopy}><Icon name="edit-3" /></ActionWidget></div></div>{/if}
+        {#if !integrated}<div class="graph-title"><h2 tabindex="-1">Timeline</h2></div>{/if}
     <div class="log-selector" class:editable={isCustom || isDeletable}>
         <SelectWidget options={choices} bind:value={entered_query} on:change={reloadLog}>
             <svelte:fragment let:option>{option.label}</svelte:fragment>
@@ -482,7 +482,6 @@
     .graph-header { display: grid; gap: 4px; min-width: 0; padding-block-end: 4px; }
     .graph-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .graph-title h2 { font-size: 13px; font-weight: 500; margin: 0; }
-    .graph-tools { display: flex; align-items: center; gap: 4px; }
     .log-selector {
         min-height: 32px;
         display: grid;

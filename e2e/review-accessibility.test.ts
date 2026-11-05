@@ -40,7 +40,7 @@ describe("reviewed revision navigation", () => {
         let backend = await startGG(ctx);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
+        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
         let summary = ctx.page.locator(".hunk-actions summary");
         await summary.focus();
         await summary.press("Enter");
@@ -59,8 +59,7 @@ describe("reviewed revision navigation", () => {
         let backend = await startGG(ctx);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("button", { name: "Open full revision" }).click();
-        await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
+        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
         let list = ctx.page.getByRole("listbox", { name: "Changed files" });
         let options = list.getByRole("option");
         await expect.poll(() => options.count()).toBe(2);
@@ -69,6 +68,7 @@ describe("reviewed revision navigation", () => {
         await options.first().press("End");
         expect(await options.last().evaluate(element => element === document.activeElement)).toBe(true);
         await options.last().press("Enter");
-        await expect.poll(() => new URL(ctx.page.url()).searchParams.get("file")).toBe("folder/b.txt");
+        await expect.poll(() => options.last().getAttribute("aria-selected")).toBe("true");
+        expect(await options.last().getAttribute("aria-label")).toContain("b.txt");
     });
 });

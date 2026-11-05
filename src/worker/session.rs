@@ -77,6 +77,10 @@ pub enum SessionEvent {
     },
     /// Identify the loaded workspace, independent of the active log filter.
     QueryWorkspaceIdentity { tx: Sender<Result<String>> },
+    /// Name the shared repository and list the working copies inside it.
+    QueryWorkspaceContext {
+        tx: Sender<Result<messages::queries::WorkspaceContext>>,
+    },
     /// Look up one or more revisions by change/commit ID.
     QueryRevisions {
         tx: Sender<Result<messages::queries::RevsResult>>,
@@ -177,6 +181,9 @@ impl Session for WorkerSession {
             match evt {
                 Ok(SessionEvent::EndSession) => return Ok(()),
                 Ok(SessionEvent::QueryCurrentStatus { tx }) => {
+                    tx.send(Err(anyhow!("No workspace is loaded")))?;
+                }
+                Ok(SessionEvent::QueryWorkspaceContext { tx }) => {
                     tx.send(Err(anyhow!("No workspace is loaded")))?;
                 }
                 Ok(SessionEvent::ExecuteSnapshot { tx }) => {
@@ -309,6 +316,7 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryWorkspaceIdentity { tx } => {
                     tx.send(Ok(self.name().as_str().to_owned()))?
                 }
+                SessionEvent::QueryWorkspaceContext { tx } => tx.send(self.workspace_context())?,
                 SessionEvent::QueryRevisions { tx, set } => {
                     tx.send(queries::query_revisions(&self, set).await)?
                 }
@@ -526,6 +534,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryWorkspaceIdentity { tx }) => {
                     tx.send(Ok(self.ws.name().as_str().to_owned()))?
+                }
+                Ok(SessionEvent::QueryWorkspaceContext { tx }) => {
+                    tx.send(self.ws.workspace_context())?
                 }
                 Ok(SessionEvent::QueryRevisions { tx, set }) => {
                     tx.send(queries::query_revisions(self.ws, set).await)?

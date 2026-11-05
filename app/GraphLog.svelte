@@ -101,7 +101,7 @@
         </g>
     {/each}
 
-    {#each distinctLines as line (`${line.key}:${rowHeight}`)}
+    {#each distinctLines as line (line.key)}
         <GraphLine {line} {rowHeight} />
     {/each}
 

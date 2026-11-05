@@ -1,3 +1,7 @@
+<script context="module" lang="ts">
+    const collapsedFolders = new Map<string, boolean>();
+</script>
+
 <script lang="ts">
     import type { RevChange } from "./messages/RevChange";
     import type { RevHeader } from "./messages/RevHeader";
@@ -14,7 +18,7 @@
 </script>
 
 {#each folders as folder}
-    <details open>
+    <details open={!collapsedFolders.get(`${prefix}${folder}`)} on:toggle={event => collapsedFolders.set(`${prefix}${folder}`, !(event.currentTarget as HTMLDetailsElement).open)}>
         <summary><Icon name="chevron-right" /><span>{folder}</span></summary>
         <div class="children" role="group" aria-label={`${prefix}${folder}`}><svelte:self changes={changes.filter(change => change.path.repo_path.startsWith(`${prefix}${folder}/`))} {headers} prefix={`${prefix}${folder}/`} {selectedPath} {onSelect} /></div>
     </details>
