@@ -22,7 +22,7 @@
     }
 
     let columnWidth = 18;
-    let rowHeight = revisionRowHeight;
+    export let rowHeight = revisionRowHeight;
     export let containerHeight: number;
     export let endInset = 0;
     export let containerWidth: number;
@@ -100,13 +100,13 @@
             </foreignObject>
 
             {#if row}
-                <GraphNode header={row.revision} />
+                <GraphNode header={row.revision} {rowHeight} />
             {/if}
         </g>
     {/each}
 
-    {#each distinctLines as line (line.key)}
-        <GraphLine {line} />
+    {#each distinctLines as line (`${line.key}:${rowHeight}`)}
+        <GraphLine {line} {rowHeight} />
     {/each}
 </svg>
 

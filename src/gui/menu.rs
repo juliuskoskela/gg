@@ -1,6 +1,6 @@
 use std::path::{self, Path, PathBuf};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 #[cfg(target_os = "macos")]
 use tauri::menu::AboutMetadata;
 use tauri::{
@@ -12,152 +12,36 @@ use tauri_plugin_dialog::{DialogExt, FilePath};
 use super::{AppState, handler};
 use gg_lib::messages::{Operand, RepoEvent, RevHeader, StoreRef};
 
+// macOS requires an application menu and relies on Edit for native text editing.
+#[cfg(target_os = "macos")]
 pub fn build_main(
     app_handle: &AppHandle,
-    recent_items: &[String],
     open_windows: &[(String, String)],
 ) -> tauri::Result<Menu<Wry>> {
-    #[cfg(target_os = "macos")]
-    let pkg_info = app_handle.package_info();
-    #[cfg(target_os = "macos")]
+    let pkg = app_handle.package_info();
     let config = app_handle.config();
-    #[cfg(target_os = "macos")]
-    let about_metadata = AboutMetadata {
+    let about = AboutMetadata {
         name: Some("GG".into()),
-        version: Some(pkg_info.version.to_string()),
+        version: Some(pkg.version.to_string()),
         copyright: config.bundle.copyright.clone(),
         authors: config.bundle.publisher.clone().map(|p| vec![p]),
         ..Default::default()
     };
-
-    let repo_menu = Submenu::new(app_handle, "Repository", true)?;
-
-    repo_menu.append(&MenuItem::with_id(
+    let app_menu = Submenu::with_items(
         app_handle,
-        "menu_repo_init",
-        "Init...",
-        true,
-        Some("cmdorctrl+shift+n"),
-    )?)?;
-    repo_menu.append(&MenuItem::with_id(
-        app_handle,
-        "menu_repo_clone",
-        "Clone...",
-        true,
-        Some("cmdorctrl+shift+o"),
-    )?)?;
-
-    repo_menu.append(&PredefinedMenuItem::separator(app_handle)?)?;
-
-    repo_menu.append(&MenuItem::with_id(
-        app_handle,
-        "menu_repo_open",
-        "Open...",
-        true,
-        Some("cmdorctrl+o"),
-    )?)?;
-    repo_menu.append(&MenuItem::with_id(
-        app_handle,
-        "menu_repo_reopen",
-        "Reopen",
-        true,
-        Some("f5"),
-    )?)?;
-
-    if !recent_items.is_empty() {
-        let recent_submenu = Submenu::new(app_handle, "Open Recent", true)?;
-        for path in recent_items.iter().take(10) {
-            let label = abbreviate_path(path);
-            let id = format!("recent:{}", path);
-            if let Ok(item) = MenuItem::with_id(app_handle, id, label, true, None::<&str>) {
-                recent_submenu.append(&item)?;
-            }
-        }
-        repo_menu.append(&recent_submenu)?;
-    }
-
-    repo_menu.append(&PredefinedMenuItem::separator(app_handle)?)?;
-
-    repo_menu.append(&PredefinedMenuItem::close_window(
-        app_handle,
-        Some("Close"),
-    )?)?;
-
-    let revision_menu = Submenu::with_id_and_items(
-        app_handle,
-        "revision",
-        "Revision",
+        pkg.name.clone(),
         true,
         &[
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_new_child",
-                "New child",
-                true,
-                Some("cmdorctrl+n"),
-            )?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_new_parent",
-                "New inserted parent",
-                true,
-                Some("cmdorctrl+m"),
-            )?,
+            &PredefinedMenuItem::about(app_handle, None, Some(about))?,
             &PredefinedMenuItem::separator(app_handle)?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_edit",
-                "Edit as working copy",
-                true,
-                Some("enter"),
-            )?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_revert",
-                "Revert into working copy",
-                true,
-                None::<&str>,
-            )?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_duplicate",
-                "Duplicate",
-                true,
-                None::<&str>,
-            )?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_abandon",
-                "Abandon",
-                true,
-                None::<&str>,
-            )?,
+            &PredefinedMenuItem::services(app_handle, None)?,
             &PredefinedMenuItem::separator(app_handle)?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_squash",
-                "Squash into parent",
-                true,
-                None::<&str>,
-            )?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_restore",
-                "Restore from parent",
-                true,
-                None::<&str>,
-            )?,
+            &PredefinedMenuItem::hide(app_handle, None)?,
+            &PredefinedMenuItem::hide_others(app_handle, None)?,
             &PredefinedMenuItem::separator(app_handle)?,
-            &MenuItem::with_id(
-                app_handle,
-                "menu_revision_bookmark",
-                "Create bookmark...",
-                true,
-                None::<&str>,
-            )?,
+            &PredefinedMenuItem::quit(app_handle, None)?,
         ],
     )?;
-
     let edit_menu = Submenu::with_items(
         app_handle,
         "Edit",
@@ -172,66 +56,26 @@ pub fn build_main(
             &PredefinedMenuItem::select_all(app_handle, None)?,
         ],
     )?;
-
-    // only macos has a window menu
-    #[cfg(not(target_os = "macos"))]
-    let _ = open_windows;
-
-    #[cfg(target_os = "macos")]
-    let window_submenu = {
-        let submenu = Submenu::new(app_handle, "Window", true)?;
-        submenu.append(&PredefinedMenuItem::minimize(app_handle, None)?)?;
-        if !open_windows.is_empty() {
-            submenu.append(&PredefinedMenuItem::separator(app_handle)?)?;
-            for (label, display_name) in open_windows {
-                let id = format!("window:{label}");
-                if let Ok(item) =
-                    MenuItem::with_id(app_handle, id, display_name, true, None::<&str>)
-                {
-                    submenu.append(&item)?;
-                }
-            }
-        }
-        submenu
-    };
-
-    let menu = Menu::with_items(
-        app_handle,
-        &[
-            #[cfg(target_os = "macos")]
-            &Submenu::with_items(
+    let windows = Submenu::new(app_handle, "Window", true)?;
+    windows.append(&PredefinedMenuItem::minimize(app_handle, None)?)?;
+    if !open_windows.is_empty() {
+        windows.append(&PredefinedMenuItem::separator(app_handle)?)?;
+        for (label, name) in open_windows {
+            windows.append(&MenuItem::with_id(
                 app_handle,
-                pkg_info.name.clone(),
+                format!("window:{label}"),
+                name,
                 true,
-                &[
-                    &PredefinedMenuItem::about(app_handle, None, Some(about_metadata))?,
-                    &PredefinedMenuItem::separator(app_handle)?,
-                    &PredefinedMenuItem::services(app_handle, None)?,
-                    &PredefinedMenuItem::separator(app_handle)?,
-                    &PredefinedMenuItem::hide(app_handle, None)?,
-                    &PredefinedMenuItem::hide_others(app_handle, None)?,
-                    &PredefinedMenuItem::separator(app_handle)?,
-                    &PredefinedMenuItem::quit(app_handle, None)?,
-                ],
-            )?,
-            &repo_menu,
-            &revision_menu,
-            &edit_menu,
-            #[cfg(target_os = "macos")]
-            &window_submenu,
-        ],
-    )?;
-
-    Ok(menu)
+                None::<&str>,
+            )?)?;
+        }
+    }
+    Menu::with_items(app_handle, &[&app_menu, &edit_menu, &windows])
 }
 
-pub fn rebuild_main(
-    app_handle: &AppHandle,
-    recent_items: Vec<String>,
-    open_windows: &[(String, String)],
-) -> Result<()> {
-    let menu = build_main(app_handle, &recent_items, open_windows)?;
-    app_handle.set_menu(menu)?;
+#[cfg(target_os = "macos")]
+pub fn rebuild_main(app_handle: &AppHandle, open_windows: &[(String, String)]) -> Result<()> {
+    app_handle.set_menu(build_main(app_handle, open_windows)?)?;
     Ok(())
 }
 
@@ -445,9 +289,9 @@ pub fn handle_selection(
     headers: Option<&[RevHeader]>,
     ignore_immutable: bool,
 ) -> Result<()> {
-    let revision_submenu = menu
-        .get("revision")
-        .ok_or(anyhow!("Revision menu not found"))?;
+    let Some(revision_submenu) = menu.get("revision") else {
+        return Ok(());
+    };
     let revision_submenu = revision_submenu.as_submenu_unchecked();
 
     match headers {
@@ -714,6 +558,9 @@ pub fn handle_event(window: &Window, event: MenuEvent) -> Result<()> {
 
     let target = EventTarget::window(window.label());
     match event_id {
+        "menu_view_zoom_in" => window.emit_to(target, "gg://menu/view", "view.zoom-in")?,
+        "menu_view_zoom_out" => window.emit_to(target, "gg://menu/view", "view.zoom-out")?,
+        "menu_view_zoom_reset" => window.emit_to(target, "gg://menu/view", "view.zoom-reset")?,
         "menu_repo_init" => repo_init(window),
         "menu_repo_clone" => repo_clone(window),
         "menu_repo_open" => repo_open(window),

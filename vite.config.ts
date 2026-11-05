@@ -12,6 +12,7 @@ export default defineConfig(async () => ({
   //
   // 1. prevent vite from obscuring rust errors
   clearScreen: false,
+  optimizeDeps: { include: ["@tauri-apps/api/webview"] },
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 6973,

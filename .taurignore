@@ -6,3 +6,8 @@ flake.lock
 doc/
 result
 result-*
+# Vite reloads the frontend; these edits do not require a native restart.
+app/
+e2e/
+dist/
+.taste-skill/

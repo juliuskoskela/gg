@@ -4,6 +4,7 @@
     import { currentContext } from "./stores.js";
 
     export let header: RevHeader;
+    export let rowHeight = revisionRowHeight;
 
     let context = false;
     $: context = $currentContext?.type == "Revision" && header == $currentContext.header;
@@ -12,18 +13,18 @@
 
 {#if header.is_immutable}
     {#if header.is_working_copy}
-        <circle class={wcClass} cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius} />
+        <circle class={wcClass} cx="9" cy={rowHeight / 2} r={revisionNodeRadius} />
     {:else}
-        <circle class="immutable" cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius} />
+        <circle class="immutable" cx="9" cy={rowHeight / 2} r={revisionNodeRadius} />
     {/if}
 {:else}
-    <circle cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius} class="mutable" />
+    <circle cx="9" cy={rowHeight / 2} r={revisionNodeRadius} class="mutable" />
     {#if header.is_working_copy}
-        <circle class={wcClass} cx="9" cy={revisionRowHeight / 2} r="2" />
+        <circle class={wcClass} cx="9" cy={rowHeight / 2} r="2" />
     {/if}
 {/if}
 
-{#if context}<circle class="context" cx="9" cy={revisionRowHeight / 2} r={revisionNodeRadius + 3} />{/if}
+{#if context}<circle class="context" cx="9" cy={rowHeight / 2} r={revisionNodeRadius + 3} />{/if}
 
 <style>
     circle {
