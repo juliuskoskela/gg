@@ -409,9 +409,8 @@ describe("compact workspace inspector", () => {
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
         await showTab(ctx.page, "Description");
-        await ctx.page.getByRole("button", { name: "Details", exact: true }).click();
-        await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         let editor = ctx.page.getByRole("textbox", { name: "Revision description" });
+        if (!await editor.isVisible()) await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         await editor.fill("Unfinished draft\nsecond line");
         let queryId = { change: { type: "ChangeId", hex: "@", prefix: "@", rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId", hex: "", prefix: "", rest: "" } };
         let result = await fetch(`${backend}/api/query/query_revisions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set: { from: queryId, to: queryId }, client_id: "draft-fixture" }) }).then(response => response.json());
@@ -472,11 +471,11 @@ describe("compact workspace inspector", () => {
 
     it("switches persisted history density while keeping graph geometry and reading position", async () => {
         await ctx.page.goto(backend);
-        let density = ctx.page.getByRole("combobox", { name: "History density" });
+        let density = ctx.page.getByRole("button", { name: "Tall revisions" });
         let row = ctx.page.locator(".graph .selection-item").first();
         await row.waitFor();
         expect(await ctx.page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
-        expect(await density.inputValue()).toBe("compact");
+        expect(await density.getAttribute("aria-pressed")).toBe("false");
         let metrics = await row.evaluate(element => {
             let center = (rect: DOMRect) => rect.y + rect.height / 2;
             let bounds = element.getBoundingClientRect();
@@ -488,14 +487,14 @@ describe("compact workspace inspector", () => {
             let node = station.querySelector(".station")!.getBoundingClientRect();
             return { height: bounds.height, row: center(bounds), id: center(id), description: center(description), node: center(node) };
         });
-        expect(metrics.height).toBe(32);
+        expect(metrics.height).toBe(28);
         expect(Math.abs(metrics.row - metrics.id)).toBeLessThanOrEqual(2);
         expect(Math.abs(metrics.row - metrics.description)).toBeLessThanOrEqual(2);
         expect(Math.abs(metrics.row - metrics.node)).toBeLessThanOrEqual(2);
         expect(await row.locator(".author").count()).toBe(0);
         let list = ctx.page.getByRole("listbox", { name: "Revision List" });
-        await list.evaluate(element => { element.scrollTop = 320; });
-        await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(320);
+        await list.evaluate(element => { element.scrollTop = 280; });
+        await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(280);
         let topLabel = () => list.evaluate(element => {
             let top = element.getBoundingClientRect().top;
             return [...element.querySelectorAll('.graph .selection-item')]
@@ -503,7 +502,7 @@ describe("compact workspace inspector", () => {
                 .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0]?.getAttribute("aria-label");
         });
         let anchor = await topLabel();
-        await density.selectOption("tall");
+        await density.click();
         await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(600);
         expect(await topLabel()).toBe(anchor);
         let tallMetrics = await row.evaluate(element => {
@@ -523,7 +522,7 @@ describe("compact workspace inspector", () => {
         expect(tallMetrics.author).toBeTruthy();
         await ctx.page.reload();
         await row.waitFor();
-        expect(await density.inputValue()).toBe("tall");
+        expect(await density.getAttribute("aria-pressed")).toBe("true");
         expect((await row.boundingBox())!.height).toBe(60);
     });
 
@@ -536,7 +535,7 @@ describe("compact workspace inspector", () => {
             await row.waitFor();
             expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
             expect((await row.boundingBox())!.height).toBe(44);
-            await page.getByRole("combobox", { name: "History density" }).selectOption("tall");
+            await page.getByRole("button", { name: "Tall revisions" }).click();
             await expect.poll(async () => (await row.boundingBox())?.height).toBe(60);
             expect(await row.locator(".author").textContent()).toBeTruthy();
         } finally {

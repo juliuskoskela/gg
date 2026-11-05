@@ -40,7 +40,7 @@ describe("whole-file diff context", () => {
         expect(await text()).not.toContain("context-line-000");
         await expect.poll(() => ctx.page.locator(".hunk-actions summary").textContent()).toContain("2");
         let toggle = ctx.page.getByRole("button", { name: "Hide unmodified lines", exact: true });
-        let heading = ctx.page.locator(".changes-heading");
+        let heading = ctx.page.locator(".panel-tabs-bar").filter({ has: ctx.page.getByRole("tab", { name: "Diff", exact: true }) });
         let controls = heading.locator(".display-options");
         async function expectHeaderControls() {
             let bounds = (await heading.boundingBox())!;
@@ -49,14 +49,26 @@ describe("whole-file diff context", () => {
             let totals = (await heading.locator(".diff-stat").boundingBox())!;
             expect(tools.x).toBeGreaterThanOrEqual(bounds.x);
             expect(tools.x + tools.width).toBeLessThanOrEqual(bounds.x + bounds.width);
-            expect(bounds.x + bounds.width - tools.x - tools.width).toBeLessThanOrEqual(16);
+            let close = (await heading.getByRole("button", { name: "Close Diff", exact: true }).boundingBox())!;
+            if (tools.y < close.y + close.height && tools.y + tools.height > close.y) expect(tools.x + tools.width).toBeLessThanOrEqual(close.x);
+            else expect(tools.x + tools.width).toBeLessThanOrEqual(close.x + close.width);
+            expect(bounds.x + bounds.width - close.x - close.width).toBeLessThanOrEqual(9);
             expect(tools.y).toBeGreaterThanOrEqual(bounds.y);
             expect(tools.y + tools.height).toBeLessThanOrEqual(bounds.y + bounds.height);
             expect(totals.x).toBeGreaterThanOrEqual(count.x + count.width);
             expect(await controls.getByRole("button").count()).toBe(5);
-            expect(await ctx.page.locator(".diff-toolbar .display-options").count()).toBe(0);
+            expect(await ctx.page.locator(".changes-module .display-options").count()).toBe(0);
+            expect(await heading.locator(".file-count").textContent()).toContain("file");
         }
         await expectHeaderControls();
+        let timelineHeader = ctx.page.locator(".panel-tabs-bar").filter({ has: ctx.page.getByRole("tab", { name: "Timeline", exact: true }) });
+        expect((await timelineHeader.boundingBox())!.height).toBe((await heading.boundingBox())!.height);
+        expect(await timelineHeader.getByRole("button", { name: "Tall revisions", exact: true }).count()).toBe(1);
+        let timelineFooter = (await ctx.page.locator(".timeline-footer").boundingBox())!;
+        let diffFooter = (await ctx.page.locator(".diff-footer").boundingBox())!;
+        expect(diffFooter.height).toBe(timelineFooter.height);
+        expect(diffFooter.y).toBe(timelineFooter.y);
+        expect(await ctx.page.locator(".diff-footer").getByRole("button", { name: "Next changed file" }).count()).toBe(1);
         expect(await toggle.getAttribute("aria-pressed")).toBe("true");
         await toggle.click();
         await expect.poll(text).toContain("context-line-000");
@@ -75,8 +87,13 @@ describe("whole-file diff context", () => {
         await ctx.page.setViewportSize({ width: 320, height: 844 });
         await expectHeaderControls();
         let position = (await controls.boundingBox())!;
+        let footerPosition = (await ctx.page.locator(".diff-footer").boundingBox())!;
         await ctx.page.locator(".diff-scroll").evaluate(element => element.scrollTop = element.scrollHeight);
         expect((await controls.boundingBox())!.y).toBe(position.y);
+        expect((await ctx.page.locator(".diff-footer").boundingBox())!.y).toBe(footerPosition.y);
         expect(await ctx.page.getByText(/Couldn’t render this diff/).count()).toBe(0);
+        await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).click();
+        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
+        await expectHeaderControls();
     });
 });

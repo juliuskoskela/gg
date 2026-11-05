@@ -16,7 +16,7 @@ describe("GG+ workspace", () => {
         await filter.waitFor();
         let original = await filter.inputValue();
         await ctx.page.getByRole("button", { name: "Working copy", exact: true }).click();
-        await ctx.page.getByRole("heading", { name: "Working copy", exact: true }).waitFor();
+        await ctx.page.getByRole("textbox", { name: "Revision description" }).waitFor();
         expect(await filter.inputValue()).toBe(original);
         let splitter = ctx.page.getByRole("separator", { name: "Resize panels" }).first();
         expect(Number(await splitter.getAttribute("aria-valuenow"))).toBe(42);
@@ -56,15 +56,15 @@ describe("GG+ workspace", () => {
         await empty.waitFor();
         expect((await empty.boundingBox())!.y).toBeLessThan((await ctx.page.locator(".graph-body").boundingBox())!.y + (await ctx.page.locator(".graph-body").boundingBox())!.height);
         await ctx.page.route("**/api/query/query_snapshot", route => route.fulfill({ status: 503, body: "Snapshot temporarily unavailable" }));
-        await ctx.page.getByRole("button", { name: "More repository actions" }).click();
-        await ctx.page.getByRole("button", { name: "Refresh", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "Refresh repository", exact: true }).click();
         await ctx.page.getByRole("alert").waitFor();
         expect((await ctx.page.locator(".workspace-content").boundingBox())!.height).toBeGreaterThan(300);
     });
 
     it("focuses either pane and preserves description drafts with persistent navigation", async () => {
         await ctx.page.goto(await startGG(ctx));
-        await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
+        await ctx.page.locator(".overview .revision-metadata").waitFor();
+        if (!await ctx.page.getByRole("textbox", { name: "Revision description" }).isVisible()) await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         let editor = ctx.page.getByRole("textbox", { name: "Revision description" });
         await editor.fill("Draft preserved while browsing history");
         await ctx.page.getByRole("button", { name: "Close Description", exact: true }).click();
@@ -90,6 +90,33 @@ describe("GG+ workspace", () => {
         await ctx.page.getByRole("button", { name: "Collapse repository navigation" }).click();
         expect((await sheet.boundingBox())!.x).toBe(railWidth);
 
+    });
+
+    it("opens revision tools independently of the editable description", async () => {
+        await ctx.page.goto(await startGG(ctx));
+        await ctx.page.getByRole("textbox", { name: "Revision description", exact: true }).waitFor();
+        await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
+        await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools", exact: true }).click();
+        await ctx.page.locator(".revision-tools").waitFor();
+        expect(await ctx.page.locator(".revision-tools button").count()).toBe(13);
+        expect(await ctx.page.locator(".overview .revision-tools, .overview .revision-actions").count()).toBe(0);
+        await ctx.page.getByRole("button", { name: "Close Revision tools", exact: true }).click();
+        expect(await ctx.page.locator(".revision-tools").count()).toBe(0);
+        expect(await ctx.page.getByRole("textbox", { name: "Revision description", exact: true }).isVisible()).toBe(true);
+        let gutters = await ctx.page.locator(".timeline-section").evaluate(node => {
+            let outer = node.getBoundingClientRect();
+            let list = node.querySelector(".listbox")!.getBoundingClientRect();
+            return [list.left - outer.left, outer.right - list.right];
+        });
+        expect(gutters).toEqual([12, 12]);
+        let footer = ctx.page.locator(".timeline-footer");
+        expect(await footer.getByRole("textbox", { name: "Filter revisions with a revset" }).count()).toBe(1);
+        expect(await footer.getByRole("combobox", { name: "Saved revset" }).count()).toBe(1);
+        let footerBounds = (await footer.boundingBox())!;
+        let panelBounds = (await ctx.page.locator("#panel-timeline").boundingBox())!;
+        expect(Math.abs(footerBounds.y + footerBounds.height - panelBounds.y - panelBounds.height)).toBeLessThanOrEqual(1);
+        await ctx.page.locator(".graph-body .listbox").evaluate(node => node.scrollTop = node.scrollHeight);
+        expect((await footer.boundingBox())!.y).toBe(footerBounds.y);
     });
 
     it("renders highlighted split and unified diffs with searchable folder browsing", async () => {
@@ -240,14 +267,15 @@ describe("GG+ workspace", () => {
         await ctx.page.addInitScript(() => localStorage.setItem("gg.layout.overview", "false"));
         await ctx.page.goto(await startGG(ctx));
         let overview = ctx.page.getByRole("complementary", { name: "Revision overview" });
-        await overview.getByRole("heading", { name: "Working copy", exact: true }).waitFor();
+        await overview.getByRole("textbox", { name: "Revision description" }).waitFor();
         expect(await overview.locator(".disclosure").count()).toBe(0);
         let panel = (await ctx.page.locator(".description-panel").boundingBox())!;
-        let heading = (await overview.locator("h2").boundingBox())!;
+        let heading = (await overview.getByRole("textbox", { name: "Revision description" }).boundingBox())!;
         expect(heading.y - panel.y).toBeLessThan(40);
         let values = await overview.locator(".metadata-row dd").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().x));
         expect(new Set(values).size).toBe(1);
-        await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
+        await ctx.page.locator(".overview .revision-metadata").waitFor();
+        if (!await ctx.page.getByRole("textbox", { name: "Revision description" }).isVisible()) await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         let editor = ctx.page.getByRole("textbox", { name: "Revision description" });
         await editor.fill("A full-width revision description that stays readable across workspace sizes");
         expect(await overview.locator('[aria-label="Revision metadata"]').isVisible()).toBe(true);
@@ -316,7 +344,8 @@ describe("GG+ workspace", () => {
 
     it("saves a description, undoes it, and opens the revset dialog", async () => {
         await ctx.page.goto(await startGG(ctx));
-        await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
+        await ctx.page.locator(".overview .revision-metadata").waitFor();
+        if (!await ctx.page.getByRole("textbox", { name: "Revision description" }).isVisible()) await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         let editor = ctx.page.getByRole("textbox", { name: "Revision description" });
         let previous = await editor.inputValue();
         await editor.fill("Inspect GG+ description workflow");

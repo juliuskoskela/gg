@@ -6,6 +6,7 @@
     import type { RevChange } from "../messages/RevChange";
     import LogPane from "../LogPane.svelte";
     import NeovimEditor from "../editor/NeovimEditor.svelte";
+    import RevisionTools from "../revision/RevisionTools.svelte";
     import RevisionChanges from "../revision/RevisionChanges.svelte";
     import RevisionFiles from "../revision/RevisionFiles.svelte";
     import RevisionOverviewPanel from "../revision/RevisionOverviewPanel.svelte";
@@ -46,9 +47,17 @@
             <RevisionOverviewPanel revs={detail} />
         {/if}
     </div>
+{:else if id === "revision-tools"}
+    {#if selection.type === "error"}
+        <p class="panel-status" role="alert">{selection.message}</p>
+    {:else if selection.type === "wait"}
+        <p class="panel-status" role="status">Loading revision…</p>
+    {:else}
+        <RevisionTools {headers} />
+    {/if}
 {:else if id === "diff"}
     {#if detail}
-        <RevisionChanges revs={detail} {changes} {selectedPath} {onSelectFile} focused={true} />
+        <RevisionChanges revs={detail} {changes} {selectedPath} {onSelectFile} focused={true} showTools={false} />
     {:else}
         <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : selection.type === "error" ? selection.message : "This revset matches nothing."}</p>
     {/if}

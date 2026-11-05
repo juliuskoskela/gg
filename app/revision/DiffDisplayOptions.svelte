@@ -23,5 +23,5 @@
 </div>
 
 <style>
-    .display-options { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--control-gap); max-width: 100%; margin-inline-start: auto; }
+    .display-options { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--tool-group-gap); max-width: 100%; margin-inline-start: auto; }
 </style>

@@ -140,7 +140,7 @@
         pointer-events: auto;
         /* layout summary components along a text line */
         width: 100%;
-        height: var(--history-row-height, 32px);
+        height: var(--history-row-height, 28px);
         display: grid;
         grid-template-areas: "id desc refs";
         grid-template-columns: max-content minmax(0, 1fr) fit-content(40%);
@@ -189,7 +189,7 @@
         /* webkit misplaces scrolling layers inside transformed svg foreign objects. */
         overflow-x: clip;
         scrollbar-width: none;
-        gap: 3px;
+        gap: 6px;
         color: var(--text);
     }
 

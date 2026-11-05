@@ -6,16 +6,26 @@ afterEach(cleanup);
 
 describe("panel header tabs", () => {
     let items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }];
-    it("keeps one close action outside the tablist for the active panel", async () => {
-        let onClose = vi.fn();
-        let { getByRole, rerender } = render(PanelTabs, { items, active: "diff", onSelect: vi.fn(), onClose });
-        let close = getByRole("button", { name: "Close Diff" });
-        expect(getByRole("tablist").contains(close)).toBe(false);
-        await fireEvent.click(close);
+    it("closes each tab independently without selecting it", async () => {
+        let onClose = vi.fn(), onSelect = vi.fn();
+        let { getByRole } = render(PanelTabs, { items, active: "diff", onSelect, onClose });
+        for (let item of items) {
+            let tab = getByRole("tab", { name: item.label });
+            let close = getByRole("button", { name: `Close ${item.label}` });
+            expect(tab.contains(close)).toBe(false);
+            expect(tab.parentElement).toBe(close.parentElement);
+            await fireEvent.click(close);
+            expect(onClose).toHaveBeenLastCalledWith(item.id);
+        }
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(getByRole("tab", { name: "Diff" }).getAttribute("aria-selected")).toBe("true");
+    });
+    it("supports deleting the focused tab", async () => {
+        let onClose = vi.fn(), onSelect = vi.fn();
+        let { getByRole } = render(PanelTabs, { items, active: "diff", onSelect, onClose });
+        await fireEvent.keyDown(getByRole("tab", { name: "Diff" }), { key: "Delete" });
         expect(onClose).toHaveBeenCalledWith("diff");
-        await rerender({ items, active: "edit", onSelect: vi.fn(), onClose });
-        await fireEvent.click(getByRole("button", { name: "Close Edit" }));
-        expect(onClose).toHaveBeenLastCalledWith("edit");
+        expect(onSelect).not.toHaveBeenCalled();
     });
     it("moves focus and selection with arrows and Home", async () => {
         let onSelect = vi.fn();

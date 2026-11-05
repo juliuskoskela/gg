@@ -1,4 +1,5 @@
 <script lang="ts">
+    import TextField from "../controls/TextField.svelte";
     import DestinationPicker from "./DestinationPicker.svelte";
     import { mutationPending } from "../operations";
     import { commandOperand, currentWorkspaceIdentity } from "./context";
@@ -12,7 +13,7 @@
     export let headers: RevHeader[] | undefined = undefined;
     let open = false;
     let search = "";
-    let input: HTMLInputElement;
+    let input: HTMLInputElement | undefined;
     let dialog: HTMLDialogElement;
     let previous: HTMLElement | null = null;
     $: activeHeaders = headers ?? $selectionHeaders;
@@ -28,7 +29,7 @@
         if ($hasModal || open) return;
         previous = document.activeElement as HTMLElement;
         search = ""; open = true;
-        await tick(); dialog.showModal(); input.focus();
+        await tick(); dialog.showModal(); input?.focus();
     }
     onMount(() => { window.addEventListener("gg:open-commands", show); return () => window.removeEventListener("gg:open-commands", show); });
     function close() { dialog?.close(); open = false; previous?.focus(); }
@@ -64,7 +65,7 @@
     <dialog bind:this={dialog} class="palette" aria-label="Commands" on:cancel|preventDefault={close} on:click={event => { if (event.target === dialog) close(); }}>
         <div class="content">
             <div class="heading"><label for="command-search">Commands</label><button type="button" on:click={close} aria-label="Close commands">×</button></div>
-            <input id="command-search" bind:this={input} bind:value={search} placeholder="Search commands" autocomplete="off" aria-controls="command-results" />
+            <TextField id="command-search" bind:element={input} bind:value={search} placeholder="Search commands" autocomplete="off" aria-controls="command-results" />
             <div id="command-results" class="results" aria-label="Available commands">
                 {#each filtered as command (command.id)}
                     <button type="button" aria-disabled={!!command.reason} on:click={() => run(command)}>
@@ -81,7 +82,7 @@
     .content { display: flex; flex-direction: column; max-height: min(70dvh, 640px); padding: 12px; pointer-events: auto; }
     .heading { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
     .heading button { border: 0; background: transparent; color: inherit; font-size: 24px; min-width: 44px; min-height: 44px; }
-    input { width: 100%; box-sizing: border-box; min-height: 44px; }
+    .content :global(.text-field) { width: 100%; box-sizing: border-box; min-height: 44px; }
     .results { overflow: auto; margin-top: 8px; pointer-events: auto; }
     .results button { width: 100%; min-height: 44px; padding: 8px; text-align: left; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; display: flex; justify-content: space-between; gap: 8px; }
     .results button:focus, .results button:hover { background: var(--hover); }

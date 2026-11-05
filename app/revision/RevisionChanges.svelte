@@ -8,12 +8,14 @@
     import DiffViewer from "../DiffViewer.svelte";
     import ChangeObject from "../objects/ChangeObject.svelte";
     import HunkObject from "../objects/HunkObject.svelte";
+    import PanelFooter from "../controls/PanelFooter.svelte";
     import PanelHeader from "../controls/PanelHeader.svelte";
-    import DiffDisplayOptions from "./DiffDisplayOptions.svelte";
+    import DiffTools from "./DiffTools.svelte";
     import Icon from "../controls/Icon.svelte";
     import { navigateOptions } from "../controls/optionNavigation";
 
     export let focused = false;
+    export let showTools = true;
     export let revs: RevisionDetail;
     export let changes: RevChange[];
     let width = 1200;
@@ -58,8 +60,7 @@
         await tick();
         if (readingKey === expected && scrollElement) scrollElement.scrollTop = top;
     }
-    $: insertions = revs.changes.reduce((total, change) => total + (change.stat?.added ?? change.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("+")).length, 0)), 0);
-    $: deletions = revs.changes.reduce((total, change) => total + (change.stat?.removed ?? change.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("-")).length, 0)), 0);
+
 
     function selectFile(change: RevChange) { onSelectFile(change); }
     async function loadFullFiles() {
@@ -79,21 +80,14 @@
 </script>
 
 <div class="changes-module" bind:clientWidth={width}>
-    <PanelHeader className="changes-heading" label="Diff tools">
-        <div class="changes-summary">
-            {#if !focused}<h3>Changes</h3>{/if}
-            <span class="file-count">{changes.length} {changes.length === 1 ? "file" : "files"}</span>
-            <span class="diff-stat">{#if insertions}<span class="added">+{insertions}</span>{/if}{#if deletions}<span class="removed">−{deletions}</span>{/if}</span>
-        </div>
-        {#if changes.length}<DiffDisplayOptions />{/if}
-    </PanelHeader>
+    {#if showTools}
+        <PanelHeader className="changes-heading" label="Diff tools">
+            <DiffTools {changes} title={focused ? "" : "Changes"} />
+        </PanelHeader>
+    {/if}
     {#if changes.length}
         <div class="changes-layout">
             <div class="file-review">
-                <div class="diff-toolbar">
-                    <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} on:click={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} on:click={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
-                    <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
-                </div>
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex (overflow region needs keyboard scrolling) -->
                 <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} on:scroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
                     {#if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p>{#if onRequestFiles}<button type="button" on:click={onRequestFiles}>Choose another file</button>{/if}</div>
@@ -108,6 +102,10 @@
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
+                <PanelFooter className="diff-footer"><div class="diff-toolbar">
+                    <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} on:click={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} on:click={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
+                    <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
+                </div></PanelFooter>
             </div>
         </div>
     {:else}
@@ -119,14 +117,9 @@
     .diff-message { padding: 16px; color: var(--muted); font-size: var(--type-ui); }
     .diff-message button { min-height: 44px; }
     .changes-module { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
-    .changes-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; min-width: 0; }
-    .changes-summary h3 { margin: 0; font-size: var(--type-ui); font-weight: 500; }
-    .file-count { font-size: var(--type-caption); color: var(--muted); white-space: nowrap; }
-    .diff-stat { display: flex; gap: 8px; font-size: var(--type-caption); font-variant-numeric: tabular-nums; }
-    .added { color: var(--positive); } .removed { color: var(--negative); }
     .changes-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-width: 0; min-height: 0; isolation: isolate; }
     .file-review { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-    .diff-toolbar { display: flex; align-items: center; gap: 2px; padding: 4px var(--panel-inset); min-width: 0; min-height: var(--panel-toolbar-height); background: var(--surface); border-block-end: 1px solid var(--rule); }
+    .diff-toolbar { display: flex; align-items: center; gap: 2px; width: 100%; min-width: 0; min-height: var(--control-height); }
     .file-path { flex: 1; min-width: 0; }
     .file-path :global(.layout) { min-height: 32px; padding: 4px; font-size: var(--type-ui); }
     .file-path :global(.layout span) { white-space: nowrap; }

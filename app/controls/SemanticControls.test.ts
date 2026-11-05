@@ -22,7 +22,7 @@ describe("shared rendered controls", () => {
         shell.style.width = "390px";
         let option = getByRole("option");
         expect(option.getAttribute("aria-label")).toContain("Unresolved conflict; Divergent change; Working copy; Immutable revision");
-        expect(option.getBoundingClientRect().height).toBe(32);
+        expect(option.getBoundingClientRect().height).toBe(28);
         let row = option.querySelector(".layout")!;
         let desc = option.querySelector(".desc")!;
         let rowRect = row.getBoundingClientRect();

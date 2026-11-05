@@ -1,13 +1,13 @@
 import { writable, type Writable } from "svelte/store";
 
-export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation";
-export type Edge = "tab" | "left" | "right" | "top" | "bottom";
+export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools";
+export type Edge = "tab" | "tab-end" | "left" | "right" | "top" | "bottom";
 export type DockNode =
     | { type: "split"; direction: "row" | "column"; ratio: number; first: DockNode; second: DockNode }
     | { type: "tabs"; active: PanelId; panels: PanelId[] };
 export type DockState = { root: DockNode | null; compactActive: PanelId | null };
 
-const PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation"];
+const PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools"];
 const STORAGE_KEY = "gg.dock.layout";
 
 const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
@@ -17,6 +17,7 @@ const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
     tree: { beside: "diff", edge: "left" },
     edit: { beside: "diff", edge: "tab" },
     operation: { beside: null, edge: "right" },
+    "revision-tools": { beside: "description", edge: "right" },
 };
 
 export function isPanelId(value: unknown): value is PanelId {
@@ -76,22 +77,27 @@ export function closePanel(node: DockNode | null, id: PanelId): DockNode | null 
     return { ...node, first, second };
 }
 
-function place(existing: DockNode, id: PanelId, edge: Edge): DockNode {
-    if (edge === "tab" && existing.type === "tabs") return { ...existing, panels: [...existing.panels, id], active: id };
+function place(existing: DockNode, id: PanelId, edge: Edge, before?: PanelId): DockNode {
+    if (edge === "tab" && existing.type === "tabs") {
+        let panels = [...existing.panels];
+        let index = before ? panels.indexOf(before) : panels.length;
+        panels.splice(index < 0 ? panels.length : index, 0, id);
+        return { ...existing, panels, active: id };
+    }
     let incoming = tabs(id);
     let incomingFirst = edge === "left" || edge === "top";
     let horizontal = edge === "left" || edge === "right" || edge === "tab";
     return split(horizontal ? "row" : "column", incomingFirst ? 0.32 : 0.68, incomingFirst ? incoming : existing, incomingFirst ? existing : incoming);
 }
 
-function splitAround(node: DockNode, target: PanelId, id: PanelId, edge: Edge): { node: DockNode; placed: boolean } {
+function splitAround(node: DockNode, target: PanelId, id: PanelId, edge: Edge, insertBefore = false): { node: DockNode; placed: boolean } {
     if (node.type === "tabs") {
         if (!node.panels.includes(target)) return { node, placed: false };
-        return { node: place(node, id, edge), placed: true };
+        return { node: place(node, id, edge, insertBefore ? target : undefined), placed: true };
     }
-    let first = splitAround(node.first, target, id, edge);
+    let first = splitAround(node.first, target, id, edge, insertBefore);
     if (first.placed) return { node: { ...node, first: first.node }, placed: true };
-    let second = splitAround(node.second, target, id, edge);
+    let second = splitAround(node.second, target, id, edge, insertBefore);
     if (second.placed) return { node: { ...node, second: second.node }, placed: true };
     return { node, placed: false };
 }
@@ -106,11 +112,20 @@ export function openPanel(node: DockNode | null, id: PanelId): DockNode {
     return split(preferred.edge === "bottom" ? "column" : "row", 0.68, node, incoming);
 }
 
+function siblingPanel(node: DockNode, id: PanelId): PanelId | undefined {
+    if (node.type === "tabs") return node.panels.includes(id) ? node.panels.find(panel => panel !== id) : undefined;
+    return siblingPanel(node.first, id) ?? siblingPanel(node.second, id);
+}
+
 export function movePanel(node: DockNode, id: PanelId, target: PanelId, edge: Edge): DockNode {
-    if (id === target || !contains(node, id) || !contains(node, target)) return edge === "tab" && id === target ? activate(node, id) : node;
+    if (!contains(node, id) || !contains(node, target)) return node;
+    if (id === target && edge === "tab") return node;
+    // the dragged active tab also identifies its group; retain a sibling as the split anchor.
+    let anchor = id === target ? siblingPanel(node, id) : target;
+    if (!anchor) return node;
     let without = closePanel(node, id);
-    if (!without || !contains(without, target)) return node;
-    let placed = splitAround(without, target, id, edge);
+    if (!without || !contains(without, anchor)) return node;
+    let placed = splitAround(without, anchor, id, edge === "tab-end" ? "tab" : edge, edge === "tab");
     return placed.placed ? placed.node : node;
 }
 
@@ -191,10 +206,5 @@ export function createDock(storage?: Pick<Storage, "getItem" | "setItem"> | null
         reset: () => store.set(defaultState()),
     };
 }
-
-export const panelDrag = writable<PanelId | null>(null);
-let dragged: PanelId | null = null;
-export function setDraggedPanel(id: PanelId | null) { dragged = id; panelDrag.set(id); }
-export function draggedPanel(): PanelId | null { return dragged; }
 
 export const dock = createDock(typeof localStorage === "undefined" ? null : localStorage);
