@@ -1,7 +1,8 @@
 import { isTauri } from "./ipc.js";
 
+export type InspectionRoute = { revset: string; fromRevset: string | null; file: string | null };
 export type Route =
-    | { type: "default" }
+    | { type: "default"; inspection?: InspectionRoute }
     | { type: "log"; revset: string | null }
     | { type: "revision"; revset: string };
 
@@ -14,5 +15,6 @@ export function parseRoute(): Route {
         let revset = params.get("revset");
         if (revset) return { type: "revision", revset };
     }
-    return { type: "default" };
+    let inspect = params.get("inspect");
+    return inspect ? { type: "default", inspection: { revset: inspect, fromRevset: params.get("inspectFrom"), file: params.get("file") } } : { type: "default" };
 }

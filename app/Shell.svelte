@@ -1,4 +1,15 @@
 <script lang="ts">
+    import { selectionRecovery } from "./revision/recovery";
+    import type { RevisionSelectionResult } from "./messages/RevisionSelectionResult";
+    import { loadRevisionSummary, clearRevisionDiffCache, revisionIdentity } from "./revision/data";
+    import { setCommandOperand, setDestinationCandidates, refreshCurrentWorkspaceIdentity } from "./commands/context";
+    import { executeOperandCommand } from "./commands/registry";
+    import OperationFeedback from "./shell/OperationFeedback.svelte";
+    import { autoHideScrollbars } from "./scrollbars";
+    import { repositoryScope } from "./workspace/repository";
+    import { descriptionDrafts } from "./stores";
+    import { workspaceController } from "./workspace/state";
+    import { get } from "svelte/store";
     import type { RevSet } from "./messages/RevSet";
     import type { RevsResult } from "./messages/RevsResult";
     import type { RepoConfig } from "./messages/RepoConfig";
@@ -18,14 +29,11 @@
         ignoreToggled,
     } from "./stores.js";
     import ContextMenu from "./controls/ContextMenu.svelte";
-    import RefMutator from "./mutators/RefMutator";
-    import ChangeMutator from "./mutators/ChangeMutator";
-    import RevisionMutator from "./mutators/RevisionMutator";
-    import WorkspaceMutator from "./mutators/WorkspaceMutator";
     import Pane from "./shell/Pane.svelte";
     import TitlebarInset from "./shell/TitlebarInset.svelte";
     import Zone from "./objects/Zone.svelte";
-    import StatusBar from "./shell/StatusBar.svelte";
+    import WorkspaceChrome from "./shell/WorkspaceChrome.svelte";
+    import ActionWidget from "./controls/ActionWidget.svelte";
     import ModalOverlay from "./shell/ModalOverlay.svelte";
     import ErrorDialog from "./shell/ErrorDialog.svelte";
     import ProgressDialog from "./shell/ProgressDialog.svelte";
@@ -44,6 +52,7 @@
     }
 
     export let revsetOverride: string | null = null;
+    export let revsetFromOverride: string | null = null;
 
     let selection: Query<RevsResult> = {
         type: "wait",
@@ -68,8 +77,9 @@
 
     document.body.addEventListener("click", () => currentContext.set(null), true);
 
-    async function initialize() {
-        const result = await query<RepoConfig>("query_workspace", null);
+    let workspacePath = "";
+    async function initialize(path?: string) {
+        let result = await query<RepoConfig>("query_workspace", path ? { path } : null);
         if ($repoConfigEvent.type === "TimeoutError") {
             return; // too late! we're dead!
         } else if (result.type === "data") {
@@ -127,10 +137,10 @@
     if (isTauri()) {
         // web mode: mutations done directly by ContextMenu
         // gui mode: mutations triggered by native context menu
-        onEvent("gg://context/revision", mutateRevision);
-        onEvent("gg://context/tree", mutateTree);
-        onEvent("gg://context/bookmark", mutateRef);
-        onEvent("gg://context/workspace", mutateWorkspace);
+        onEvent("gg://context/revision", dispatchContext);
+        onEvent("gg://context/tree", dispatchContext);
+        onEvent("gg://context/bookmark", dispatchContext);
+        onEvent("gg://context/workspace", dispatchContext);
         onEvent("gg://menu/repo", mutateRepository);
         // gui mode: snapshot when window gains focus
         onEvent("gg://focus", handleFocus);
@@ -149,7 +159,7 @@
             },
             commit: { type: "CommitId" as const, hex: "", prefix: "", rest: "" },
         };
-        $revisionSelectEvent = { from: syntheticId, to: syntheticId };
+        $revisionSelectEvent = { from: revsetFromOverride ? { ...syntheticId, change: { ...syntheticId.change, hex: revsetFromOverride, prefix: revsetFromOverride } } : syntheticId, to: syntheticId };
     }
     $: if ($repoStatusEvent && $revisionSelectEvent) {
         loadChange($revisionSelectEvent);
@@ -159,8 +169,8 @@
     $: if (!isTauri()) {
         document.title =
             $repoConfigEvent.type === "Workspace"
-                ? "GG - " + $repoConfigEvent.absolute_path.split("/").pop()
-                : "GG - Gui for JJ";
+                ? "GG+ — " + $repoConfigEvent.absolute_path.split("/").pop()
+                : "GG+ — Jujutsu workspace";
     }
     $: if (
         $repoConfigEvent.type === "LoadError" ||
@@ -170,7 +180,17 @@
         queryRecentWorkspaces();
     }
 
+    $: if ($repoConfigEvent && $repoStatusEvent) refreshCurrentWorkspaceIdentity();
+
+    let latestSelectionRequest = 0;
+    let loadedStatus: RepoStatus | undefined;
     async function loadRepo(config: RepoConfig) {
+        latestSelectionRequest++;
+        clearRevisionDiffCache();
+        setCommandOperand(null);
+        selectionRecovery.set(null);
+        setDestinationCandidates([]);
+        selectionHeaders.set([]);
         if (loadTimeout) {
             clearTimeout(loadTimeout);
             loadTimeout = null;
@@ -185,10 +205,44 @@
     }
 
     async function loadChange(set: RevSet) {
-        let rev = await query<RevsResult>("query_revisions", { set }, (q) => (selection = q));
+        let status = $repoStatusEvent;
+        let sameSelection = selection.type === "data" && selection.value.type === "Detail"
+            && selection.value.set.from.commit.hex === set.from.commit.hex
+            && selection.value.set.to.commit.hex === set.to.commit.hex;
+        if (sameSelection && loadedStatus === status) return;
+        let request = ++latestSelectionRequest;
+        if (!sameSelection) selection = { type: "wait" };
+        selectionHeaders.set([]);
+        selectionRecovery.set(null);
+        if (sameSelection && get(workspaceController).inspector) {
+            let endpoints = set.from.commit.hex === set.to.commit.hex ? ["to" as const] : ["from" as const, "to" as const];
+            let resolved = { ...set };
+            for (let endpoint of endpoints) {
+                let result = await query<RevisionSelectionResult>("resolve_revision_selection", { id: set[endpoint] });
+                if (request !== latestSelectionRequest) return;
+                if (result.type === "error") { selection = result; return; }
+                let { candidates, exact } = result.value;
+                let stillCurrent = candidates.some(header => header.id.commit.hex === set[endpoint].commit.hex);
+                if (!stillCurrent && candidates.length === 1) resolved[endpoint] = candidates[0].id;
+                else if (!stillCurrent && candidates.length > 1) {
+                    let message = "This change now has multiple revisions. Choose the exact revision to inspect.";
+                    selectionRecovery.set({ message, candidates, set, endpoint });
+                    selection = { type: "error", message };
+                    return;
+                } else if (!exact && !candidates.length) {
+                    selection = { type: "data", value: { type: "NotFound", set } };
+                    return;
+                }
+            }
+            if (endpoints.length === 1) resolved.from = resolved.to;
+            set = resolved;
+        }
+        let rev = await loadRevisionSummary(set);
+        if (request !== latestSelectionRequest) return;
 
         // if empty, fall back to working copy
         if (
+            !get(workspaceController).inspector &&
             rev.type == "data" &&
             rev.value.type == "NotFound" &&
             (set.from.commit.hex !== $repoStatusEvent?.working_copy?.hex ||
@@ -208,9 +262,18 @@
             return loadChange({ from: workingCopyId, to: workingCopyId });
         }
 
+        if (sameSelection && selection.type === "data" && selection.value.type === "Detail" && rev.type === "data" && rev.value.type === "Detail" && !rev.value.headers.some(header => header.id.change.is_divergent)) {
+            let scope = repositoryScope($repoConfigEvent);
+            let previousKey = revisionIdentity(selection.value, scope), nextKey = revisionIdentity(rev.value, scope);
+            let draft = get(descriptionDrafts)[previousKey];
+            if (previousKey !== nextKey && draft !== undefined) descriptionDrafts.update(drafts => ({ ...drafts, [nextKey]: draft }));
+        }
         selection = rev;
+        loadedStatus = status;
         if (rev.type == "data" && rev.value.type == "Detail") {
             $selectionHeaders = rev.value.headers;
+            if ($revisionSelectEvent?.from.commit.hex !== rev.value.set.from.commit.hex || $revisionSelectEvent?.to.commit.hex !== rev.value.set.to.commit.hex) revisionSelectEvent.set(rev.value.set);
+            workspaceController.reconcileSelection(rev.value.set, [...rev.value.changes.map(change => change.path.repo_path), ...rev.value.conflicts.map(conflict => conflict.path.repo_path)]);
         }
     }
 
@@ -219,7 +282,10 @@
             return;
         }
         if ($repoConfigEvent.type === "Workspace") {
-            const result = await query<RepoStatus | null>("query_snapshot", null);
+            let config = $repoConfigEvent;
+            let result = await query<RepoStatus | null>("query_snapshot", null);
+            if (result.type === "data" && !result.value) result = await query<RepoStatus>("query_current_status", null);
+            if (config !== $repoConfigEvent) return;
             if (result.type === "data" && result.value) {
                 repoStatusEvent.set(result.value);
             }
@@ -232,38 +298,8 @@
         recentWorkspaces = result.type === "data" ? result.value : [];
     }
 
-    function mutateRevision(event: string) {
-        if ($currentContext?.type == "Revision") {
-            new RevisionMutator([$currentContext.header], $ignoreToggled).handle(event);
-        } else if ($currentContext?.type == "Revisions") {
-            new RevisionMutator($currentContext.headers, $ignoreToggled).handle(event);
-        }
-        $currentContext = null;
-    }
-
-    function mutateTree(event: string) {
-        if ($currentContext?.type == "Change") {
-            new ChangeMutator(
-                $currentContext.headers,
-                $currentContext.path,
-                $currentContext.hunk,
-                $ignoreToggled,
-            ).handle(event);
-        }
-        $currentContext = null;
-    }
-
-    function mutateRef(event: string) {
-        if ($currentContext?.type == "Ref") {
-            new RefMutator($currentContext.ref, $ignoreToggled).handle(event);
-        }
-        $currentContext = null;
-    }
-
-    function mutateWorkspace(event: string) {
-        if ($currentContext?.type == "Workspace") {
-            new WorkspaceMutator($currentContext.name).handle(event);
-        }
+    function dispatchContext(event: string) {
+        executeOperandCommand($currentContext, event);
         $currentContext = null;
     }
 
@@ -272,46 +308,48 @@
     }
 </script>
 
+<OperationFeedback />
+
 <Zone operand={{ type: "Repository" }} alwaysTarget let:target>
-    <div id="shell" class={$repoConfigEvent?.type == "Workspace" ? $repoConfigEvent.theme_override : ""}>
+    <div id="shell" use:autoHideScrollbars class={$repoConfigEvent?.type == "Workspace" ? $repoConfigEvent.theme_override : ""}>
         {#if $repoConfigEvent.type == "Initial"}
             <TitlebarInset>
                 <Pane>
-                    <h2 slot="header">Loading...</h2>
+                    <h2 slot="header">Loading…</h2>
                 </Pane>
             </TitlebarInset>
         {:else if $repoConfigEvent.type == "Workspace"}
-            <slot workspace={$repoConfigEvent} {selection} />
+            <WorkspaceChrome workspace={$repoConfigEvent} {target}>
+                <slot workspace={$repoConfigEvent} {selection} />
+            </WorkspaceChrome>
         {:else if $repoConfigEvent.type == "LoadError"}
             <ModalOverlay>
-                <ErrorDialog title="No Workspace Loaded">
-                    <p style="grid-column: 1/3">
-                        You can run <code>gg</code> in a Jujutsu workspace or open one from the Repository menu.
-                    </p>
+                <ErrorDialog title="No workspace loaded">
+                    <p>Open a Jujutsu repository to start working in GG+.</p>
+                    <p class="workspace-error">{$repoConfigEvent.message}</p>
+                    <label for="workspace-path">Repository path</label>
+                    <input id="workspace-path" bind:value={workspacePath} placeholder="/path/to/repository" on:keydown={(event) => { if (event.key === "Enter" && workspacePath.trim()) initialize(workspacePath.trim()); }} />
+                    <ActionWidget safe primary disabled={!workspacePath.trim()} onClick={() => initialize(workspacePath.trim())}>Open workspace</ActionWidget>
                     <RecentWorkspaces workspaces={recentWorkspaces} />
                 </ErrorDialog>
             </ModalOverlay>
         {:else if $repoConfigEvent.type == "TimeoutError"}
             <ModalOverlay>
-                <ErrorDialog title="No Workspace Loaded" severe>
-                    <p>Error communicating with backend: the operation is taking too long.</p>
-                    <p>You may need to restart GG to continue.</p>
+                <ErrorDialog title="No workspace loaded" severe>
+                    <p>GG+ lost contact with its backend. Restart GG+ to continue.</p>
                     <RecentWorkspaces workspaces={recentWorkspaces} />
                 </ErrorDialog>
             </ModalOverlay>
         {:else}
             <ModalOverlay>
-                <ErrorDialog title="Fatal Error" severe>
-                    <p>Error communicating with backend: {$repoConfigEvent.message}.</p>
-                    <p>You may need to restart GG to continue.</p>
+                <ErrorDialog title="Lost contact with the backend." severe>
+                    <p>{$repoConfigEvent.message}</p>
+                    <p>Restart GG+ to continue.</p>
                     <RecentWorkspaces workspaces={recentWorkspaces} />
                 </ErrorDialog>
             </ModalOverlay>
         {/if}
 
-        <div class="separator" style="grid-row: 2"></div>
-
-        <StatusBar {target} />
 
         {#if $currentInput}
             <ModalOverlay>
@@ -323,10 +361,10 @@
             </ModalOverlay>
         {:else if $currentMutation}
             <ModalOverlay>
-                {#if $currentMutation.type == "wait" && $progressEvent !== undefined}
+                {#if $currentMutation.type == "wait"}
                     <ProgressDialog progress={$progressEvent} />
                 {:else if $currentMutation.type == "data" && ($currentMutation.value.type == "InternalError" || $currentMutation.value.type == "PreconditionError")}
-                    <ErrorDialog title="Command Error" onClose={() => ($currentMutation = null)} severe>
+                    <ErrorDialog title="That command failed." onClose={() => ($currentMutation = null)} severe>
                         {#if $currentMutation.value.type == "InternalError"}
                             <p>
                                 {#each $currentMutation.value.message.lines as line}
@@ -338,7 +376,7 @@
                         {/if}
                     </ErrorDialog>
                 {:else if $currentMutation.type == "error"}
-                    <ErrorDialog title="IPC Error" onClose={() => ($currentMutation = null)} severe>
+                    <ErrorDialog title="Lost contact with the backend." onClose={() => ($currentMutation = null)} severe>
                         <p>{$currentMutation.message}</p>
                     </ErrorDialog>
                 {/if}
@@ -360,25 +398,21 @@
 
 <style>
     #shell {
-        width: 100vw;
+        width: 100%;
         height: 100vh;
+        height: 100dvh;
+        font-family: var(--stack-ui);
+        font-size: var(--type-ui);
+        line-height: 1.45;
 
         display: grid;
         grid-template-columns: 1fr;
-        grid-template-rows: 1fr 3px 30px;
-        grid-template-areas:
-            "content"
-            "."
-            "footer";
+        grid-template-rows: minmax(0, 1fr);
 
-        background: var(--ctp-crust);
-        color: var(--ctp-text);
+        background: var(--ground);
+        color: var(--text);
 
         user-select: none;
-    }
-
-    .separator {
-        background: var(--ctp-overlay0);
     }
 
     p {

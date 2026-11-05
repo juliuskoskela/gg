@@ -4,13 +4,17 @@ Core component for direct-manipulation objects. A drag&drop source.
 -->
 
 <script lang="ts">
+    import { onDestroy } from "svelte";
+    import { pendingDropSource, clearDrag } from "../motion/dropLifecycle";
+    import { mutationPending } from "../operations";
     import type { Operand } from "../messages/Operand";
+    import { setCommandOperand } from "../commands/context";
+    import { executeOperandCommand } from "../commands/registry";
     import { trigger, isTauri } from "../ipc";
     import { currentContext, currentSource, selectionHeaders, hasMenu, ignoreToggled } from "../stores";
     import { createEventDispatcher } from "svelte";
     import { get } from "svelte/store";
     import BinaryMutator from "../mutators/BinaryMutator";
-    import { handleCommand } from "../mutators/commands";
 
     interface $$Slots {
         default: { context: boolean; hint: string | null };
@@ -21,6 +25,9 @@ Core component for direct-manipulation objects. A drag&drop source.
         dblclick: CustomEvent<MouseEvent>;
     }
 
+    export let tabIndex = -1;
+    export let setSize: number | undefined = undefined;
+    export let position: number | undefined = undefined;
     export let suffix: string | null = null;
     export let label: string;
     export let selected: boolean = false;
@@ -35,6 +42,8 @@ Core component for direct-manipulation objects. A drag&drop source.
     let dragHint: string | null = null;
 
     function onClick(event: MouseEvent) {
+        if ((event.target as Element).closest("button.selection-item") !== event.currentTarget) return;
+        setCommandOperand(getEffectiveOperand());
         dispatch("click", event);
     }
 
@@ -43,7 +52,7 @@ Core component for direct-manipulation objects. A drag&drop source.
         if (defaultCommand && operand) {
             event.preventDefault();
             event.stopPropagation();
-            handleCommand(operand, defaultCommand, $ignoreToggled);
+            executeOperandCommand(operand, defaultCommand);
         } else {
             dispatch("dblclick", event);
         }
@@ -76,6 +85,7 @@ Core component for direct-manipulation objects. A drag&drop source.
 
             let effectiveOperand = getEffectiveOperand();
             currentContext.set(effectiveOperand);
+            setCommandOperand(effectiveOperand);
 
             let mouseEvent = event as MouseEvent;
             if (isTauri()) {
@@ -91,6 +101,7 @@ Core component for direct-manipulation objects. A drag&drop source.
     }
 
     function onDragStart(event: DragEvent) {
+        if ($mutationPending) { event.preventDefault(); return; }
         currentContext.set(null);
         event.stopPropagation();
 
@@ -101,6 +112,7 @@ Core component for direct-manipulation objects. A drag&drop source.
                 : new BinaryMutator(effectiveOperand, null, $ignoreToggled).canDrag();
 
         if (canDrag.type == "no") {
+            event.preventDefault();
             return;
         } else {
             event.dataTransfer?.setData("text/plain", ""); // if we need more than one drag to be active, this could store a key
@@ -116,7 +128,7 @@ Core component for direct-manipulation objects. A drag&drop source.
     }
 
     function onDragEnd() {
-        $currentSource = null;
+        clearDrag();
         dragging = false;
         dragHint = null;
     }
@@ -142,20 +154,25 @@ Core component for direct-manipulation objects. A drag&drop source.
     }
 
     $: inContext = isInContext($currentContext, operand);
-    $: inSource = isInSource($currentSource, operand);
+    $: inSource = isInSource($currentSource, operand) || isInSource($pendingDropSource, operand);
+    onDestroy(() => { if (dragging) clearDrag(); });
 </script>
 
 <button
     {id}
+    class="selection-item"
     class:selected
     class:conflict={conflicted}
     class:context={dragging || inContext || inSource}
     class:hint={dragHint}
-    tabindex="-1"
+    tabindex={tabIndex}
     draggable={operand != null}
     role="option"
     aria-label={label}
+    title={label}
     aria-selected={selected}
+    aria-setsize={setSize}
+    aria-posinset={position}
     on:click={onClick}
     on:dblclick={onDoubleClick}
     on:contextmenu={onMenu}
@@ -172,7 +189,7 @@ Core component for direct-manipulation objects. A drag&drop source.
         margin: 0;
         padding: 0;
         color: inherit;
-        text-align: left;
+        text-align: start;
 
         width: 100%;
         display: flex;
@@ -183,35 +200,10 @@ Core component for direct-manipulation objects. A drag&drop source.
         cursor: grab;
     }
 
-    .selected {
-        background: var(--ctp-base);
-    }
-
-    .conflict {
-        background: repeating-linear-gradient(
-            120deg,
-            transparent 0px,
-            transparent 12px,
-            var(--ctp-surface0) 12px,
-            var(--ctp-surface0) 15px
-        );
-    }
-
-    .selected.conflict {
-        background: repeating-linear-gradient(
-            120deg,
-            var(--ctp-surface0) 0px,
-            var(--ctp-surface0) 12px,
-            var(--ctp-base) 12px,
-            var(--ctp-base) 15px
-        );
-    }
-
-    .context {
-        color: var(--ctp-rosewater);
-    }
+    .conflict { color: var(--negative); --selection-text: var(--negative); }
+    .context { background: var(--selection-bg); }
 
     .hint {
-        color: var(--ctp-peach);
+        color: var(--warning);
     }
 </style>

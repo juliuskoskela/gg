@@ -4,6 +4,9 @@ A drop target for direct-manipulation objects.
 -->
 
 <script lang="ts">
+    import { onDestroy, onMount } from "svelte";
+    import { mutationPending } from "../operations";
+    import { clearDrag, clearPendingDrop, pendingDropSource, pendingDropTarget, watchDragCancellation } from "../motion/dropLifecycle";
     import type { Operand } from "../messages/Operand";
     import BinaryMutator from "../mutators/BinaryMutator";
     import { currentSource, currentTarget, ignoreToggled } from "../stores";
@@ -17,7 +20,12 @@ A drop target for direct-manipulation objects.
 
     let dropHint: string | null = null;
     let target = false;
-    $: target = match($currentTarget);
+    $: target = match($currentTarget) || match($pendingDropTarget);
+    let zone: HTMLDivElement;
+    let disposed = false;
+    let dropping = false;
+    $: if (!$currentSource && !dropping) dropHint = null;
+    onMount(watchDragCancellation);
 
     function match(target: Operand | null): boolean {
         return (
@@ -29,8 +37,9 @@ A drop target for direct-manipulation objects.
     function onDragOver(event: DragEvent) {
         event.stopPropagation();
 
+        if ($mutationPending || dropping) return;
         let canDrop =
-            operand == null
+            operand == null || $currentSource == null
                 ? { type: "no", hint: "" }
                 : new BinaryMutator($currentSource!, operand, $ignoreToggled).canDrop();
 
@@ -46,33 +55,51 @@ A drop target for direct-manipulation objects.
             if (alwaysTarget && !match($currentTarget)) {
                 $currentTarget = operand;
             }
+        } else {
+            if (match($currentTarget)) $currentTarget = null;
+            dropHint = null;
         }
     }
 
     function onDragLeave(event: DragEvent) {
-        $currentTarget = null;
+        if (event.relatedTarget instanceof Node && zone.contains(event.relatedTarget)) return;
+        if (match($currentTarget)) $currentTarget = null;
         dropHint = null;
     }
 
-    function onDrop(event: DragEvent) {
+    async function onDrop(event: DragEvent) {
         event.stopPropagation();
-
-        if (operand) {
-            let mutator = new BinaryMutator($currentSource!, operand, $ignoreToggled);
-            if (mutator.canDrop().type == "yes") {
-                mutator.doDrop();
-            }
+        event.preventDefault();
+        if (dropping || $mutationPending || !operand || !$currentSource) { clearDrag(); return; }
+        let mutator = new BinaryMutator($currentSource, operand, $ignoreToggled);
+        if (mutator.canDrop().type !== "yes") { clearDrag(); dropHint = null; return; }
+        dropping = true;
+        pendingDropSource.set($currentSource);
+        pendingDropTarget.set(operand);
+        dropHint = "Applying operation…";
+        clearDrag();
+        try {
+            // global OperationFeedback owns confirmed result and error announcements.
+            await mutator.doDrop();
+        } finally {
+            dropping = false;
+            dropHint = null;
+            if (!disposed) clearPendingDrop();
         }
-
-        $currentSource = null;
-        $currentTarget = null;
-        dropHint = null;
     }
+    onDestroy(() => {
+        disposed = true;
+        if (match($currentTarget)) $currentTarget = null;
+        if (match($pendingDropTarget)) clearPendingDrop();
+    });
+
 </script>
 
 <div
+    bind:this={zone}
     role="presentation"
     class="zone"
+    data-drop-state={dropping ? "pending" : target ? "target" : undefined}
     class:hint={dropHint}
     on:dragenter={onDragOver}
     on:dragover={onDragOver}
@@ -88,6 +115,6 @@ A drop target for direct-manipulation objects.
     }
 
     .hint {
-        color: var(--ctp-peach);
+        color: var(--warning);
     }
 </style>

@@ -6,6 +6,7 @@ use crate::messages::{
 use crate::worker::{WorkerSession, queries};
 use anyhow::Result;
 use assert_matches::assert_matches;
+use jj_lib::object_id::ObjectId as _;
 use std::collections::HashSet;
 
 #[tokio::test]
@@ -977,4 +978,191 @@ mod revisions_immutability {
 
         Ok(())
     }
+}
+
+#[tokio::test]
+async fn staged_revision_queries_match_full_details() -> Result<()> {
+    use crate::messages::queries::{RevisionDiffResult, RevisionSummaryResult};
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(repo.path()).await?;
+    for id in [
+        revs::main_bookmark(),
+        revs::conflict_bookmark(),
+        revs::resolve_conflict(),
+    ] {
+        let set = RevSet::singleton(id);
+        let RevsResult::Detail {
+            changes: full_changes,
+            conflicts: full_conflicts,
+            ..
+        } = queries::query_revisions(&ws, set.clone()).await?
+        else {
+            panic!("full detail missing")
+        };
+        let RevisionSummaryResult::Detail {
+            changes, conflicts, ..
+        } = queries::query_revision_summary(&ws, set.clone()).await?
+        else {
+            panic!("summary missing")
+        };
+        assert_eq!(changes.len(), full_changes.len());
+        assert_eq!(conflicts.len(), full_conflicts.len());
+        for summary in changes {
+            let full = full_changes
+                .iter()
+                .find(|c| c.path.repo_path == summary.path.repo_path)
+                .expect("summary path");
+            let RevisionDiffResult::Detail {
+                change: Some(change),
+                conflict: None,
+                ..
+            } = queries::query_revision_diff(&ws, set.clone(), summary.path).await?
+            else {
+                panic!("file diff missing")
+            };
+            assert_eq!(serde_json::to_value(change)?, serde_json::to_value(full)?);
+        }
+        for path in conflicts {
+            let full = full_conflicts
+                .iter()
+                .find(|c| c.path.repo_path == path.repo_path)
+                .expect("conflict path");
+            let RevisionDiffResult::Detail {
+                change: None,
+                conflict: Some(conflict),
+                ..
+            } = queries::query_revision_diff(&ws, set.clone(), path).await?
+            else {
+                panic!("conflict missing")
+            };
+            assert_eq!(serde_json::to_value(conflict)?, serde_json::to_value(full)?);
+        }
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn selection_lookup_uses_repository_not_graph_filter() -> Result<()> {
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(repo.path()).await?;
+    let id = revs::conflict_bookmark();
+    let page = queries::query_log(&ws, "none()", 10)?;
+    assert!(page.rows.is_empty());
+    let selection = queries::resolve_revision_selection(&ws, id.clone())?;
+    assert_eq!(selection.exact.unwrap().id.commit.hex, id.commit.hex);
+    assert!(
+        selection
+            .candidates
+            .iter()
+            .any(|header| header.id.commit.hex == id.commit.hex)
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn redo_preflight_reports_nothing_to_redo() -> Result<()> {
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(repo.path()).await?;
+    let preflight = super::super::mutations::operation_preflight(&ws, true).await?;
+    assert!(!preflight.eligible);
+    assert_eq!(preflight.reason.as_deref(), Some("Nothing to redo"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn staged_query_resolves_symbolic_singletons_to_exact_ids() -> Result<()> {
+    use crate::messages::queries::RevisionSummaryResult;
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(repo.path()).await?;
+    for expression in [
+        "@".to_string(),
+        revs::main_bookmark().commit.hex,
+        "root()".to_string(),
+    ] {
+        let set = RevSet::singleton(mkid(&expression, ""));
+        let RevisionSummaryResult::Detail { set, headers, .. } =
+            queries::query_revision_summary(&ws, set).await?
+        else {
+            panic!("symbolic query missing")
+        };
+        assert!(!set.from.commit.hex.is_empty());
+        assert_eq!(set.from.commit.hex, headers[0].id.commit.hex);
+        assert_eq!(set.from, set.to);
+    }
+    let set = RevSet::singleton(mkid("all()", ""));
+    assert!(matches!(
+        queries::query_revision_summary(&ws, set).await?,
+        RevisionSummaryResult::NotFound { .. }
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn missing_exact_revision_preserves_candidates_and_returns_not_found() -> Result<()> {
+    use crate::messages::queries::{RevisionDiffResult, RevisionSummaryResult};
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(repo.path()).await?;
+    let mut id = revs::main_bookmark();
+    id.commit.hex = "f".repeat(40);
+    let selection = queries::resolve_revision_selection(&ws, id.clone())?;
+    assert!(selection.exact.is_none());
+    assert!(!selection.candidates.is_empty());
+    let set = RevSet::singleton(id);
+    assert!(matches!(
+        queries::query_revision_summary(&ws, set.clone()).await?,
+        RevisionSummaryResult::NotFound { .. }
+    ));
+    let path = crate::messages::TreePath {
+        repo_path: "c.txt".into(),
+        relative_path: "c.txt".into(),
+    };
+    assert!(matches!(
+        queries::query_revision_diff(&ws, set, path).await?,
+        RevisionDiffResult::NotFound { .. }
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn change_only_divergence_returns_all_candidates() -> Result<()> {
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let mut ws = session.load_workspace(repo.path()).await?;
+    let original = ws.get_commit(ws.wc_id())?;
+    let mut tx = ws.start_transaction().await?;
+    let first = tx
+        .repo_mut()
+        .rewrite_commit(&original)
+        .set_description("divergent one")
+        .write()
+        .await?;
+    let second = tx
+        .repo_mut()
+        .rewrite_commit(&original)
+        .set_description("divergent two")
+        .write()
+        .await?;
+    ws.finish_transaction(tx, "create divergence").await?;
+    let mut id = ws.format_header(&first, None)?.id;
+    id.commit.hex.clear();
+    let result = queries::resolve_revision_selection(&ws, id)?;
+    assert!(result.exact.is_none());
+    assert!(
+        result
+            .candidates
+            .iter()
+            .any(|c| c.id.commit.hex == first.id().hex())
+    );
+    assert!(
+        result
+            .candidates
+            .iter()
+            .any(|c| c.id.commit.hex == second.id().hex())
+    );
+    Ok(())
 }

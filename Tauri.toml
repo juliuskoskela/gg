@@ -20,7 +20,7 @@ permissions = [
 
 [build]
 beforeBuildCommand = "npm run build"
-beforeDevCommand = "npx vite"
+beforeDevCommand = "npm run dev:frontend"
 devUrl = "http://localhost:6973"
 frontendDist = "dist"
 features = ["app"]

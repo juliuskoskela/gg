@@ -140,6 +140,70 @@ async fn query_log_single() -> Result<()> {
 }
 
 #[tokio::test]
+async fn workspace_identity_survives_active_log_query() -> Result<()> {
+    let repo = mkrepo();
+    let (tx, rx) = channel::<SessionEvent>();
+    let (tx_load, rx_load) = channel::<Result<RepoConfig>>();
+    let (tx_log, rx_log) = channel::<Result<LogPage>>();
+    let (tx_identity, rx_identity) = channel::<Result<String>>();
+    tx.send(SessionEvent::OpenWorkspace {
+        tx: tx_load,
+        wd: Some(repo.path().to_owned()),
+    })?;
+    tx.send(SessionEvent::QueryLog {
+        tx: tx_log,
+        query: "none()".to_owned(),
+    })?;
+    tx.send(SessionEvent::QueryWorkspaceIdentity { tx: tx_identity })?;
+    tx.send(SessionEvent::EndSession)?;
+    WorkerSession::default().handle_events(&rx).await?;
+    rx_load.recv()??;
+    rx_log.recv()??;
+    assert_eq!(rx_identity.recv()??, "default");
+    Ok(())
+}
+
+#[tokio::test]
+async fn current_status_reports_mutation_after_unchanged_snapshot() -> Result<()> {
+    use crate::messages::mutations::{DescribeRevision, MutationOptions, MutationResult};
+    let repo = mkrepo();
+    let (tx, rx) = channel::<SessionEvent>();
+    let (tx_load, rx_load) = channel::<Result<RepoConfig>>();
+    let (tx_mutation, rx_mutation) = channel::<MutationResult>();
+    let (tx_snapshot, rx_snapshot) = channel::<Option<RepoStatus>>();
+    let (tx_status, rx_status) = channel::<Result<RepoStatus>>();
+    tx.send(SessionEvent::OpenWorkspace {
+        tx: tx_load,
+        wd: Some(repo.path().to_owned()),
+    })?;
+    tx.send(SessionEvent::ExecuteMutation {
+        tx: tx_mutation,
+        mutation: Box::new(DescribeRevision {
+            id: revs::working_copy(),
+            new_description: "updated externally".into(),
+            reset_author: false,
+        }),
+        options: MutationOptions::default(),
+    })?;
+    tx.send(SessionEvent::ExecuteSnapshot { tx: tx_snapshot })?;
+    tx.send(SessionEvent::QueryCurrentStatus { tx: tx_status })?;
+    tx.send(SessionEvent::EndSession)?;
+    WorkerSession::default().handle_events(&rx).await?;
+    rx_load.recv()??;
+    let MutationResult::Updated { new_status, .. } = rx_mutation.recv()? else {
+        anyhow::bail!("expected update")
+    };
+    assert!(rx_snapshot.recv()?.is_none());
+    let status = rx_status.recv()??;
+    assert_eq!(status.working_copy.hex, new_status.working_copy.hex);
+    assert_eq!(
+        status.operation_description,
+        new_status.operation_description
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn query_log_multi() -> Result<()> {
     let repo = mkrepo();
     let (tx, rx) = channel::<SessionEvent>();

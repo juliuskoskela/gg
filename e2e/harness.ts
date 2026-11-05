@@ -16,7 +16,7 @@ export interface TestContext {
 }
 
 export async function createContext(): Promise<TestContext> {
-    let browser = await chromium.launch({ headless: true });
+    let browser = await chromium.launch({ headless: true, executablePath: process.env.GG_TEST_BROWSER || undefined });
     let page = await browser.newPage();
     let tempDir = await mkdtemp(join(tmpdir(), "gg-test-"));
     return { browser, page, tempDir, ggProcess: null };
