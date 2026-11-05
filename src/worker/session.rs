@@ -75,10 +75,29 @@ pub enum SessionEvent {
         tx: Sender<Result<PathBuf>>,
         name: String,
     },
+    /// Identify the loaded workspace, independent of the active log filter.
+    QueryWorkspaceIdentity { tx: Sender<Result<String>> },
     /// Look up one or more revisions by change/commit ID.
     QueryRevisions {
         tx: Sender<Result<messages::queries::RevsResult>>,
         set: messages::RevSet,
+    },
+    QueryOperationPreflight {
+        tx: Sender<Result<messages::queries::OperationPreflight>>,
+        redo: bool,
+    },
+    ResolveRevisionSelection {
+        tx: Sender<Result<messages::queries::RevisionSelectionResult>>,
+        id: messages::RevId,
+    },
+    QueryRevisionSummary {
+        tx: Sender<Result<messages::queries::RevisionSummaryResult>>,
+        set: messages::RevSet,
+    },
+    QueryRevisionDiff {
+        tx: Sender<Result<messages::queries::RevisionDiffResult>>,
+        set: messages::RevSet,
+        path: messages::TreePath,
     },
     /// List Git remotes, optionally filtered to those tracking a bookmark.
     QueryRemotes {
@@ -93,6 +112,10 @@ pub enum SessionEvent {
     /// Fetch the next page of results from an in-progress log query.
     QueryLogNextPage {
         tx: Sender<Result<messages::queries::LogPage>>,
+    },
+    /// Return the loaded worker's current repository status without snapshotting.
+    QueryCurrentStatus {
+        tx: Sender<Result<messages::RepoStatus>>,
     },
     /// Snapshot the working copy if it has changed since the last check.
     /// Returns `Some` when the working-copy commit was updated.
@@ -152,6 +175,9 @@ impl Session for WorkerSession {
             log::debug!("WorkerSession handling {evt:?}");
             match evt {
                 Ok(SessionEvent::EndSession) => return Ok(()),
+                Ok(SessionEvent::QueryCurrentStatus { tx }) => {
+                    tx.send(Err(anyhow!("No workspace is loaded")))?;
+                }
                 Ok(SessionEvent::ExecuteSnapshot { tx }) => {
                     tx.send(None)?;
                 }
@@ -279,8 +305,23 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryWorkspaceRoot { tx, name } => {
                     tx.send(self.workspace_root(name))?
                 }
+                SessionEvent::QueryWorkspaceIdentity { tx } => {
+                    tx.send(Ok(self.name().as_str().to_owned()))?
+                }
                 SessionEvent::QueryRevisions { tx, set } => {
                     tx.send(queries::query_revisions(&self, set).await)?
+                }
+                SessionEvent::QueryOperationPreflight { tx, redo } => {
+                    tx.send(super::mutations::operation_preflight(&self, redo).await)?
+                }
+                SessionEvent::ResolveRevisionSelection { tx, id } => {
+                    tx.send(queries::resolve_revision_selection(&self, id))?
+                }
+                SessionEvent::QueryRevisionSummary { tx, set } => {
+                    tx.send(queries::query_revision_summary(&self, set).await)?
+                }
+                SessionEvent::QueryRevisionDiff { tx, set, path } => {
+                    tx.send(queries::query_revision_diff(&self, set, path).await)?
                 }
                 SessionEvent::QueryRemotes {
                     tx,
@@ -309,6 +350,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryLogNextPage { tx } => {
                     let revset_string = self.session.latest_query.as_deref();
                     handle_query(&mut state, &self, tx, rx, revset_string, None).await?;
+                }
+                SessionEvent::QueryCurrentStatus { tx } => {
+                    tx.send(Ok(self.format_status()))?;
                 }
                 SessionEvent::ExecuteSnapshot { tx } => {
                     let updated_head = self.load_at_head().await?; // alternatively, this could be folded into snapshot so that it's done by all mutations
@@ -473,8 +517,26 @@ impl Session for QuerySession<'_, '_> {
             let evt = rx.recv();
             log::debug!("LogQuery handling {evt:?}");
             match evt {
+                Ok(SessionEvent::QueryCurrentStatus { tx }) => {
+                    tx.send(Ok(self.ws.format_status()))?;
+                }
+                Ok(SessionEvent::QueryWorkspaceIdentity { tx }) => {
+                    tx.send(Ok(self.ws.name().as_str().to_owned()))?
+                }
                 Ok(SessionEvent::QueryRevisions { tx, set }) => {
                     tx.send(queries::query_revisions(self.ws, set).await)?
+                }
+                Ok(SessionEvent::QueryOperationPreflight { tx, redo }) => {
+                    tx.send(super::mutations::operation_preflight(self.ws, redo).await)?
+                }
+                Ok(SessionEvent::ResolveRevisionSelection { tx, id }) => {
+                    tx.send(queries::resolve_revision_selection(self.ws, id))?
+                }
+                Ok(SessionEvent::QueryRevisionSummary { tx, set }) => {
+                    tx.send(queries::query_revision_summary(self.ws, set).await)?
+                }
+                Ok(SessionEvent::QueryRevisionDiff { tx, set, path }) => {
+                    tx.send(queries::query_revision_diff(self.ws, set, path).await)?
                 }
                 Ok(SessionEvent::QueryRemotes {
                     tx,
