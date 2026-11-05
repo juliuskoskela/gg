@@ -5,6 +5,7 @@
     import type { Operand } from "../messages/Operand";
     import type { ExternalDiff } from "../messages/ExternalDiff";
     import type { ExternalResolve } from "../messages/ExternalResolve";
+    import FileIcon from "../controls/FileIcon.svelte";
     import Icon from "../controls/Icon.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Object from "./Object.svelte";
@@ -28,7 +29,7 @@
     $: hasDiffTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool;
     $: hasMergeTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool;
 
-    $: icon = change.kind === "Added" ? "file-plus" : change.kind === "Deleted" ? "file-minus" : "file";
+    $: icon = change.kind === "Added" ? "plus" : change.kind === "Deleted" ? "minus" : "edit-3";
     $: state = (change.kind === "Added" ? "add" : change.kind === "Deleted" ? "remove" : null) as "add" | "change" | "remove" | null;
     function onSelect() {
         changeSelectEvent.set(change);
@@ -66,8 +67,9 @@
     let:hint>
     <Zone {operand} let:target>
         <div class="layout" class:target class:wrap>
-            <Icon name={icon} state={context ? null : state} />
+            <FileIcon path={change.path.repo_path} />
             <span dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
+            <span class="change-status" role="img" aria-label={change.has_conflict ? "Unresolved conflict" : change.kind} title={change.has_conflict ? "Unresolved conflict" : change.kind}><Icon name={change.has_conflict ? "alert-triangle" : icon} state={context ? null : state} /></span>
             {#if hasMergeTool && change.has_conflict && operand}
                 <ActionWidget tip="resolve in merge tool" onClick={onExternalResolve}>
                     <Icon name="external-link" /> Resolve
@@ -94,12 +96,14 @@
         padding-inline-start: 3px;
     }
 
-    .layout span {
+    .layout > span:not(.change-status) {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         flex: 1;
     }
+
+    .change-status { display: flex; flex: 0 0 auto; --icon-size: 14px; }
 
     @media (pointer: coarse), (max-width: 600px) { .layout { min-height: 44px; } }
     .layout.wrap span { white-space: normal; overflow-wrap: anywhere; }
