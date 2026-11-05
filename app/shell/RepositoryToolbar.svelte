@@ -4,6 +4,7 @@
     import Icon from "../controls/Icon.svelte";
     import IdSpan from "../controls/IdSpan.svelte";
     import { nativeRepositoryCommands, repositoryCommands } from "../commands/registry";
+    import { effectiveTheme, toggleTheme } from "../display/theme";
     import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
     import type { RepoConfig } from "../messages/RepoConfig";
     import type { Operand } from "../messages/Operand";
@@ -130,6 +131,7 @@
                         {/if}
                         <hr />
                     {/if}
+                    <button type="button" aria-label={`Theme: ${$effectiveTheme}. Switch to ${$effectiveTheme === "dark" ? "light" : "dark"} theme`} on:click={toggleTheme}><Icon name={$effectiveTheme === "dark" ? "sun" : "moon"} /> Theme: {$effectiveTheme === "dark" ? "Dark" : "Light"} · Switch to {$effectiveTheme === "dark" ? "light" : "dark"}</button>
                     <ActionWidget secondary tip="Refresh" disabled={refreshing} onClick={() => { onRefresh(); menuOpen = false; }}><Icon name="refresh-cw" /> {refreshing ? "Refreshing…" : "Refresh"}</ActionWidget>
                     <ActionWidget secondary tip="Redo the latest undone operation" disabled={!$repoStatusEvent?.can_redo || !!$currentMutation} onClick={onRedo}><Icon name="rotate-cw" /> Redo</ActionWidget>
                     <p class="operation-info" title={$repoStatusEvent?.operation_description}>{$repoStatusEvent?.operation_description ?? "No operation"}</p>

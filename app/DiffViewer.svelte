@@ -11,7 +11,8 @@
     import DiffScrollbars from "./revision/DiffScrollbars.svelte";
     import type { RevChange } from "./messages/RevChange";
     import { changePatch } from "./diff";
-    import { diffStyle, diffWrap, repoConfigEvent, fileHorizontalPositions } from "./stores";
+    import { diffStyle, diffWrap, fileHorizontalPositions } from "./stores";
+    import { effectiveTheme } from "./display/theme";
 
     export let change: RevChange;
     export let readingKey = "";
@@ -24,10 +25,9 @@
     let error = "";
     let mounted = false;
     let scrollColumns: HTMLElement[] = [];
-    $: theme = $repoConfigEvent.type === "Workspace" ? $repoConfigEvent.theme_override : undefined;
     $: options = {
         theme: "gg",
-        themeType: theme === "dark" || theme === "light" ? theme : "system" as const,
+        themeType: $effectiveTheme,
         diffStyle: resolvedStyle,
         overflow: $diffWrap ? "wrap" as const : "scroll" as const,
         lineDiffType: "word-alt" as const,
