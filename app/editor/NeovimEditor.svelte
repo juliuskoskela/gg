@@ -18,6 +18,8 @@
     let error = "";
     let opened = "";
     let mode = "normal";
+    let syntaxLanguage = "";
+    let syntaxWarning = "";
     let screenText = "";
     let frame = 0;
     let dimensions = "";
@@ -29,6 +31,7 @@
     $: if (ready && path && commit && repository) open(repository, commit, path);
     $: if (ready && $effectiveTheme) theme();
     $: if (visible && ready) requestAnimationFrame(resize);
+    $: if (visible && opened) requestAnimationFrame(() => input?.focus({ preventScroll: true }));
     function open(repo: string, revision: string, file: string) {
         let key = `${repo}:${revision}:${file}`;
         if (requested === key) return;
@@ -94,7 +97,7 @@
                 let message = JSON.parse(event.data);
                 if (message.type === "ready") { ready = true; resize(); theme(); }
                 else if (message.type === "redraw") { if (grid.apply(message.events as Redraw[])) paint(); }
-                else if (message.type === "opened" && message.key === `${commit}:${path}`) { opened = message.key; error = ""; }
+                else if (message.type === "opened" && message.key === `${commit}:${path}`) { opened = message.key; error = ""; syntaxLanguage = message.syntax || "plain text"; syntaxWarning = message.warning || ""; }
                 else if (message.type === "error") error = message.message;
             };
             socket.onclose = () => { if (alive) { ready = false; error = "Neovim disconnected. Switch to Diff or reload the demo."; } };
@@ -110,7 +113,8 @@
 </script>
 
 <div class="editor" hidden={!visible}>
-    <div class="editor-note"><span>Neovim · {mode}</span><span>Scratch buffer · not saved to repository</span></div>
+    <div class="editor-note"><span>Neovim · {mode}{#if syntaxLanguage} · {syntaxLanguage}{/if}</span><span>Scratch buffer · not saved to repository</span></div>
+    {#if syntaxWarning}<p class="editor-help" role="status">{syntaxWarning}</p>{/if}
     <!-- keyboard and pointer events are forwarded to Neovim; the textarea owns input semantics. -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="editor-surface" bind:this={host}
@@ -134,10 +138,10 @@
     .editor[hidden] { display: none; }
     .editor-note, .editor-help { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; margin: 0; font-size: var(--type-caption); color: var(--muted); }
     .editor-note { border-bottom: 1px solid var(--rule); }
-    .editor-surface { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; font-family: var(--stack-code); font-size: var(--type-code); line-height: var(--code-leading); }
+    .editor-surface { pointer-events: auto; position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; font-family: var(--stack-code); font-size: var(--type-code); line-height: var(--code-leading); }
     canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; }
     .screen-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }
-    textarea { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; padding: 0; border: 0; resize: none; }
+    textarea { position: absolute; left: 0; top: 0; width: 1px; height: 1px; min-height: 0; opacity: 0; padding: 0; border: 0; resize: none; }
     .editor-surface:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
     .message { position: absolute; inset: 0; padding: 24px; background: var(--surface); color: var(--muted); }
     @media (max-width: 600px) { .editor-note { flex-wrap: wrap; } .editor-help { line-height: 1.5; } }

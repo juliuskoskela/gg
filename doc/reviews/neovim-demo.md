@@ -22,7 +22,7 @@ A dev-only Vite plugin launches a plugin-free `nvim --embed` per reader session.
 
 The frontend consumes `ext_linegrid`, applies updates in order, and draws on `flush`. A custom WebGL 2 renderer uploads glyphs to an atlas and draws background and glyph batches. It uses GG+'s JetBrains Mono, code size, line height and pixel ratio. Theme highlights are derived from the same semantic/syntax tokens used by the existing diff renderer. Different syntax engines can still classify tokens differently.
 
-Each exact commit/path gets a scratch buffer. File switching and Diff/File switching preserve that buffer and its Neovim cursor/scroll. The data comes from `jj file show` at the precise selected commit, with literal path arguments, rather than reading current disk content for a historical revision. The initial syntax engine is Neovim's bundled syntax highlighting, not a claim of a configured Tree-sitter/LSP distribution.
+Each exact commit/path gets a scratch buffer. File switching and Diff/File switching preserve that buffer and its Neovim cursor/scroll. The data comes from `jj file show` at the precise selected commit, with literal path arguments, rather than reading current disk content for a historical revision. The syntax engine uses Neovim's bundled syntax highlighting plus a pinned, vendored Svelte syntax runtime with embedded TypeScript/CSS support. Its source and Unlicense are in `demo/neovim/runtime/`. This is not a configured Tree-sitter/LSP distribution.
 
 ## Limits before production
 
@@ -39,7 +39,16 @@ The point of the demo is to decide whether the embedded editing surface feels ri
 - `npm run build`: passed, Svelte check reported 0 errors and 0 warnings.
 - `npx tsc --noEmit --incremental false --composite false -p tsconfig.node.json` and the equivalent E2E project check: passed.
 - `nix develop -c sh -c 'cargo fmt --check && cargo clippy'`: passed.
-- `GG_TEST_BROWSER=/etc/profiles/per-user/juliuskoskela/bin/google-chrome npm run test` inside the development shell: **186 tests passed across 40 files**.
+- `GG_TEST_BROWSER=/etc/profiles/per-user/juliuskoskela/bin/google-chrome npm run test` inside the development shell: **187 tests passed across 40 files**.
 - Real-Neovim regression: insertion, undo, retained scratch buffer across Diff/File, unchanged historical content and unchanged disk file. Grid tests cover highlight inheritance, repeated cells, flush and bounded scrolling.
 - Playwright visual pass: 1440×960 at DPR 2, dark and light themes, file switching, then 390×844. No observed page errors or root overflow. Evidence is kept locally in `.taste-skill/neovim-demo/`.
 - The visual run uses Chromium software WebGL (SwiftShader). This verifies the rendering path, not hardware acceleration or smoothness on the native Tauri webview. Native hardware profiling and device input testing remain open.
+
+
+## Native interaction follow-up
+
+The first browser test focused the hidden input directly and missed a real pointer defect: GG+'s global non-interactive-container rule caused the canvas surface to ignore clicks. The editor now explicitly owns pointer events, and entering File focuses its input. The regression clicks the visible canvas before typing and undoing.
+
+Plugin-free Neovim also lacked Svelte syntax. A pinned Svelte syntax runtime now includes its complete syntax/helper dependency set. A second fixture test checks successful Svelte loading, colored code cells, and click-to-type input. Syntax-load failures produce a non-blocking warning rather than hiding the editable buffer. The native inspector confirmed the original missing-runtime error and that the corrected input receives focus; physical OS keyboard and GPU performance remain manual checks.
+
+The optional `demo/` runtime is ignored by the Rust watcher. Vite handles its updates so syntax edits no longer repeatedly restart the native process.

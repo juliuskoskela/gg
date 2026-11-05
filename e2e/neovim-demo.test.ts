@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
-import { readFileSync } from "node:fs";
+import { NeovimGrid } from "../app/editor/grid";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import { createContext, destroyContext, extractTestRepo, startGG, PROJECT_ROOT, type TestContext } from "./harness";
@@ -14,6 +15,8 @@ describe.skipIf(!available)("Neovim development demo", () => {
     let originalRepo = process.env.GG_NEOVIM_REPOSITORY;
     beforeAll(async () => {
         ctx = await createContext(); extractTestRepo(ctx.tempDir);
+        writeFileSync(join(ctx.tempDir, "Demo.svelte"), '<script lang="ts">\n    export let message: string = "Highlighted Svelte";\n</script>\n<h1>{message}</h1>\n<style>\n    h1 { color: red; }\n</style>\n');
+        execFileSync("jj", ["describe", "-m", "Neovim Svelte fixture"], { cwd: ctx.tempDir });
         let backend = await startGG(ctx);
         process.env.GG_NEOVIM_DEMO = "1";
         process.env.GG_NEOVIM_REPOSITORY = ctx.tempDir;
@@ -38,7 +41,8 @@ describe.skipIf(!available)("Neovim development demo", () => {
         await ctx.page.getByRole("textbox", { name: "Neovim scratch editor" }).waitFor();
         await expect.poll(() => screen.textContent()).toContain(before.trim().split("\n")[0]);
         let input = ctx.page.getByRole("textbox", { name: "Neovim scratch editor" });
-        await input.focus();
+        await ctx.page.locator(".editor canvas").click({ position: { x: 60, y: 30 }, timeout: 3000 });
+        await expect.poll(() => input.evaluate(node => node === document.activeElement)).toBe(true);
         await ctx.page.keyboard.type("ggIgg-demo-proof ");
         await ctx.page.keyboard.press("Escape");
         await expect.poll(() => screen.textContent()).toContain("gg-demo-proof");
@@ -53,4 +57,29 @@ describe.skipIf(!available)("Neovim development demo", () => {
         expect(readFileSync(join(ctx.tempDir, "d.txt"), "utf8")).toBe(diskBefore);
         expect(await ctx.page.locator("canvas").evaluate(node => !!(node as HTMLCanvasElement).getContext("webgl2"))).toBe(true);
     });
+    it("loads Svelte, embedded TypeScript and CSS syntax and accepts click-to-type input", async () => {
+        let grid = new NeovimGrid();
+        let language = "";
+        let warnings: string[] = [];
+        ctx.page.on("websocket", socket => socket.on("framereceived", event => {
+            try {
+                let message = JSON.parse(String(event.payload));
+                if (message.type === "redraw") grid.apply(message.events);
+                if (message.type === "opened") { language = message.syntax; if (message.warning) warnings.push(message.warning); }
+                if (message.type === "error") warnings.push(message.message);
+            } catch { /* Vite also has a websocket */ }
+        }));
+        await ctx.page.goto(`${url}/?inspect=@&file=Demo.svelte`);
+        await ctx.page.getByRole("button", { name: "File", exact: true }).click();
+        await expect.poll(() => language).toBe("svelte");
+        let screen = ctx.page.locator(".screen-text");
+        await expect.poll(() => screen.textContent()).toContain("Highlighted Svelte");
+        await expect.poll(() => grid.rows.some(row => row.slice(4).some(cell => cell.text.trim() && grid.highlights.get(cell.hl)?.foreground !== undefined && grid.highlights.get(cell.hl)?.foreground !== grid.foreground))).toBe(true);
+        await ctx.page.locator(".editor canvas").click({ position: { x: 75, y: 30 } });
+        await ctx.page.keyboard.type("ggI<!-- native-click-proof -->");
+        await ctx.page.keyboard.press("Escape");
+        await expect.poll(() => screen.textContent()).toContain("native-click-proof");
+        expect(warnings).toEqual([]);
+    });
+
 });

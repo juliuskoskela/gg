@@ -1,6 +1,7 @@
 import { spawn, execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
+import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { attach, type Buffer as NeovimBuffer } from "neovim";
 import { WebSocketServer } from "ws";
@@ -19,6 +20,8 @@ export function neovimDemo(): Plugin {
         async configureServer(server) {
             if (!enabled) return;
             let repository = await realpath(process.env.GG_NEOVIM_REPOSITORY ?? process.cwd());
+            let runtime = resolve(server.config.root, "demo/neovim/runtime");
+            server.watcher.on("change", path => { if (path.startsWith(runtime)) server.ws.send({ type: "full-reload" }); });
             let sockets = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
             let sessions = new Set<ReturnType<typeof spawn>>();
             server.httpServer?.on("upgrade", (request, socket, head) => {
@@ -55,6 +58,8 @@ export function neovimDemo(): Plugin {
                             if (initialized) return;
                             initialized = true;
                             await nvim.request("nvim_ui_attach", [80, 24, { rgb: true, ext_linegrid: true }]);
+                            await nvim.request("nvim_exec_lua", ["vim.opt.runtimepath:prepend(...); vim.g.vim_svelte_plugin_use_typescript = 1", [runtime]]);
+                            await nvim.command("filetype on | syntax enable");
                             await nvim.command("set number mouse=a laststatus=0 showtabline=0 noshowmode noruler nomodeline nowrap signcolumn=no shortmess+=I");
                             send({ type: "ready", version: await nvim.request("nvim_eval", ["execute('version')->split('\\n')[0]"]) });
                         } else if (!initialized) return;
@@ -99,9 +104,17 @@ export function neovimDemo(): Plugin {
                             }
                             await nvim.input("<Esc>");
                             await nvim.request("nvim_set_current_buf", [buffer]);
-                            await nvim.command("filetype detect");
-                            await nvim.command("syntax enable");
-                            send({ type: "opened", key, path: message.path });
+                            let warning = "";
+                            try {
+                                await nvim.command("filetype detect");
+                                await nvim.command("syntax enable");
+                            } catch (error) {
+                                warning = `Syntax highlighting unavailable: ${String((error as Error).message)}`;
+                                await nvim.command("setlocal syntax=");
+                            }
+                            let filetype = await nvim.request("nvim_get_option_value", ["filetype", { buf: buffer }]);
+                            let syntax = await nvim.request("nvim_exec_lua", ["return vim.b.current_syntax or ''", []]);
+                            send({ type: "opened", key, path: message.path, filetype, syntax, warning });
                         }
                     }).catch(error => send({ type: "error", message: String(error.message ?? error) }));
                 });
