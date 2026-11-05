@@ -1,4 +1,4 @@
 button.primary { font-weight: 500; background: var(--accent-solid); color: var(--text-on-accent); }
 button.primary:disabled { background: var(--active); color: var(--text-disabled); }
-button.primary:not(:disabled):active { background: color-mix(in srgb, var(--accent-solid-hover) 85%, var(--neutral-950)); }
 @media (hover: hover) { button.primary:not(:disabled):hover { background: var(--accent-solid-hover); } }
+button.primary:not(:disabled):active { background: var(--accent-solid-pressed); }

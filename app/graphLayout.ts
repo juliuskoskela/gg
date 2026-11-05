@@ -34,9 +34,7 @@ let coarsePointer = readable(false, set => {
 export function historyRowSize(density: HistoryDensity, coarse: boolean) {
     return density === "tall" ? 60 : coarse ? 44 : revisionRowHeight;
 }
-export function revisionNodeOffset(rowHeight: number) {
-    // the author line sits below the title; stations follow the title, not the whole row.
-    let authorSpace = rowHeight === historyRowSize("tall", false) ? revisionAuthorHeight + revisionRowGap : 0;
+export function revisionNodeOffset(rowHeight: number, authorSpace = 0) {
     return (rowHeight - authorSpace) / 2;
 }
 export let historyRowHeight = derived([historyDensity, coarsePointer], ([density, coarse]) => historyRowSize(density, coarse));

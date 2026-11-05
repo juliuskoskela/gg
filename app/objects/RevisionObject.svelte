@@ -20,6 +20,7 @@
     export let expanded = false;
     export let tall = false;
     export let rowHeight = revisionRowHeight;
+    export let textScale = 1;
     export let onClick: ((header: RevHeader) => void) | undefined = undefined;
     export let onShiftClick: ((header: RevHeader) => void) | undefined = undefined;
 
@@ -99,7 +100,7 @@
         </div>
     {:else}
         <Zone {operand} let:target let:hint={dropHint}>
-            <div class="layout" class:target class:tall class:own-wc={header.is_working_copy && header.working_copy_of == null} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-author-height={`${revisionAuthorHeight}px`} style:--history-row-gap={`${revisionRowGap}px`}>
+            <div class="layout" class:target class:tall class:own-wc={header.is_working_copy && header.working_copy_of == null} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-title-height={`${22 * textScale}px`} style:--history-author-height={`${revisionAuthorHeight * textScale}px`} style:--history-row-gap={`${revisionRowGap * textScale}px`}>
                 <IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
@@ -155,7 +156,7 @@
         padding-left: var(--leftpad);
     }
 
-    .layout.tall { grid-template-areas: "id desc refs" ". author ."; grid-template-rows: 22px var(--history-author-height); row-gap: var(--history-row-gap); }
+    .layout.tall { grid-template-areas: "id desc refs" ". author ."; grid-template-rows: var(--history-title-height, 22px) var(--history-author-height); row-gap: var(--history-row-gap); }
     .author { grid-area: author; color: var(--muted); font-size: var(--type-caption); font-weight: 400; pointer-events: none; }
     .layout.target {
         outline: 2px solid var(--text);
@@ -206,7 +207,7 @@
         pointer-events: none;
     }
 
-    .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); color: var(--faint); }
+    .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); color: var(--muted); }
     .layout > :global(.id .change), .layout > :global(.id .hidden) { color: var(--text); }
     /* prefix echoes its station; the mix toward strong text keeps 12px mono above 4.5:1 */
     .layout { --id-tint: color-mix(in oklab, var(--lane, var(--text)) var(--graph-node-chroma, 100%), var(--muted)); }

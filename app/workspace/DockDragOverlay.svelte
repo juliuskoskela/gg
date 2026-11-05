@@ -29,7 +29,7 @@
 {/if}
 
 <style>
-    .dock-drag-ghost { position: fixed; z-index: 10002; max-width: 176px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); color: var(--text-strong); box-shadow: 0 5px 18px #0003; font-size: var(--type-ui); pointer-events: none; white-space: nowrap; }
+    .dock-drag-ghost { position: fixed; z-index: 10002; max-width: 176px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); color: var(--text-strong); box-shadow: var(--shadow-float); font-size: var(--type-ui); pointer-events: none; white-space: nowrap; }
     .dock-drop-preview { position: fixed; z-index: 10000; display: grid; place-items: center; box-sizing: border-box; border: 1px solid var(--accent); border-radius: var(--radius-control); background: color-mix(in srgb, var(--accent) 13%, transparent); pointer-events: none; transition: left 120ms ease-out, top 120ms ease-out, width 120ms ease-out, height 120ms ease-out; }
     .dock-drop-preview span { padding: 5px 10px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font-size: var(--type-caption); pointer-events: none; }
     .drag-instructions { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }

@@ -117,7 +117,9 @@ describe("workspace complex-state acceptance", () => {
                 let element = document.activeElement as HTMLElement;
                 let box = element.getBoundingClientRect();
                 let style = getComputedStyle(element);
-                return { tag: element.tagName, name: element.getAttribute("aria-label") ?? element.textContent?.trim().slice(0, 80), width: box.width, height: box.height, top: box.top, bottom: box.bottom, left: box.left, right: box.right, inert: !!element.closest("[inert], [aria-hidden=true]"), outline: style.outlineStyle, shadow: style.boxShadow };
+                let ring = getComputedStyle(element, "::before");
+                let insetFocus = element.matches(":focus-visible") && ring.content !== "none" && ring.borderStyle === "solid" && parseFloat(ring.borderWidth) >= 2;
+                return { tag: element.tagName, name: element.getAttribute("aria-label") ?? element.textContent?.trim().slice(0, 80), width: box.width, height: box.height, top: box.top, bottom: box.bottom, left: box.left, right: box.right, inert: !!element.closest("[inert], [aria-hidden=true]"), outline: style.outlineStyle, shadow: style.boxShadow, insetFocus };
             });
             if (state.tag === "BODY") break; // Tab may leave document for browser chrome.
             checked++;
@@ -128,7 +130,7 @@ describe("workspace complex-state acceptance", () => {
             expect(state.bottom).toBeGreaterThan(0);
             expect(state.left).toBeLessThan(320);
             expect(state.right).toBeGreaterThan(0);
-            expect(state.outline !== "none" || state.shadow !== "none", JSON.stringify(state)).toBe(true);
+            expect(state.outline !== "none" || state.shadow !== "none" || state.insetFocus, JSON.stringify(state)).toBe(true);
             await ctx.page.keyboard.press("Tab");
         }
         expect(checked).toBeGreaterThanOrEqual(3);

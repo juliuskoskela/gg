@@ -67,11 +67,16 @@
     let logWidth = 0;
     let logScrollTop = 0;
     let graphBody: HTMLDivElement;
-    let previousRowHeight = $historyRowHeight;
-    $: if ($historyRowHeight !== previousRowHeight) preserveHistoryAnchor($historyRowHeight);
+    let rowMeasurement = $historyRowHeight;
+    let measuredRowHeight = $historyRowHeight;
+    $: if (rowMeasurement > 0) measuredRowHeight = rowMeasurement;
+    $: textScale = measuredRowHeight / $historyRowHeight;
+    $: authorSpace = $historyDensity === "tall" ? 20 * textScale : 0;
+    let previousRowHeight = measuredRowHeight;
+    $: if (measuredRowHeight !== previousRowHeight) preserveHistoryAnchor(measuredRowHeight);
     async function preserveHistoryAnchor(height: number) {
         let box = graphBody?.querySelector<HTMLElement>(".listbox");
-        let top = anchoredHistoryScroll(box?.scrollTop ?? logScrollTop, previousRowHeight, height);
+        let top = anchoredHistoryScroll(logScrollTop, previousRowHeight, height);
         previousRowHeight = height;
         await tick();
         if (box) box.scrollTop = top;
@@ -437,9 +442,10 @@
         {/if}
     </div>
     <div slot="summary" class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span></div>
+    <div class="history-measure" style:--history-base-row={$historyRowHeight} bind:clientHeight={rowMeasurement} aria-hidden="true"></div>
     <ListWidget
         type="Revision"
-        rowHeight={$historyRowHeight}
+        rowHeight={measuredRowHeight}
         scrollPaddingBottom={overlayInset}
         descendant={$revisionSelectEvent?.to.commit.prefix}
         {list}
@@ -451,7 +457,8 @@
         {:else if graphRows}
             {#if graphRows.length}
             <GraphLog
-                rowHeight={$historyRowHeight}
+                rowHeight={measuredRowHeight}
+                {authorSpace}
                 containerHeight={logHeight}
                 endInset={reservedInset}
                 containerWidth={logWidth}
@@ -460,7 +467,8 @@
                 let:row>
                 {#if row}
                     <RevisionObject
-                        rowHeight={$historyRowHeight}
+                        rowHeight={measuredRowHeight}
+                        {textScale}
                         tall={$historyDensity === "tall"}
                         header={row.revision}
                         selected={isInSelectedRange(row, $revisionSelectEvent)}
@@ -476,6 +484,9 @@
 </TimelineSection>
 
 <style>
+    :global(.graph-body .listbox) { overflow-anchor: none; }
+    .history-measure { position: absolute; visibility: hidden; pointer-events: none; width: 1px; font-size: var(--type-ui); height: max(calc(var(--history-base-row) * 1px), calc(var(--history-base-row) * 1em / 13)); }
+    @media (max-width: 600px) { .history-measure { height: max(calc(var(--history-base-row) * 1px), calc(var(--history-base-row) * 1em / 14)); } }
     h2 { font-size: 13px; font-weight: 500; margin: 0; }
     .log-selector {
         min-height: 32px;

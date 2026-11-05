@@ -74,11 +74,9 @@
         min-width: 220px; max-width: min(320px, calc(100vw - 24px)); max-height: calc(100dvh - 16px);
         padding: 5px;
         overflow-y: auto; overscroll-behavior: contain;
-        background: color-mix(in srgb, var(--raised) 86%, transparent);
-        -webkit-backdrop-filter: blur(24px) saturate(1.6);
-        backdrop-filter: blur(24px) saturate(1.6);
+        background: var(--popover-surface);
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: var(--radius-popover);
         box-shadow: var(--shadow-overlay);
         pointer-events: auto;
         font: 400 var(--type-ui)/1.3 var(--stack-ui);
@@ -91,7 +89,7 @@
     button {
         display: flex; align-items: center; gap: 10px;
         width: 100%; min-height: 28px; padding: 4px 10px 4px 8px;
-        border: 0; border-radius: 6px;
+        border: 0; border-radius: var(--radius-control);
         background: transparent; color: inherit; font: inherit; text-align: start;
         cursor: pointer; outline: none;
     }
@@ -104,7 +102,8 @@
     button:active { background: var(--accent-solid-hover); }
     .destructive { color: var(--negative); }
     .destructive > :global(svg) { color: currentColor; }
-    .destructive:focus { background: var(--negative); color: var(--text-on-accent); }
+    .destructive:focus { background: var(--danger-solid); color: var(--text-on-danger); }
+    .destructive:active { background: var(--danger-solid-pressed); }
     .context-menu:focus { outline: none; }
     hr { margin: 5px 10px; border: 0; border-block-start: 1px solid var(--rule); }
     .menu-title { margin: 0; padding: 4px 10px 6px; color: var(--muted); font-size: var(--type-caption); font-weight: 500; }

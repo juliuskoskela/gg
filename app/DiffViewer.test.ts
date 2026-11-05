@@ -6,6 +6,13 @@ import type { RevChange } from "./messages/RevChange";
 describe("syntax diff viewer", () => {
     beforeEach(() => setupMocks());
     afterEach(async () => cleanupMocks());
+    it("explains changes without text hunks instead of showing a blank reader", async () => {
+        let { default: DiffViewer } = await import("./DiffViewer.svelte");
+        let change: RevChange = { kind: "Added", has_conflict: false, path: { repo_path: "image.bin", relative_path: "image.bin" }, hunks: [] };
+        let { getByRole, container } = render(DiffViewer, { props: { change } });
+        await waitFor(() => expect(getByRole("status").textContent).toContain("may be binary or have only metadata changes"));
+        expect(container.querySelector("diffs-container")).toBeNull();
+    });
     it("highlights code in split and stacked modes without interpreting file contents as HTML", async () => {
         let { default: DiffViewer } = await import("./DiffViewer.svelte");
         let { diffStyle, diffWrap } = await import("./stores");

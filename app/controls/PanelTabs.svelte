@@ -43,7 +43,7 @@
             aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
             use:panelDraggable={{ id: item.id as PanelId, enabled: draggable, move: onMove }}
             aria-describedby={draggable ? `${prefix}-drag-help-${items[0]?.id}` : undefined}
-            on:focus={event => event.currentTarget.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" })}
+            on:focus={event => { if (event.currentTarget.matches(":focus-visible")) event.currentTarget.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" }); }}
             on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, index)}>
             <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
         </div>

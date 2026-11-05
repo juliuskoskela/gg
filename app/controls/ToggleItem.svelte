@@ -39,7 +39,7 @@
     .toggle {
         position: relative;
         display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-        min-height: var(--toggle-height, 28px); padding: 0 12px;
+        min-width: var(--toggle-height, 28px); min-height: var(--toggle-height, 28px); padding: 0 12px;
         border: 0; border-radius: 0;
         background: transparent; color: var(--text);
         font: 500 var(--type-caption)/1 var(--stack-ui); white-space: nowrap;
@@ -63,7 +63,7 @@
     .toggle:focus-visible { outline: none; }
     .toggle:focus-visible::before {
         content: ""; position: absolute; inset: 3px; pointer-events: none;
-        border: var(--focus-width) solid var(--focus-ring); border-radius: 5px;
+        border: var(--focus-width) solid var(--focus-ring); border-radius: var(--radius-control);
     }
     .toggle:disabled { color: var(--text-disabled); cursor: default; }
 

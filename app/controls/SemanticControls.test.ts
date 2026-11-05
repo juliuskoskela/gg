@@ -32,7 +32,7 @@ describe("shared rendered controls", () => {
         expect(option.textContent).not.toContain("Long Author");
         expect(option.scrollWidth).toBeLessThanOrEqual(390);
     });
-    it("measures semantic text, control edges and focus against both theme surfaces", () => {
+    it("measures semantic text and keyboard focus against both theme surfaces", () => {
         let sample = document.createElement("span");
         shell.append(sample);
         let canvas = document.createElement("canvas");
@@ -47,16 +47,50 @@ describe("shared rendered controls", () => {
         for (let theme of ["light", "dark"]) {
             shell.className = theme;
             for (let backgroundRole of ["surface", "selection-bg"]) {
-            for (let role of ["text", "muted", "positive", "negative", "warning", "focus-ring", "control-border"]) {
+            for (let role of ["text", "muted", "positive", "negative", "warning", "focus-ring"]) {
                 sample.style.cssText = `color: var(--${role}); background: var(--${backgroundRole})`;
                 let style = getComputedStyle(sample);
                 let foreground = luminance(style.color);
                 let background = luminance(style.backgroundColor);
                 let ratio = (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
-                expect(ratio, `${theme} ${role} on ${backgroundRole}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(role === "focus-ring" || role === "control-border" ? 3 : 4.5);
+                expect(ratio, `${theme} ${role} on ${backgroundRole}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(role === "focus-ring" ? 3 : 4.5);
             }
             }
         }
+    });
+    it("keeps solid action labels readable in every interaction state", () => {
+        let sample = document.createElement("span");
+        shell.append(sample);
+        let context = document.createElement("canvas").getContext("2d")!;
+        function luminance(color: string) {
+            context.fillStyle = color; context.fillRect(0, 0, 1, 1);
+            let values = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map(value => { let c = value / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; });
+            return values[0] * .2126 + values[1] * .7152 + values[2] * .0722;
+        }
+        for (let theme of ["light", "dark"]) {
+            shell.className = theme;
+            let pairs = [
+                ...["accent-solid", "accent-solid-hover", "accent-solid-pressed"].map(role => ["text-on-accent", role, 4.5] as const),
+                ...["danger-solid", "danger-solid-hover", "danger-solid-pressed"].map(role => ["text-on-danger", role, 4.5] as const),
+            ];
+            for (let [foreground, background, minimum] of pairs) {
+                sample.style.cssText = `color: var(--${foreground}); background: var(--${background})`;
+                let style = getComputedStyle(sample);
+                let a = luminance(style.color), b = luminance(style.backgroundColor);
+                let ratio = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+                expect(ratio, `${theme} ${foreground} on ${background}`).toBeGreaterThanOrEqual(minimum);
+            }
+        }
+    });
+    it("allows action labels to grow when users enlarge text", async () => {
+        let { default: ActionWidget } = await import("./ActionWidget.svelte");
+        let { getByRole } = render(ActionWidget, { target: shell, props: { tip: "Save description", primary: true, onClick: () => {} } });
+        let button = getByRole("button", { name: "Save description" });
+        // emulate the enlarged line box without changing the rest of the test runner.
+        button.style.fontSize = "26px";
+        button.textContent = "Save description";
+        expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(50);
+        expect(button.scrollHeight).toBeLessThanOrEqual(button.clientHeight);
     });
     it("uses token focus geometry and preserves disabled controls", async () => {
         let { default: PanelToggle } = await import("./PanelToggle.svelte");

@@ -96,9 +96,12 @@ describe("self-hosted development checkout", () => {
         for (let cycle = 0; cycle < 2; cycle++) {
             await expect.poll(() => ctx.page.locator(".description-panel .revision-id").textContent()).toContain(oldId.change.hex.slice(0, 8));
             await ctx.page.waitForLoadState("networkidle");
-            let actions = ctx.page.getByRole("button", { name: "Revision actions", exact: true });
-            await actions.click();
-            let edit = ctx.page.getByRole("button", { name: /^Edit as working copy/ });
+            let tools = ctx.page.getByRole("tab", { name: "Revision tools", exact: true });
+            if (!(await tools.count())) {
+                await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
+                await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools", exact: true }).click();
+            } else await tools.click();
+            let edit = ctx.page.locator(".revision-tools").getByRole("button", { name: /^Edit as working copy/ });
             await expect.poll(() => edit.isEnabled()).toBe(true);
             let checkout = ctx.page.waitForResponse(result => result.url().includes("/api/mutate/checkout_revision"));
             await edit.click();

@@ -74,12 +74,13 @@ describe("repository toolbar and commands", () => {
         expect(opened).toHaveBeenCalledOnce();
         expect(repositoryCommands().find(c => c.id === "repository.push")?.reason).toBe("No Git remote configured");
         expect(repositoryCommands().find(c => c.id === "repository.redo")?.reason).toBe("Nothing to redo");
-        let redo = getByRole("button", { name: "Redo the latest undone operation" }) as HTMLButtonElement;
+        await fireEvent.click(getByRole("button", { name: "More repository actions" }));
+        let redo = getByRole("button", { name: "Redo" }) as HTMLButtonElement;
         expect(redo.disabled).toBe(true);
         expect(redo.title).toContain("Nothing to redo");
         repoStatusEvent.set({ ...workspace.status, can_redo: true });
         await waitFor(() => expect(redo.disabled).toBe(false));
-        expect(getByRole("button", { name: "Fetch remote bookmarks" })).toBeTruthy();
+        expect((getByRole("button", { name: "Fetch remote bookmarks" }) as HTMLButtonElement).disabled).toBe(true);
         expect(getByRole("button", { name: "Undo the latest operation" })).toBeTruthy();
         window.removeEventListener("gg:open-commands", opened);
     });

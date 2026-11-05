@@ -1,5 +1,5 @@
 /* shared geometry and states for actions and icon toggles. */
-button { min-width: var(--control-height); min-height: var(--control-height); height: var(--control-height); padding: 5px var(--control-padding-inline); margin: 0; border: 0; border-radius: var(--radius-control); font-family: var(--stack-ui); font-size: var(--type-ui); font-weight: 400; line-height: 20px; display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); cursor: pointer; color: var(--text); background: transparent; box-shadow: none; white-space: nowrap; flex-shrink: 0; }
+button { min-width: var(--control-height); min-height: var(--control-height); height: auto; padding: 5px var(--control-padding-inline); margin: 0; border: 0; border-radius: var(--radius-control); font-family: var(--stack-ui); font-size: var(--type-ui); font-weight: 400; line-height: calc(20 / 13); display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); cursor: pointer; color: var(--text); background: transparent; box-shadow: none; white-space: nowrap; flex-shrink: 0; }
 button:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
 button:disabled { cursor: default; color: var(--text-disabled); }
 @media (hover: hover) {

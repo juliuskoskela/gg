@@ -33,6 +33,7 @@
 
     export let change: RevChange;
     export let readingKey = "";
+    export let themeOverride: "light" | "dark" | undefined = undefined;
     export let fullContext = false;
     // supplies both complete sides so collapsed blocks can be unfolded one at a time
     export let loadFullFiles: (() => Promise<{ before: string; after: string }>) | null = null;
@@ -50,7 +51,7 @@
     type Expansions = { getExpandedHunksMap(): Map<number, unknown>; renderCache?: { highlighted?: boolean }; clearRenderCache(): void };
     $: options = {
         theme: "gg",
-        themeType: $effectiveTheme,
+        themeType: themeOverride ?? $effectiveTheme,
         diffStyle: resolvedStyle,
         overflow: $diffWrap ? "wrap" as const : "scroll" as const,
         expandUnchanged: fullContext,
@@ -157,7 +158,7 @@
                 viewer.render({ file: { name: change.path.relative_path, contents: change.hunks.flatMap(hunk => hunk.lines.lines.map(line => line.slice(1))).join("") }, containerWrapper: host });
             } else {
                 let fileDiff = parsePatchFiles(changePatch(change))[0]?.files[0];
-                if (!fileDiff) { error = "No text diff available. This file may be binary or have only metadata changes."; return; }
+                if (!fileDiff || !change.hunks.length) { error = "No text diff available. This file may be binary or have only metadata changes."; return; }
                 // the full-context query includes both complete sides, unlike an ordinary patch.
                 if (fullContext) fileDiff.isPartial = false;
                 fileDiff.name = change.path.relative_path;

@@ -28,7 +28,7 @@
     }
     .tray.sm { --toggle-height: var(--panel-control-size); }
     .tray.md { --toggle-height: 32px; }
-    @media (pointer: coarse), (max-width: 600px) { .tray.sm, .tray.md { --toggle-height: 40px; } }
+    @media (pointer: coarse), (max-width: 600px) { .tray.sm, .tray.md { --toggle-height: var(--touch-target); } }
 
     .tray.multi > :global(.toggle + .toggle)::after {
         content: ""; position: absolute; inset-block: 0; inset-inline-start: 0;
