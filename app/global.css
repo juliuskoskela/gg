@@ -124,7 +124,7 @@
   --border: light-dark(#d9dde4, #262b34);
   --rule: light-dark(#e6e9ee, #1c2027);
   --control: light-dark(var(--neutral-400), var(--neutral-500));
-  --control-border: light-dark(#8c929c, #5f6978);
+  --control-border: light-dark(#7e848f, #667080);
   --input-border: light-dark(#c3c8d1, #2c323c);
   --input-surface: light-dark(#ffffff, #0e1014);
   --control-hover: light-dark(#8c929c, #4a5361);
@@ -133,7 +133,7 @@
   --text: light-dark(#2a2f37, #c8ced8);
   --text-strong: light-dark(#0f1217, #f0f3f7);
   --muted: light-dark(#555d69, #98a1ae);
-  --faint: light-dark(#656d79, #818b99);
+  --faint: light-dark(#606874, #818b99);
   --text-disabled: light-dark(var(--neutral-400), var(--neutral-500));
   --accent: light-dark(#1769c7, #64b0f4);
   --selection-bg: light-dark(#e8eef8, #1b2330);
@@ -145,9 +145,9 @@
   --accent-solid: light-dark(#1769c7, #2f7fd4);
   --accent-solid-hover: light-dark(#115aad, #3a8ce0);
   --text-on-accent: var(--neutral-0);
-  --positive: light-dark(#2e7d32, #66bb6a);
+  --positive: light-dark(#28742d, #66bb6a);
   --negative: light-dark(#c62828, #ef6f6c);
-  --warning: light-dark(#9a6b00, #ffca28);
+  --warning: light-dark(#8d5e00, #ffca28);
   /* lanes borrow the material file icon hues so graph and file list read as one palette.
      reds are left out so red keeps meaning conflict or divergence. */
   --lane-0: light-dark(#1e88e5, #42a5f5);

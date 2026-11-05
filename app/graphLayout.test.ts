@@ -45,7 +45,7 @@ describe("history density", () => {
         expect(container.querySelector('foreignObject[y="34.5"]')?.getAttribute("height")).toBe("51");
         expect(container.querySelector("g:nth-child(2)")?.getAttribute("transform")).toContain("60");
     });
-    it("shows author only in tall history without changing primary text weights", async () => {
+    it("keeps tall authors quiet and emphasizes only the selected description", async () => {
         let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
         let { container, queryByText, rerender } = render(RevisionObject, { props: { header, selected: false, rowHeight: 32 } });
         expect(queryByText("Test Author")).toBeNull();
@@ -53,6 +53,8 @@ describe("history density", () => {
         let author = queryByText("Test Author")!;
         expect(getComputedStyle(author).fontWeight).toBe("400");
         expect(getComputedStyle(container.querySelector(".layout")!).height).toBe("60px");
+        expect(getComputedStyle(container.querySelector(".desc")!).fontWeight).toBe("400");
+        await rerender({ header, selected: true, rowHeight: 60, tall: true });
         expect(getComputedStyle(container.querySelector(".desc")!).fontWeight).toBe("500");
     });
     it("preserves description space in narrow graphs while keeping references named", async () => {

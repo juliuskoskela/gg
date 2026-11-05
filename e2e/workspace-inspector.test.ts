@@ -249,6 +249,12 @@ describe("compact workspace inspector", () => {
         await ctx.page.getByRole("button", { name: "Choose changed file" }).click();
         let list = ctx.page.locator(".virtual-files");
         await list.waitFor();
+        // visibility can precede the resize observer that establishes virtual row geometry
+        await expect.poll(() => list.evaluate(el => {
+            let rowHeight = el.querySelector(".row-measure")!.getBoundingClientRect().height;
+            let space = el.querySelector(".file-space")!.getBoundingClientRect().height;
+            return rowHeight > 0 && space === 270 * rowHeight && el.scrollHeight > el.clientHeight;
+        })).toBe(true);
         expect(await list.locator("[data-file-index]").count()).toBeLessThan(40);
         await list.evaluate(el => { el.scrollTop = el.scrollHeight; });
         await expect.poll(() => list.locator('[data-file-index="269"]').count()).toBe(1);
@@ -441,6 +447,8 @@ describe("compact workspace inspector", () => {
         let menu = ctx.page.getByRole("menu");
         let items = menu.getByRole("menuitem");
         await items.first().waitFor();
+        expect(await menu.evaluate(element => element === document.activeElement)).toBe(true);
+        await ctx.page.keyboard.press("ArrowDown");
         expect(await items.first().evaluate(element => element === document.activeElement)).toBe(true);
         await ctx.page.keyboard.press("ArrowDown");
         expect(await items.nth(1).evaluate(element => element === document.activeElement)).toBe(true);
@@ -481,7 +489,10 @@ describe("compact workspace inspector", () => {
             let bounds = element.getBoundingClientRect();
             let id = element.querySelector(".id")!.getBoundingClientRect();
             let description = element.querySelector(".desc")!.getBoundingClientRect();
-            let node = element.closest("g")!.querySelector("circle")!.getBoundingClientRect();
+            let transform = element.closest("g")!.getAttribute("transform");
+            let station = [...element.closest("svg")!.querySelectorAll<SVGGElement>(":scope > g")].find(group => group.getAttribute("transform") === transform && group.querySelector(".station"));
+            if (!station) throw new Error("Revision has no graph station at its row position");
+            let node = station.querySelector(".station")!.getBoundingClientRect();
             return { height: bounds.height, row: center(bounds), id: center(id), description: center(description), node: center(node) };
         });
         expect(metrics.height).toBe(32);
