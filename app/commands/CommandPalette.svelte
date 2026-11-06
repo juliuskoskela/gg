@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { reviewEnabled } from "../plugins/review/store";
     import Icon from "../controls/Icon.svelte";
     import TextField from "../controls/TextField.svelte";
     import DestinationPicker from "./DestinationPicker.svelte";
@@ -21,7 +22,7 @@
     $: commands = [
         ...zoomCommands($appZoom, $nativeZoomEnabled),
         ...repositoryCommands("", $currentMutation, $mutationPending, $repoStatusEvent, $repoConfigEvent),
-        ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
+        ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: (view.id === "review" && !$reviewEnabled) || view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),
         ...contextCommands($commandOperand ?? $currentContext, $currentWorkspaceIdentity, $currentMutation, $mutationPending, $ignoreToggled),
     ];

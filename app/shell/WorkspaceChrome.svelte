@@ -33,6 +33,7 @@
     }
 
     onMount(() => {
+        if (!standalone && new URLSearchParams(window.location.search).get("panel") === "review") dock.open("review");
         if (!standalone && new URLSearchParams(window.location.search).get("panel") === "settings") void openSettings();
         if (!standalone && new URLSearchParams(window.location.search).get("panel") === "history") void openHistory();
     });

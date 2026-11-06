@@ -1,6 +1,9 @@
 <script lang="ts" context="module">
     import { registerCustomCSSVariableTheme } from "@pierre/diffs";
 
+    export type DiffNote = { id: string; side: "additions" | "deletions"; line: number; label: string; onClick: () => void };
+    type Annotation = number | DiffNote;
+
     // keep syntax and diff surfaces on the same theme as the surrounding workspace.
     registerCustomCSSVariableTheme("gg", {});
 
@@ -15,7 +18,7 @@
 </script>
 
 <script lang="ts">
-    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData } from "@pierre/diffs";
+    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData, type SelectedLineRange } from "@pierre/diffs";
     import { onMount } from "svelte";
     import { createDiffFoldRow } from "./revision/DiffFoldRow";
     import { FoldingFileDiff } from "./revision/FoldingFileDiff";
@@ -26,6 +29,8 @@
     import { effectiveTheme } from "./display/theme";
 
     export let change: RevChange;
+    export let onSelectLine: ((range: SelectedLineRange | null) => void) | null = null;
+    export let lineNotes: DiffNote[] = [];
     export let readingKey = "";
     export let themeOverride: "light" | "dark" | undefined = undefined;
     export let fullContext = false;
@@ -42,7 +47,7 @@
     let anchorFrame: number | undefined;
     let width = 0;
     $: resolvedStyle = $diffStyle === "auto" ? (width >= 720 ? "split" : "unified") : $diffStyle;
-    let viewer: FileDiff<number> | File | undefined;
+    let viewer: FileDiff<Annotation> | File | undefined;
     let error = "";
     let mounted = false;
     let scrollColumns: HTMLElement[] = [];
@@ -61,10 +66,11 @@
         renderAnnotation: renderFold,
         lineDiffType: "word-alt" as const,
         enableLineSelection: true,
+        onLineSelectionEnd: (range: SelectedLineRange | null) => onSelectLine?.(range),
         disableFileHeader: true,
         onPostRender: postRender,
         unsafeCSS: ":host { color-scheme: inherit !important; --diffs-font-family: var(--stack-code); --diffs-font-size: var(--type-code); --diffs-line-height: calc(var(--type-code) * var(--code-leading)); --diffs-bg-context-override: var(--surface); --diffs-bg-buffer-override: var(--diff-buffer); --diffs-bg-separator-override: var(--raised); --diffs-fg-number-override: var(--muted); --diffs-addition-color-override: var(--positive); --diffs-deletion-color-override: var(--negative); --diffs-selection-color-override: var(--selection-bg); --diffs-bg-addition-override: var(--diff-addition); --diffs-bg-addition-emphasis-override: var(--diff-addition-emphasis); --diffs-bg-deletion-override: var(--diff-deletion); --diffs-bg-deletion-emphasis-override: var(--diff-deletion-emphasis); } [data-code] { scrollbar-width: none; } [data-code]::-webkit-scrollbar { height: 0; }" + FOLD_CSS,
-    } satisfies FileDiffOptions<number, undefined>;
+    } satisfies FileDiffOptions<Annotation, undefined>;
     async function loadDiffFiles(fileDiff: FileDiffMetadata) {
         let files = await loadFullFiles!();
         return { oldFile: { name: fileDiff.prevName ?? fileDiff.name, contents: files.before }, newFile: { name: fileDiff.name, contents: files.after } };
@@ -82,8 +88,8 @@
         let last = hunks[hunks.length - 1];
         return last ? Math.max(0, fileDiff.additionLines.length - (last.additionStart + Math.max(last.additionCount, 1) - 1)) : 0;
     }
-    function foldAnnotations(fileDiff: FileDiffMetadata): DiffLineAnnotation<number>[] {
-        let result: DiffLineAnnotation<number>[] = [];
+    function foldAnnotations(fileDiff: FileDiffMetadata): DiffLineAnnotation<Annotation>[] {
+        let result: DiffLineAnnotation<Annotation>[] = [];
         for (let gap of [...unfolded].sort((a, b) => a - b)) {
             let anchor = gapAnchors(fileDiff, gap);
             if (!anchor) continue;
@@ -93,7 +99,7 @@
             if (previous.additionCount > 0) result.push({ side: "additions", lineNumber: anchor.additions, metadata: gap });
             else if (resolvedStyle !== "split") result.push({ side: "deletions", lineNumber: anchor.deletions, metadata: gap });
         }
-        return result;
+        return [...result, ...lineNotes.map(note => ({ side: note.side, lineNumber: note.line, metadata: note }))];
     }
     function renderSeparator(hunk: HunkData) {
         if (fullContext) return null;
@@ -102,9 +108,15 @@
         button.disabled = !hunk.expandable;
         return button;
     }
-    function renderFold(annotation: DiffLineAnnotation<number>, fileDiff: FileDiffMetadata) {
+    function renderFold(annotation: DiffLineAnnotation<Annotation>, fileDiff: FileDiffMetadata) {
         let gap = annotation.metadata;
         if (gap === undefined) return undefined;
+        if (typeof gap !== "number") {
+            let button = document.createElement("button");
+            button.type = "button"; button.className = "diff-review-note";
+            button.textContent = gap.label; button.onclick = gap.onClick;
+            return button;
+        }
         return createDiffFoldRow({ gap, lines: gapSize(fileDiff, gap), expanded: true, onToggle: button => toggle(gap, button) });
     }
     function postRender(node: HTMLElement) {
@@ -185,6 +197,14 @@
             if (generation === renderGeneration) toggling = false;
         }
     }
+    export function revealLine(range: SelectedLineRange) {
+        if (!(viewer instanceof FoldingFileDiff)) return;
+        viewer.setSelectedLines(range);
+        let selector = `[data-${range.side ?? "additions"}] [data-line="${range.end}"]`;
+        let node = host.querySelector("diffs-container")?.shadowRoot;
+        let line = node?.querySelector<HTMLElement>(selector) ?? node?.querySelector<HTMLElement>(`[data-line="${range.end}"]`);
+        line?.scrollIntoView({ block: "center", inline: "nearest" });
+    }
     function cancelPendingToggle() {
         renderGeneration++;
         pendingAnchor = undefined;
@@ -233,13 +253,14 @@
                 if (fullContext) fileDiff.isPartial = false;
                 fileDiff.name = change.path.relative_path;
                 fileDiff.prevName = undefined;
-                let diffViewer = new FoldingFileDiff(options);
+                let diffViewer = new FoldingFileDiff<Annotation>(options);
                 viewer = diffViewer;
-                diffViewer.render({ fileDiff, containerWrapper: host });
+                diffViewer.render({ fileDiff, containerWrapper: host, lineAnnotations: foldAnnotations(fileDiff) });
             }
         } catch (cause) { error = `Couldn’t render this diff: ${cause instanceof Error ? cause.message : String(cause)}`; }
     }
     $: if (mounted && change && options && readingKey !== undefined) render();
+    $: if (mounted && lineNotes && viewer instanceof FoldingFileDiff && viewer.diff) viewer.setLineAnnotations(foldAnnotations(viewer.diff));
     onMount(() => {
         mounted = true;
         return () => {
@@ -263,6 +284,9 @@
 <style>
     .diff-viewer { pointer-events: auto; user-select: text; min-width: 0; }
     .diff-viewer :global(diffs-container) { pointer-events: auto; }
+    .diff-viewer :global(.diff-review-note) { display: block; max-width: calc(100% - 24px); margin: 6px 12px; padding: 6px 10px; text-align: start; border: 0; border-inline-start: 2px solid var(--faint); border-radius: var(--radius-control); color: var(--text); background: var(--raised); font: var(--type-ui) var(--stack-ui); cursor: pointer; white-space: normal; }
+    @media (hover: hover) { .diff-viewer :global(.diff-review-note:hover) { background: var(--interaction-hover); } }
+    .diff-viewer :global(.diff-review-note:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .notice { padding: 12px; color: var(--muted); font-size: 13px; }
     .diff-viewer :global(.diff-fold) {
         display: flex; align-items: center; gap: 6px; width: calc(100% - 16px); min-height: 28px; padding: 4px 8px; margin: 2px 8px;

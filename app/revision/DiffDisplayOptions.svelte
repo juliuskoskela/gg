@@ -3,6 +3,8 @@
     import ToggleTray from "../controls/ToggleTray.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
 
+    export let contextAvailable = true;
+
     let layouts: { value: "auto" | "split" | "unified"; label: string; icon: string }[] = [
         { value: "auto", label: "Auto", icon: "layout" },
         { value: "split", label: "Side by side", icon: "columns" },
@@ -12,7 +14,7 @@
 
 <div class="display-options">
     <ToggleTray label="Diff visibility" mode="multi">
-        <ToggleItem icon="eye-off" label="Hide unmodified lines" on={!$diffFullContext} onClick={() => diffFullContext.update(value => !value)} />
+        {#if contextAvailable}<ToggleItem icon="eye-off" label="Hide unmodified lines" on={!$diffFullContext} onClick={() => diffFullContext.update(value => !value)} />{/if}
         <ToggleItem icon="corner-down-left" label="Wrap lines" on={$diffWrap} onClick={() => diffWrap.update(value => !value)} />
     </ToggleTray>
     <ToggleTray label="Diff layout">

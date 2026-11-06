@@ -1,6 +1,8 @@
 import type { ComponentType, SvelteComponent } from "svelte";
 import type { PanelId } from "./dock";
 import type { RepoStatus } from "../messages/RepoStatus";
+import { get } from "svelte/store";
+import { reviewEnabled } from "../plugins/review/store";
 import OperationView from "./OperationView.svelte";
 
 export type ViewContext = { status?: RepoStatus; hasSelection?: boolean; viewState?: unknown; onViewStateChange?: (value: unknown) => void };
@@ -22,6 +24,7 @@ export type WorkspaceView = {
 
 // Registration makes a view discoverable; it does not add a permanent navigation item.
 export let workspaceViews: WorkspaceView[] = [
+    { id: "review", label: "Review", commandLabel: "Open review mode", panel: "review", scope: "repository", placement: "inspector", mobile: "full", available: () => get(reviewEnabled) },
     { id: "history", label: "Graph", commandLabel: "Return to graph", destination: "history", scope: "repository", placement: "graph", mobile: "graph" },
     { id: "changes", label: "Changes", commandLabel: "Inspect full revision", destination: "inspect", available: context => !!context.hasSelection, scope: "revision", placement: "inspector", mobile: "sheet" },
     { id: "operation", label: "Current operation", scope: "repository", placement: "picker", desktop: "tab", mobile: "full", available: context => !!context.status, component: OperationView },
