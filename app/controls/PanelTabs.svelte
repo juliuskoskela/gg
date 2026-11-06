@@ -1,5 +1,8 @@
 <script lang="ts" generics="Id extends string">
-    import { tick } from "svelte";
+    import { tick, type Snippet } from "svelte";
+    import { writable } from "svelte/store";
+    import { hiddenToolbars, toggleToolbar, useToolbars } from "../workspace/toolbars";
+    import ToolbarRow from "./ToolbarRow.svelte";
     import Icon from "./Icon.svelte";
     import { panelDraggable } from "../workspace/panelDrag";
     import type { Edge, PanelId } from "../workspace/dock";
@@ -10,13 +13,18 @@
     export let prefix = "panel";
     export let draggable = false;
     export let toolsVisible = true;
+    export let tools: Snippet | undefined = undefined;
     export let onSelect: (id: Id) => void;
     export let onClose: ((id: Id) => void) | null = null;
     export let onMove: (id: PanelId, target: PanelId, edge: Edge) => void = () => {};
 
 
+    let toolbars = useToolbars() ?? writable(new Map());
+    $: contribution = active ? $toolbars.get(active) : undefined;
+    $: activeLabel = items.find(item => item.id === active)?.label ?? label;
+    $: toolbarHidden = !!active && $hiddenToolbars.has(active);
     $: single = items.length === 1;
-    $: hasTools = toolsVisible && !!$$slots.tools;
+    $: hasTools = !!contribution || (toolsVisible && !!tools);
     $: if (active && !single) void revealActive(active);
 
     async function revealActive(id: Id) {
@@ -31,15 +39,6 @@
         // oversized touch tabs reveal their label first; native nearest scrolling can hide it.
         let delta = target.width > right - left ? (rtl ? target.right - right : target.left - left)
             : target.left < left ? target.left - left : target.right > right ? target.right - right : 0;
-        if (delta) strip.scrollBy({ left: delta, behavior: "instant" });
-    }
-
-    async function revealTool(event: FocusEvent) {
-        let strip = event.currentTarget as HTMLElement, control = event.target as HTMLElement;
-        await tick();
-        if (!strip.isConnected || !control.isConnected) return;
-        let bounds = strip.getBoundingClientRect(), target = control.getBoundingClientRect();
-        let delta = target.left < bounds.left ? target.left - bounds.left : target.right > bounds.right ? target.right - bounds.right : 0;
         if (delta) strip.scrollBy({ left: delta, behavior: "instant" });
     }
 
@@ -67,7 +66,17 @@
     }
 </script>
 
-<div class="panel-view-top">
+{#snippet toolbarToggle()}
+    {#if hasTools}
+        <button class="toolbar-toggle" class:open={!toolbarHidden} type="button" aria-label={`${toolbarHidden ? "Show" : "Hide"} ${activeLabel} toolbar`}
+            title={`${toolbarHidden ? "Show" : "Hide"} toolbar`} aria-expanded={!toolbarHidden} aria-controls={`${prefix}-toolbar-${active}`}
+            on:click={() => active && toggleToolbar(active)}>
+            <Icon name="sliders" />
+        </button>
+    {/if}
+{/snippet}
+
+<div class="panel-view-top" data-panel-chrome>
     {#if single}
         {@const item = items[0]}
         <div class="panel-titlebar" data-panel-bar>
@@ -84,7 +93,7 @@
             {/if}
             {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
             </div>
-            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar on:focusin={revealTool}><slot name="tools" /></div>{/if}
+            {@render toolbarToggle()}
         </div>
     {:else if items.length > 1}
         <div class="panel-tabs-bar" data-panel-bar>
@@ -104,28 +113,40 @@
                     </div>
                 {/each}
             </div>
-            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar on:focusin={revealTool}><slot name="tools" /></div>{/if}
+            {@render toolbarToggle()}
         </div>
+    {/if}
+    {#if hasTools}
+        <ToolbarRow id={`${prefix}-toolbar-${active}`} label={`${activeLabel} toolbar`} hidden={toolbarHidden}>
+            {#if contribution}{@render contribution()}{:else}{@render tools?.()}{/if}
+        </ToolbarRow>
     {/if}
     {#if draggable && items.length}<span id="{prefix}-drag-help-{items[0].id}" hidden>Space to pick up, Tab to choose a panel, arrows to split, Enter to drop, Escape to cancel.</span>{/if}
 </div>
 
 <style>
-    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); }
-    .panel-tabs-bar, .panel-titlebar { min-width: 0; border-block-end: 1px solid var(--panel-header-rule); padding: var(--panel-bar-padding) var(--panel-inset); }
+    /* title and toolbar are one header block, so the only rule is the one closing it off from content */
+    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--panel-header-rule); }
+    /* labels align with the toolbar and content inset; their hover pills overhang into the gutter */
+    .panel-tabs-bar, .panel-titlebar { min-width: 0; padding: var(--panel-bar-padding) var(--panel-inset) var(--panel-bar-padding) calc(var(--panel-inset) - 8px); }
+    .panel-view-top :global(.view-toolbar) { border-block-end: 0; padding-block-start: 0; min-height: 0; }
     .panel-tabs-bar, .panel-titlebar { min-height: var(--panel-tabs-height); }
     .panel-tabs-bar, .panel-titlebar { display: flex; align-items: center; gap: var(--panel-gap); }
-    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: 8px; border-radius: var(--radius-control); background: var(--panel-tab-active); pointer-events: auto; }
+    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: 8px; border-radius: var(--radius-control); pointer-events: auto; }
     .panel-title-item.closable { padding-inline-end: 2px; }
     .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 4px 0 4px 8px; border: 0; border-radius: var(--radius-control); color: var(--text); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
     .panel-title > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     button.panel-title { cursor: grab; }
-    .panel-header-tools { position: relative; z-index: 1; flex: 0 0 auto; margin-inline-start: auto; min-width: 0; max-width: calc(100% - 32px); overflow-x: auto; overscroll-behavior-inline: contain; pointer-events: auto; --border: var(--panel-header-control-border); --panel-tools-wrap: nowrap; }
-    .panel-header-tools.panel-header-tools > :global(*) { flex: none; width: max-content; min-width: max-content; }
+    .toolbar-toggle { display: grid; place-items: center; flex: none; margin-inline-start: auto; width: var(--panel-control-size); height: var(--panel-control-size); padding: 6px; border: 0; border-radius: var(--radius-control); color: var(--muted); background: transparent; cursor: pointer; pointer-events: auto; }
+    .toolbar-toggle { --icon-size: 16px; }
+    .toolbar-toggle.open { color: var(--text); }
+    .toolbar-toggle:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
+    @media (hover: hover) { .toolbar-toggle:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); } }
+    .toolbar-toggle:active { background: color-mix(in srgb, var(--text) 16%, transparent); }
     .panel-tabs { display: flex; flex: 1; align-items: center; gap: 4px; min-width: 0; min-height: var(--panel-control-size); overflow-x: auto; overscroll-behavior-inline: contain; scroll-padding-inline: 2px 12px; padding-inline-end: 12px; pointer-events: auto; mask-image: linear-gradient(to right, black calc(100% - 12px), transparent); }
     .panel-tabs:dir(rtl) { mask-image: linear-gradient(to left, black calc(100% - 12px), transparent); }
-    .panel-tabs, .panel-header-tools { scrollbar-width: none; }
-    .panel-tabs::-webkit-scrollbar, .panel-header-tools::-webkit-scrollbar { display: none; }
+    .panel-tabs { scrollbar-width: none; }
+    .panel-tabs::-webkit-scrollbar { display: none; }
     .panel-tab-item { padding-inline-end: 8px; display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
     .panel-tab-item.closable { padding-inline-end: 2px; }
     .panel-tab-item.active { color: var(--text); background: var(--panel-tab-active); }
@@ -136,7 +157,7 @@
     [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; overflow: hidden; --icon-size: 14px; }
     .panel-tab-item > .panel-close, .panel-title-item > .panel-close { justify-items: start; padding-inline-start: 4px; }
-    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } }
+    @media (hover: hover) { .panel-tab-item:hover, .panel-title-item:has(> button.panel-title):hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } }
     .panel-tab-item > .panel-tab:focus-visible { outline: none; }
     .panel-tab-item:has(> .panel-tab:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     @media (hover: hover) and (pointer: fine) and (min-width: 601px) {

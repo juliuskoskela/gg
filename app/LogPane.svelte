@@ -14,6 +14,7 @@
     import TextField from "./controls/TextField.svelte";
     import TimelineDisplayOptions from "./timeline/TimelineDisplayOptions.svelte";
     import TimelineSection from "./timeline/TimelineSection.svelte";
+    import ViewToolbar from "./controls/ViewToolbar.svelte";
     import RevisionObject from "./objects/RevisionObject.svelte";
     import ActionWidget from "./controls/ActionWidget.svelte";
     import Icon from "./controls/Icon.svelte";
@@ -59,6 +60,7 @@
     let entered_query = latest_query;
     let graphRows: EnhancedRow[] | undefined;
     let logError = "";
+    $: graphSummary = logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…";
     let latestLogRequest = 0;
 
     let selectionAnchorIdx: number | undefined; // selection model is topologically ordered, selection view requires an anchor point
@@ -415,7 +417,11 @@
     }
 </script>
 
-<TimelineSection bind:element={graphBody} showHeader={!integrated}>
+{#if integrated}
+    <ViewToolbar label="Timeline tools"><span class="graph-caption">{graphSummary}</span><span class="toolbar-spacer"><TimelineDisplayOptions /></span></ViewToolbar>
+{/if}
+
+<TimelineSection bind:element={graphBody} showHeader={!integrated} showSummary={!integrated}>
     <div slot="header" class="standalone-title"><h2 tabindex="-1">Timeline</h2><TimelineDisplayOptions /></div>
     <div slot="footer" class="log-selector" class:editable={isCustom || isDeletable}>
         <SelectWidget options={choices} bind:value={entered_query} on:change={reloadLog}>
@@ -441,7 +447,7 @@
             </ActionWidget>
         {/if}
     </div>
-    <div slot="summary" class="graph-caption"><span>{logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…"}</span></div>
+    <div slot="summary" class="graph-caption"><span>{graphSummary}</span></div>
     <div class="history-measure" style:--history-base-row={$historyRowHeight} bind:clientHeight={rowMeasurement} aria-hidden="true"></div>
     <ListWidget
         type="Revision"

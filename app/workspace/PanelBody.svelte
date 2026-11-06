@@ -1,4 +1,7 @@
 <script lang="ts">
+    import { provideToolbarOwner } from "./toolbars";
+    import ViewToolbar from "../controls/ViewToolbar.svelte";
+    import DiffTools from "../revision/DiffTools.svelte";
     import { enabled as neovimEnabled } from "virtual:gg-neovim";
     import type { Query } from "../events";
     import type { RepoConfig } from "../messages/RepoConfig";
@@ -28,9 +31,13 @@
     export let reviewKey: string;
     export let onSelectFile: (change: RevChange) => void;
 
+    provideToolbarOwner(id);
+
     $: headers = detail?.headers ?? [];
     $: file = selectedPath || changes[0]?.path.repo_path || "";
 </script>
+
+{#if id === "diff" && detail && changes.length}<ViewToolbar label="Diff tools"><DiffTools {changes} /></ViewToolbar>{/if}
 
 {#if id === "evolution"}
     <EvolutionPanel {headers} {active} />

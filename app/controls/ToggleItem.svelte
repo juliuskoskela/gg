@@ -54,7 +54,7 @@
 
     @media (hover: hover) {
         .toggle:not(:disabled):hover { background: var(--hover); color: var(--text-strong); }
-        .toggle.on:not(:disabled):hover { background: var(--active); }
+        .toggle.on:not(:disabled):hover { background: var(--active-hover); }
     }
     .toggle:not(:disabled):active,
     .toggle.on:not(:disabled):active { background: var(--control-pressed); }

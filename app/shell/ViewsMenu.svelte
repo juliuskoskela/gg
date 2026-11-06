@@ -33,7 +33,7 @@
     on:keydown={event => { if (event.key === "Escape" && menuOpen) { event.preventDefault(); event.stopPropagation(); menuOpen = false; document.getElementById("views-menu")?.focus(); } }} />
 
 <div class="views" bind:this={root}>
-    <button id="views-menu" type="button" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls="views-menu-list" on:click={() => menuOpen = !menuOpen}>Views</button>
+    <button id="views-menu" type="button" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls="views-menu-list" on:click={() => menuOpen = !menuOpen}>Views<svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
     {#if menuOpen}
         <div id="views-menu-list" class="views-menu" role="menu" aria-label="Views">
             {#each choices as choice (choice.id)}
@@ -46,7 +46,9 @@
 
 <style>
     .views { position: relative; }
-    #views-menu { min-height: 32px; padding: 5px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; cursor: pointer; }
+    #views-menu { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 6px 5px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; line-height: 20px; cursor: pointer; }
+    .chevron { flex: none; margin-inline-start: 6px; color: var(--muted); }
+    #views-menu[aria-expanded="true"] { background: var(--interaction-selected, var(--hover)); }
     .views-menu { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 4px); z-index: 70; min-width: 180px; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
     .views-menu button { min-height: 32px; padding: 6px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; text-align: start; cursor: pointer; }
     .views-menu button[aria-checked="true"] { font-weight: 500; background: var(--interaction-selected); }

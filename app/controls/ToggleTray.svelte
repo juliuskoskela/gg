@@ -1,7 +1,7 @@
 <script lang="ts">
     // the tray is a flat pill; items fill it edge to edge and light up when on.
     // "switch" picks one of its items, so the lit side reads as a position.
-    // "multi" holds independent toggles, so hairline dividers keep each segment its own.
+    // "multi" holds independent toggles; without an outline they read as separate buttons, not one choice.
     // size only changes rhythm, never colour, so trays of different sizes still read as one family.
     export let label: string;
     export let size: "sm" | "md" = "sm";
@@ -30,12 +30,11 @@
     .tray.md { --toggle-height: 32px; }
     @media (pointer: coarse), (max-width: 600px) { .tray.sm, .tray.md { --toggle-height: var(--touch-target); } }
 
-    .tray.multi > :global(.toggle + .toggle)::after {
-        content: ""; position: absolute; inset-block: 0; inset-inline-start: 0;
-        border-inline-start: 1px solid var(--border); pointer-events: none;
-    }
+    .tray.multi { gap: 2px; overflow: visible; }
+    .tray.multi::after { content: none; }
+    .tray.multi > :global(.toggle) { border-radius: var(--radius-control); }
 
     @media (forced-colors: active) {
-        .tray::after, .tray.multi > :global(.toggle + .toggle)::after { border-color: CanvasText; }
+        .tray::after { border-color: CanvasText; }
     }
 </style>
