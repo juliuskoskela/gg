@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { focusModality } from "../display/focus";
     import { effectiveTheme, themePreference, themeFamily, themeFamilies, darkDepth } from "../display/theme";
     import { setContext } from "svelte";
     import RevisionTools from "../revision/RevisionTools.svelte";
@@ -48,7 +49,7 @@
     ];
 </script>
 
-<div id="shell" class={theme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
+<div id="shell" use:focusModality class={theme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
     <main class="system-page">
         <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><div class="gallery-theme-controls"><SelectWidget label="Color family" value={$themeFamily} options={themeFamilies.map(family => ({ value: family.id, label: family.label }))} on:change={event => themeFamily.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").ThemeFamily)} let:option>{option.label}</SelectWidget><SelectWidget label="Dark depth" value={$darkDepth} options={[{ value: "twilight", label: "Twilight" }, { value: "midnight", label: "Midnight" }]} on:change={event => darkDepth.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").DarkDepth)} let:option>{option.label}</SelectWidget><button type="button" on:click={() => themePreference.set(theme === "dark" ? "light" : "dark")}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></div></header>
         <section id="panel-spacing" class="spacing-specimen" aria-labelledby="spacing-heading">
@@ -62,7 +63,7 @@
                 <div><dt>Controls</dt><dd>28px; 44px on touch</dd></div>
                 <div><dt>Title bar</dt><dd>40px; 56px on touch</dd></div>
             </dl>
-            <p>A single view has a plain title; tabs appear only for stacked views. Stacked-view tools occupy a separate row. At 520px and below, single-view tools wrap below the title. Header backgrounds and divider lines span the full panel width.</p>
+            <p>A single view has a plain title; tabs appear only for stacked views. Tools stay on the title or tab row at every width. Overflowing tabs scroll beneath the fixed tools; keyboard navigation reveals the active tab. Header backgrounds and divider lines span the full panel width.</p>
         </section>
         <section class="workspace-example" aria-label="Workspace components">
             <aside class="navigation-example"><PanelHeader><h2>Repository</h2></PanelHeader><div class="navigation-content"><RepositoryNavigation {workspace} {currentQuery} onSelect={value => currentQuery = value} onWorkingCopy={() => currentQuery = "@"} /></div></aside>

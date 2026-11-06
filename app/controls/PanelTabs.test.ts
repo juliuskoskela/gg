@@ -49,18 +49,19 @@ describe("panel header tabs", () => {
         expect(queryByRole("tablist")).toBeNull();
         expect(queryByRole("tab")).toBeNull();
         let title = getByRole("button", { name: "Diff" });
-        expect(title.querySelector(".panel-grip")).not.toBeNull();
+        expect(title.querySelector(".panel-grip")).toBeNull();
+        expect(title.parentElement?.classList.contains("panel-title-item")).toBe(true);
         expect(title.contains(getByRole("button", { name: "Close Diff" }))).toBe(false);
         await fireEvent.keyDown(title, { key: "Delete" });
         expect(onClose).toHaveBeenCalledWith("diff");
     });
-    it("puts active view tools outside the tab strip", () => {
+    it("keeps active view tools on the same bar, outside tab semantics", () => {
         let { getByRole } = render(PanelTabsHarness);
         let tabs = getByRole("tablist");
         let tools = getByRole("button", { name: "Wrap lines" });
-        expect(tabs.closest("[data-panel-bar]")?.contains(tools)).toBe(false);
+        expect(tabs.closest("[data-panel-bar]")?.contains(tools)).toBe(true);
         expect(tools.closest("[data-panel-toolbar]")).not.toBeNull();
-        expect(tools.closest("[data-panel-toolbar]")!.previousElementSibling).toBe(tabs.closest("[data-panel-bar]"));
+        expect(tabs.contains(tools)).toBe(false);
     });
     it("keeps a single title and its tools outside tab semantics", () => {
         let { getByRole, queryByRole } = render(PanelTabsHarness, { items: items.slice(0, 1) });

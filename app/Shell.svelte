@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { focusModality } from "./display/focus";
     import TextField from "./controls/TextField.svelte";
     import { effectiveTheme, themeFamily, darkDepth } from "./display/theme";
     import { selectionRecovery } from "./revision/recovery";
@@ -301,7 +302,7 @@
 <OperationFeedback />
 
 <Zone operand={{ type: "Repository" }} alwaysTarget let:target>
-    <div id="shell" use:autoHideScrollbars class={$effectiveTheme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
+    <div id="shell" use:focusModality use:autoHideScrollbars class={$effectiveTheme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
         {#if $repoConfigEvent.type == "Initial"}
             <TitlebarInset>
                 <Pane>

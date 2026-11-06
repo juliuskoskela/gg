@@ -33,7 +33,7 @@ Apply this role to the workspace name before `@`, including `default`, the curre
 
 Syntax and graph hues are graded in OKLCH for contrast, then stored in the existing hex notation. Strings, keywords, constants and functions have distinct, stronger hues; each family retains its character. Graph stations and revision prefixes use the same text-grade lane token directly. Reference labels use their role directly too. Avoid repeated gray/white mixing: it erased the hue even when the original palette passed contrast. Reference backgrounds stay at 4% tint and their borders remain subtle.
 
-Keep connectors neutral at 20% ink, rules at 7%, and borders at 16%. Greater syntax and station chroma must not make the surrounding grid heavier. Keep neutral selection and a single neutral focus stroke. Brand blue identifies workspace context; it does not recolor panel boundaries or focus rings.
+Keep connectors neutral at 20% ink, content rules at 7%, and borders at 16%. Title bars sit 72% toward the content surface from the outer ground, with quieter 5% rules and 10% tool-group outlines; see [panel spacing](panel-spacing.md). Greater syntax and station chroma must not make the surrounding grid heavier. Keep neutral selection and a single neutral focus stroke. Brand blue identifies workspace context; it does not recolor panel boundaries or focus rings.
 
 ## Verification
 
