@@ -10,6 +10,10 @@
         selectRow(row: number): void;
         extendSelection(row: number): void;
         editRow(row: number): void;
+        // optional scattered selection: Ctrl+arrows move without clearing it, Ctrl+Space toggles, Escape clears
+        moveFocus?(row: number): void;
+        toggleRow?(row: number): void;
+        clearToggled?(): boolean;
     }
 </script>
 
@@ -115,7 +119,9 @@
             case "ArrowUp":
                 event.preventDefault();
                 selection = list.getSelection();
-                if (event.shiftKey) {
+                if ((event.ctrlKey || event.metaKey) && !event.shiftKey && list.moveFocus) {
+                    if (selection.to > 0) list.moveFocus(selection.to - 1);
+                } else if (event.shiftKey) {
                     if (selection.to > 0) {
                         onExtend(selection.to - 1);
                     }
@@ -130,7 +136,9 @@
             case "ArrowDown":
                 event.preventDefault();
                 selection = list.getSelection();
-                if (event.shiftKey) {
+                if ((event.ctrlKey || event.metaKey) && !event.shiftKey && list.moveFocus) {
+                    if (selection.to != -1 && list.getSize() > selection.to + 1) list.moveFocus(selection.to + 1);
+                } else if (event.shiftKey) {
                     if (selection.to != -1 && list.getSize() > selection.to + 1) {
                         onExtend(selection.to + 1);
                     }
@@ -158,6 +166,18 @@
                 pageRows = Math.round(box.clientHeight / rowHeight);
                 maxIdx = Math.min(maxIdx + pageRows, list.getSize() - 1);
                 onSelect(maxIdx);
+                break;
+
+            case " ":
+                if ((event.ctrlKey || event.metaKey) && list.toggleRow) {
+                    event.preventDefault();
+                    selection = list.getSelection();
+                    if (selection.to != -1) list.toggleRow(selection.to);
+                }
+                break;
+
+            case "Escape":
+                if (list.clearToggled?.()) event.preventDefault();
                 break;
 
             case "Home":

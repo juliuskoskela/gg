@@ -9,7 +9,7 @@
     import { getInput, query, trigger } from "./ipc.js";
     import { sameChange } from "./ids.js";
     import { workspaceController } from "./workspace/state";
-    import { activeLogQuery, ignoreToggled, logQueryRequest, repoStatusEvent, revisionSelectEvent } from "./stores.js";
+    import { activeLogQuery, ignoreToggled, logQueryRequest, pickedRevisions, repoStatusEvent, revisionSelectEvent, selectionHeaders } from "./stores.js";
     import RevisionMutator from "./mutators/RevisionMutator.js";
     import TextField from "./controls/TextField.svelte";
     import TimelineDisplayOptions from "./timeline/TimelineDisplayOptions.svelte";
@@ -131,17 +131,30 @@
             return { from: selectionAnchorIdx, to: extensionIdx };
         },
         selectRow(row: number) {
+            clearPicks();
             setSelection(row, row);
             if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
         },
         extendSelection(row: number) {
             if (!graphRows || selectionAnchorIdx === undefined) return;
+            clearPicks();
 
             const limitIdx = findLinearLimit(selectionAnchorIdx, row);
             if (limitIdx === row) {
                 setSelection(undefined, row); // keep anchor, extend to new row
                 if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
             }
+        },
+        moveFocus(row: number) {
+            focusRow(row);
+        },
+        toggleRow(row: number) {
+            if (graphRows?.[row]) handleToggle(graphRows[row].revision);
+        },
+        clearToggled() {
+            if (!$pickedRevisions.length) return false;
+            clearPicks();
+            return true;
         },
         editRow(row: number) {
             if (row != -1) {
@@ -222,9 +235,42 @@
         return lastValidIdx;
     }
 
+    function clearPicks() {
+        if ($pickedRevisions.length) pickedRevisions.set([]);
+    }
+
+    function focusRow(row: number) {
+        setSelection(row, row);
+        if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
+    }
+
+    function rowOf(header: RevHeader) {
+        return graphRows?.findIndex(row => row.revision.id.commit.hex === header.id.commit.hex) ?? -1;
+    }
+
+    // a scattered selection starts from whatever was selected, then toggles one revision at a time;
+    // the panels follow the revision last clicked, since scattered revisions have no combined diff
+    function handleToggle(header: RevHeader) {
+        if (!graphRows) return;
+        let picks = $pickedRevisions.length ? $pickedRevisions : $selectionHeaders.filter(selected => rowOf(selected) !== -1);
+        let picked = picks.some(pick => pick.id.commit.hex === header.id.commit.hex);
+        let next = (picked ? picks.filter(pick => pick.id.commit.hex !== header.id.commit.hex) : [...picks, header])
+            .sort((a, b) => rowOf(a) - rowOf(b));
+        let focus = picked ? next[next.length - 1] : header;
+        pickedRevisions.set(next.length > 1 ? next : []);
+        if (focus) focusRow(rowOf(focus));
+    }
+
+    $: if (graphRows && $pickedRevisions.length) {
+        let remaining = $pickedRevisions.filter(pick => rowOf(pick) !== -1);
+        if (remaining.length !== $pickedRevisions.length) pickedRevisions.set(remaining.length > 1 ? remaining : []);
+    }
+    $: picked = new Set($pickedRevisions.map(pick => pick.id.commit.hex));
+
     function handleClick(header: RevHeader) {
         if (!graphRows) return;
 
+        clearPicks();
         const clickedIdx = graphRows.findIndex((r) => r.revision.id.commit.hex === header.id.commit.hex);
         if (clickedIdx !== -1) {
             setSelection(clickedIdx, clickedIdx);
@@ -233,6 +279,7 @@
     }
 
     function handleShiftClick(header: RevHeader) {
+        clearPicks();
         if (!graphRows || selectionAnchorIdx === undefined) {
             handleClick(header); // initial selection
             return;
@@ -418,7 +465,13 @@
 </script>
 
 {#if integrated}
-    <ViewToolbar label="Timeline tools"><span class="graph-caption">{graphSummary}</span><span class="toolbar-spacer"><TimelineDisplayOptions /></span></ViewToolbar>
+    <ViewToolbar label="Timeline tools">
+        {#if $pickedRevisions.length}
+            <span class="graph-caption picks" role="status"><span class="pick-count">{$pickedRevisions.length}</span>selected</span>
+            <button type="button" class="clear-picks" title="Clear selection (Escape)" on:click={clearPicks}>Clear</button>
+        {:else}<span class="graph-caption">{graphSummary}</span>{/if}
+        <span class="toolbar-spacer"><TimelineDisplayOptions /></span>
+    </ViewToolbar>
 {/if}
 
 <TimelineSection bind:element={graphBody} showHeader={!integrated} showSummary={!integrated}>
@@ -477,9 +530,10 @@
                         {textScale}
                         tall={$historyDensity === "tall"}
                         header={row.revision}
-                        selected={isInSelectedRange(row, $revisionSelectEvent)}
+                        selected={picked.size ? picked.has(row.revision.id.commit.hex) : isInSelectedRange(row, $revisionSelectEvent)}
                         onClick={handleClick}
-                        onShiftClick={handleShiftClick} />
+                        onShiftClick={handleShiftClick}
+                        onToggle={handleToggle} />
                 {/if}
             </GraphLog>
             {:else}<div class="empty-graph"><Icon name="git-branch" /><h3>No revisions match</h3><p>Try another view or change the revset.</p></div>{/if}
@@ -519,6 +573,10 @@
     .standalone-title { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
     .graph-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; color: var(--muted); }
     .graph-caption > span:first-child { color: var(--muted); }
+    .picks { gap: 6px; color: var(--text); }
+    .pick-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--text); color: var(--surface); font: 600 11px/1 var(--stack-ui); font-variant-numeric: tabular-nums; }
+    .clear-picks { min-height: 24px; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; font-size: var(--type-caption); cursor: pointer; }
+    @media (hover: hover) { .clear-picks:hover { background: var(--hover); color: var(--text); } }
     .empty-graph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--muted); text-align: center; }
     .empty-graph h3 { color: var(--text); font-size: 14px; }
     .empty-graph p { font-size: 13px; }

@@ -6,7 +6,7 @@
     import { mutationPending } from "../operations";
     import { commandOperand, currentWorkspaceIdentity } from "./context";
     import { onMount, tick } from "svelte";
-    import { currentContext, currentMutation, hasModal, ignoreToggled, repoConfigEvent, repoStatusEvent, selectionHeaders } from "../stores";
+    import { currentContext, currentMutation, hasModal, ignoreToggled, repoConfigEvent, repoStatusEvent, selectionHeaders, pickedRevisions } from "../stores";
     import { contextCommands, repositoryCommands, revisionCommands, type Command } from "./registry";
     import { workspaceViews } from "../workspace/views";
     import type { RevHeader } from "../messages/RevHeader";
@@ -25,7 +25,7 @@
         ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),
         ...contextCommands($commandOperand ?? $currentContext, $currentWorkspaceIdentity, $currentMutation, $mutationPending, $ignoreToggled),
-        ...annotationCommands($commandOperand ?? $currentContext ?? (activeHeaders.length === 1 ? { type: "Revision", header: activeHeaders[0] } : activeHeaders.length > 1 ? { type: "Revisions", headers: activeHeaders } : null)),
+        ...annotationCommands($commandOperand ?? $currentContext ?? ($pickedRevisions.length > 1 ? { type: "Revisions", headers: $pickedRevisions } : null) ?? (activeHeaders.length === 1 ? { type: "Revision", header: activeHeaders[0] } : activeHeaders.length > 1 ? { type: "Revisions", headers: activeHeaders } : null)),
     ];
     $: filtered = commands.filter(c => `${c.label} ${c.scope}`.toLowerCase().includes(search.toLowerCase()));
     async function show() {

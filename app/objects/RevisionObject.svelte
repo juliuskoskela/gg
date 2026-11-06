@@ -26,6 +26,8 @@
     export let textScale = 1;
     export let onClick: ((header: RevHeader) => void) | undefined = undefined;
     export let onShiftClick: ((header: RevHeader) => void) | undefined = undefined;
+    /** Ctrl/⌘+click: add or remove this revision from a scattered selection */
+    export let onToggle: ((header: RevHeader) => void) | null = null;
 
     $: referenceNames = header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name);
     $: accessibleLabel = [revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; ");
@@ -35,7 +37,9 @@
      * Select this revision by default, or callback to a list that needs more complex behaviour.
      */
     function onSelect(event: CustomEvent<MouseEvent>) {
-        if (event.detail.shiftKey) {
+        if ((event.detail.ctrlKey || event.detail.metaKey) && onToggle) {
+            onToggle(header);
+        } else if (event.detail.shiftKey) {
             if (onShiftClick) {
                 onShiftClick(header);
             } else {
