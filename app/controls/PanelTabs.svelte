@@ -66,7 +66,7 @@
         <div class="panel-tabs-bar" data-panel-bar>
             <div class="panel-tabs" role="tablist" aria-label={label}>
                 {#each items as item, index (item.id)}
-                    <div class="panel-tab-item" class:active={active === item.id} role="presentation">
+                    <div class="panel-tab-item" class:closable={!!onClose} class:active={active === item.id} role="presentation">
                         <!-- svelte-ignore a11y_interactive_supports_focus (roving focus is managed by the tabs) -->
                         <div class="panel-tab" role="tab" id="{prefix}-tab-{item.id}" data-panel-handle tabindex={active === item.id ? 0 : -1}
                             aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
@@ -101,18 +101,23 @@
     .panel-header-tools > :global(*) { min-width: max-content; }
     .panel-view-toolbar { display: flex; align-items: center; min-height: var(--panel-toolbar-height); }
     .panel-tabs { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: var(--panel-control-size); overflow-x: auto; pointer-events: auto; }
-    .panel-tab-item { display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
+    .panel-tab-item { padding-inline-end: 8px; display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
+    .panel-tab-item.closable { padding-inline-end: 2px; }
     .panel-tab-item.active { color: var(--text-strong); background: var(--panel-tab-active); }
     .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 0 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
     [data-panel-handle]:global(.neodrag-dragging) { opacity: .45; cursor: grabbing; }
     .count { color: var(--muted); font-size: var(--type-caption); font-weight: 400; font-variant-numeric: tabular-nums; }
     [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
-    .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; --icon-size: 14px; }
+    .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; overflow: hidden; --icon-size: 14px; }
     .panel-tab-item > .panel-close, .panel-title-item > .panel-close { justify-items: start; padding-inline-start: 4px; }
-    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { background: var(--active); color: var(--text-strong); } button.panel-title:hover .panel-grip { opacity: 1; } }
+    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } button.panel-title:hover .panel-grip { opacity: 1; } }
+    .panel-tab-item > .panel-tab:focus-visible { outline: none; }
+    .panel-tab-item:has(> .panel-tab:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
     @media (hover: hover) and (pointer: fine) and (min-width: 601px) {
-        .panel-tab-item .panel-close, .panel-title-item .panel-close { opacity: 0; transition: opacity var(--motion-feedback) ease-out; }
-        .panel-tab-item:hover .panel-close, .panel-tab-item:focus-within .panel-close, .panel-title-item:hover .panel-close, .panel-title-item:focus-within .panel-close { opacity: 1; }
+        .panel-tab-item.closable { padding-inline-end: 8px; transition: padding-inline-end var(--motion-feedback) ease-out; }
+        .panel-tab-item .panel-close, .panel-title-item .panel-close { width: 0; padding-inline-start: 0; opacity: 0; transition: width var(--motion-feedback) ease-out, padding-inline-start var(--motion-feedback) ease-out, opacity var(--motion-feedback) ease-out; }
+        .panel-tab-item.closable:hover, .panel-tab-item.closable:has(:focus-visible) { padding-inline-end: 2px; }
+        .panel-tab-item:hover .panel-close, .panel-tab-item:has(:focus-visible) .panel-close, .panel-title-item:hover .panel-close, .panel-title-item:has(:focus-visible) .panel-close { width: 24px; padding-inline-start: 4px; opacity: 1; }
     }
     @media (forced-colors: active) { .panel-tab-item.active { background: Highlight; color: HighlightText; } .panel-grip { opacity: 1; } }
 </style>

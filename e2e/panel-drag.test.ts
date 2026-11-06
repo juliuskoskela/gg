@@ -89,6 +89,7 @@ describe("pointer docking", () => {
         await groupDescriptionWithTimeline();
         expect(await group("timeline").getByRole("tablist").count()).toBe(1);
         expect(await group("timeline").locator(".panel-grip").count()).toBe(0);
+        await ctx.page.locator("#panel-tab-description").hover();
         await ctx.page.getByRole("button", { name: "Close Description", exact: true }).click();
         expect(await group("timeline").getByRole("tablist").count()).toBe(0);
         expect(await group("timeline").getByRole("button", { name: "Timeline", exact: true }).count()).toBe(1);
