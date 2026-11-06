@@ -65,7 +65,7 @@ describe("panel header tabs", () => {
     it("keeps a single title and its tools outside tab semantics", () => {
         let { getByRole, queryByRole } = render(PanelTabsHarness, { items: items.slice(0, 1) });
         expect(queryByRole("tablist")).toBeNull();
-        expect(getByRole("heading", { name: "Diff" }).parentElement?.contains(getByRole("button", { name: "Wrap lines" }))).toBe(true);
+        expect(getByRole("heading", { name: "Diff" }).closest("[data-panel-bar]")?.contains(getByRole("button", { name: "Wrap lines" }))).toBe(true);
     });
 
 });

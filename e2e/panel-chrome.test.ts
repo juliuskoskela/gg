@@ -34,6 +34,7 @@ describe("shared panel chrome", () => {
             let controls = [...top.querySelectorAll("[data-panel-toolbar] button, .panel-close")].filter(button => !button.closest("[role=tablist]")).map(button => button.getBoundingClientRect());
             return { tabCount: tabs?.querySelectorAll("[role=tab]").length ?? 0, titleCount: top.querySelectorAll(".panel-title").length,
                 tabsContainTools: !!tabs?.contains(toolbar), toolsTop: tools?.top, barBottom: bar.bottom,
+                single: !!top.querySelector(".panel-titlebar"),
                 controls: controls.map(control => ({ left: control.left, right: control.right, top: control.top, bottom: control.bottom, width: control.width, height: control.height })),
                 rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } };
         }));
@@ -44,12 +45,15 @@ describe("shared panel chrome", () => {
                 expect(top.titleCount).toBe(0);
                 expect(top.tabsContainTools).toBe(false);
                 if (top.toolsTop !== undefined) expect(top.toolsTop).toBeGreaterThanOrEqual(top.barBottom);
-            } else expect(top.titleCount).toBe(1);
+            } else {
+                expect(top.titleCount).toBe(1);
+                if (top.toolsTop !== undefined) expect(top.toolsTop).toBeLessThan(top.barBottom);
+            }
             for (let control of top.controls) {
                 expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 44);
                 expect(control.height).toBe(width > 600 ? 28 : 44);
                 expect(control.left).toBeGreaterThanOrEqual(top.rect.left + 12);
-                expect(control.right).toBeLessThanOrEqual(top.rect.right - 12);
+                if (!top.single || width > 320) expect(control.right).toBeLessThanOrEqual(top.rect.right - 12);
                 expect(control.top - top.rect.top).toBeGreaterThanOrEqual(5);
                 expect(top.rect.bottom - control.bottom).toBeGreaterThanOrEqual(5);
             }

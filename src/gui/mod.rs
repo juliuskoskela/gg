@@ -328,6 +328,9 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_revision_summary,
             resolve_revision_selection,
             query_operation_preflight,
+            query_evolution,
+            query_operation_history,
+            query_operation_detail,
             query_revision_diff,
             query_remotes,
             query_snapshot,
@@ -645,6 +648,64 @@ fn query_revisions(
 ) -> Result<messages::queries::RevsResult, InvokeError> {
     let session_tx = app_state.get_session(window.label());
     resolve_set(&session_tx, set).map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_evolution(
+    window: Window,
+    app_state: State<AppState>,
+    id: messages::RevId,
+    offset: Option<usize>,
+) -> Result<messages::queries::EvolutionPage, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryEvolution {
+            tx,
+            id,
+            offset: offset.unwrap_or(0),
+        })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_operation_history(
+    window: Window,
+    app_state: State<AppState>,
+    head: Option<String>,
+    offset: Option<usize>,
+) -> Result<messages::queries::OperationPage, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryOperationHistory {
+            tx,
+            head,
+            offset: offset.unwrap_or(0),
+        })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_operation_detail(
+    window: Window,
+    app_state: State<AppState>,
+    id: String,
+) -> Result<messages::queries::OperationDetail, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryOperationDetail { tx, id })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
 }
 
 #[tauri::command(async)]

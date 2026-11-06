@@ -7,6 +7,7 @@
     export let collapsed = false;
     export let onSelect: (revset: string) => void;
     export let onWorkingCopy: () => void;
+    export let onHistory: () => void = () => {};
     $: views = [
         { label: "All revisions", icon: "git-branch", revset: workspace.query_choices.default ?? "all()" },
         { label: "Bookmarks", icon: "bookmark", revset: "bookmarks()" },
@@ -17,6 +18,7 @@
 
 <div class="repository-navigation" class:collapsed>
     <button class="working-copy" type="button" aria-label="Working copy" title="Working copy" on:click={onWorkingCopy}><Icon name="edit-3" />{#if !collapsed}<span>Working copy</span><kbd>@</kbd>{/if}</button>
+    <button class="selection-item history-entry" type="button" aria-label="Repository history" title="Repository history" on:click={onHistory}><Icon name="clock" />{#if !collapsed}<span>History</span>{/if}</button>
     <nav aria-label="Repository views">
         {#if !collapsed}<h2>Revisions</h2>{/if}
         {#each views as view}
@@ -35,6 +37,7 @@
 
 <style>
     .repository-navigation { min-width: 0; }
+    .history-entry { margin-block-start: 6px; }
     nav { display: grid; gap: 2px; margin-block-start: 20px; }
     h2 { margin: 0 10px 6px; color: var(--faint); font-size: var(--type-caption); font-weight: 500; }
     button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 7px 10px; border: 0; border-radius: var(--radius-control); color: var(--muted); background: transparent; font-size: var(--type-ui); text-align: start; cursor: pointer; }

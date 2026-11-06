@@ -1,4 +1,5 @@
 mod colocated;
+mod history;
 mod queries;
 mod session;
 

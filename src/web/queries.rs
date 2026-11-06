@@ -23,6 +23,9 @@ pub fn router() -> Router<AppState> {
         .route("/query_log", post(query_log))
         .route("/query_log_next_page", post(query_log_next_page))
         .route("/query_revisions", post(query_revisions))
+        .route("/query_evolution", post(query_evolution))
+        .route("/query_operation_history", post(query_operation_history))
+        .route("/query_operation_detail", post(query_operation_detail))
         .route("/query_revision_summary", post(query_revision_summary))
         .route(
             "/resolve_revision_selection",
@@ -240,5 +243,56 @@ async fn query_current_status(State(state): State<AppState>) -> Result<Json<Repo
     state
         .worker_tx
         .send(SessionEvent::QueryCurrentStatus { tx })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct QueryEvolution {
+    id: crate::messages::RevId,
+    #[serde(default)]
+    offset: usize,
+}
+async fn query_evolution(
+    State(state): State<AppState>,
+    Json(req): Json<QueryEvolution>,
+) -> Result<Json<crate::messages::queries::EvolutionPage>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::QueryEvolution {
+        tx,
+        id: req.id,
+        offset: req.offset,
+    })?;
+    Ok(Json(rx.recv()??))
+}
+#[derive(Deserialize)]
+struct QueryOperationHistory {
+    head: Option<String>,
+    #[serde(default)]
+    offset: usize,
+}
+async fn query_operation_history(
+    State(state): State<AppState>,
+    Json(req): Json<QueryOperationHistory>,
+) -> Result<Json<crate::messages::queries::OperationPage>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::QueryOperationHistory {
+        tx,
+        head: req.head,
+        offset: req.offset,
+    })?;
+    Ok(Json(rx.recv()??))
+}
+#[derive(Deserialize)]
+struct QueryOperationDetail {
+    id: String,
+}
+async fn query_operation_detail(
+    State(state): State<AppState>,
+    Json(req): Json<QueryOperationDetail>,
+) -> Result<Json<crate::messages::queries::OperationDetail>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryOperationDetail { tx, id: req.id })?;
     Ok(Json(rx.recv()??))
 }

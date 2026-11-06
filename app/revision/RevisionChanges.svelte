@@ -10,6 +10,7 @@
     import HunkObject from "../objects/HunkObject.svelte";
     import PanelFooter from "../controls/PanelFooter.svelte";
     import PanelHeader from "../controls/PanelHeader.svelte";
+    import DiffStat from "./DiffStat.svelte";
     import DiffTools from "./DiffTools.svelte";
     import Icon from "../controls/Icon.svelte";
     import { navigateOptions } from "../controls/optionNavigation";
@@ -96,7 +97,9 @@
                     {:else if loaded.value}
                         {#key loaded.value}
                             {#if actionsLoaded.type === "data" && actionsLoaded.value && !actionsLoaded.value.has_conflict && actionsLoaded.value.hunks.length}
-                                <details class="hunk-actions"><summary><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" on:keydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
+                                <details class="hunk-actions"><summary><span class="hunk-action-label"><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></span><DiffStat {changes} /></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" on:keydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
+                            {:else}
+                                <div class="file-diff-summary"><span>No editable hunks</span><DiffStat {changes} /></div>
                             {/if}
                             <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} />
                         {/key}
@@ -128,9 +131,12 @@
     .diff-toolbar button:disabled { color: var(--text-disabled); cursor: default; }
     .diff-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; pointer-events: auto; scroll-padding-block: 12px; }
     .hunk-actions { margin: 0 12px 4px; pointer-events: auto; }
-    .hunk-actions summary { display: flex; align-items: center; gap: var(--control-gap); width: fit-content; padding-inline: var(--control-padding-inline); border-radius: var(--radius-control); font-size: var(--type-ui); color: var(--text); cursor: pointer; min-height: var(--control-height); list-style: none; }
+    .hunk-actions summary { display: flex; align-items: center; justify-content: space-between; gap: var(--panel-gap); width: 100%; padding-inline: var(--control-padding-inline); border-radius: var(--radius-control); font-size: var(--type-ui); color: var(--text); cursor: pointer; min-height: var(--control-height); list-style: none; }
     .hunk-actions summary::-webkit-details-marker { display: none; }
     .hunk-actions[open] summary :global(svg) { transform: rotate(90deg); }
+    .hunk-action-label { display: inline-flex; align-items: center; gap: var(--control-gap); }
+    .hunk-actions summary .hunk-action-label { font-size: var(--type-ui); color: var(--text); }
+    .file-diff-summary { display: flex; justify-content: space-between; align-items: center; gap: var(--panel-gap); padding: 6px var(--control-padding-inline); margin: 0 12px 4px; color: var(--muted); font-size: var(--type-caption); min-height: var(--control-height); }
     .hunk-actions summary span { font-size: var(--type-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
     .hunk-list { padding-block: 4px; }
     .empty-change { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }

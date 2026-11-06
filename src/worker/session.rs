@@ -86,6 +86,20 @@ pub enum SessionEvent {
         tx: Sender<Result<messages::queries::RevsResult>>,
         set: messages::RevSet,
     },
+    QueryEvolution {
+        tx: Sender<Result<messages::queries::EvolutionPage>>,
+        id: messages::RevId,
+        offset: usize,
+    },
+    QueryOperationHistory {
+        tx: Sender<Result<messages::queries::OperationPage>>,
+        head: Option<String>,
+        offset: usize,
+    },
+    QueryOperationDetail {
+        tx: Sender<Result<messages::queries::OperationDetail>>,
+        id: String,
+    },
     QueryOperationPreflight {
         tx: Sender<Result<messages::queries::OperationPreflight>>,
         redo: bool,
@@ -320,6 +334,15 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryRevisions { tx, set } => {
                     tx.send(queries::query_revisions(&self, set).await)?
                 }
+                SessionEvent::QueryEvolution { tx, id, offset } => {
+                    tx.send(super::history::evolution_page(&self, id, offset).await)?
+                }
+                SessionEvent::QueryOperationHistory { tx, head, offset } => {
+                    tx.send(super::history::operation_page(&self, head, offset).await)?
+                }
+                SessionEvent::QueryOperationDetail { tx, id } => {
+                    tx.send(super::history::operation_detail(&self, id).await)?
+                }
                 SessionEvent::QueryOperationPreflight { tx, redo } => {
                     tx.send(super::mutations::operation_preflight(&self, redo).await)?
                 }
@@ -540,6 +563,15 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryRevisions { tx, set }) => {
                     tx.send(queries::query_revisions(self.ws, set).await)?
+                }
+                Ok(SessionEvent::QueryEvolution { tx, id, offset }) => {
+                    tx.send(super::history::evolution_page(self.ws, id, offset).await)?
+                }
+                Ok(SessionEvent::QueryOperationHistory { tx, head, offset }) => {
+                    tx.send(super::history::operation_page(self.ws, head, offset).await)?
+                }
+                Ok(SessionEvent::QueryOperationDetail { tx, id }) => {
+                    tx.send(super::history::operation_detail(self.ws, id).await)?
                 }
                 Ok(SessionEvent::QueryOperationPreflight { tx, redo }) => {
                     tx.send(super::mutations::operation_preflight(self.ws, redo).await)?

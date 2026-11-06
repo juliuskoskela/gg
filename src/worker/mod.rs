@@ -16,6 +16,7 @@
 
 mod git_util;
 mod gui_util;
+mod history;
 mod mutations;
 mod queries;
 mod session;
