@@ -34,6 +34,20 @@ describe("panel dock", () => {
         expect(openPanels(get(layout).root)).not.toContain("revision-tools");
     });
 
+    it("opens and restores one Settings tab without changing review panels", () => {
+        let memory = new Map<string, string>();
+        let storage = { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => { memory.set(key, value); } };
+        let layout = createDock(storage);
+        layout.open("settings"); layout.open("settings");
+        expect(openPanels(get(layout).root)).toEqual(["timeline", "settings", "description", "tree", "diff"]);
+        expect(findTabs(get(layout).root, "timeline")?.active).toBe("settings");
+        expect(get(createDock(storage)).compactActive).toBe("settings");
+        layout.close("settings");
+        expect(get(layout).root).toEqual(defaultLayout());
+        layout.open("settings");
+        expect(openPanels(get(layout).root).filter(id => id === "settings")).toHaveLength(1);
+    });
+
     it("adds edit beside diff and leaves diff open", () => {
         let next = openPanel(defaultLayout(), "edit");
         expect(openPanels(next)).toContain("diff");

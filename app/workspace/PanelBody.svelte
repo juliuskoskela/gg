@@ -14,6 +14,7 @@
     import { repoConfigEvent, repoStatusEvent } from "../stores";
     import type { PanelId } from "./dock";
     import OperationView from "./OperationView.svelte";
+    import SettingsPanel from "../shell/SettingsPanel.svelte";
 
     export let id: PanelId;
     export let active: boolean;
@@ -29,7 +30,9 @@
     $: file = selectedPath || changes[0]?.path.repo_path || "";
 </script>
 
-{#if id === "timeline"}
+{#if id === "settings"}
+    <SettingsPanel />
+{:else if id === "timeline"}
     {#key workspace}
         <LogPane integrated query_choices={workspace.query_choices} latest_query={workspace.latest_query} />
     {/key}
