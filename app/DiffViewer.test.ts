@@ -129,4 +129,39 @@ describe("syntax diff viewer", () => {
         diffStyle.set("auto");
     });
 
+    for (let phase of ["hydration", "anchor frames"]) it(`disposes pending fold work during ${phase}`, async () => {
+        let { default: DiffViewer } = await import("./DiffViewer.svelte");
+        let change: RevChange = { kind: "Modified", has_conflict: false, path: { repo_path: "file.txt", relative_path: "file.txt" }, hunks: [{ location: { from_file: { start: 11, len: 1 }, to_file: { start: 11, len: 1 } }, lines: { lines: ["-before\n", "+after\n"] } }] };
+        let finishLoading!: (files: { before: string; after: string }) => void;
+        let files = new Promise<{ before: string; after: string }>(resolve => finishLoading = resolve);
+        let errors: string[] = [];
+        let recordError = (event: ErrorEvent) => errors.push(event.message);
+        window.addEventListener("error", recordError);
+        try {
+            let { container, unmount } = render(DiffViewer, { props: { change, loadFullFiles: () => files } });
+            let fold = () => container.querySelector<HTMLButtonElement>('.diff-fold[data-fold-gap="0"]');
+            await waitFor(() => expect(fold()?.disabled).toBe(false));
+            let original = fold()!;
+            original.click();
+            expect(original.getAttribute("aria-busy")).toBe("true");
+            if (phase === "hydration") unmount();
+            let before = "context\n".repeat(10) + "before\n" + "context\n".repeat(9);
+            // observe the synchronous row replacement so teardown precedes the queued animation frames.
+            let expanded = phase === "anchor frames" ? new Promise<void>(resolve => {
+                let observer = new MutationObserver(() => {
+                    if (fold()?.getAttribute("aria-expanded") !== "true") return;
+                    observer.disconnect();
+                    resolve();
+                });
+                observer.observe(container, { childList: true, subtree: true, attributes: true });
+            }) : Promise.resolve();
+            finishLoading({ before, after: before.replace("before", "after") });
+            if (phase === "anchor frames") { await expanded; unmount(); }
+            await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+            expect(errors).toEqual([]);
+            expect(original.hasAttribute("aria-busy")).toBe(false);
+            expect(container.querySelector("diffs-container")).toBeNull();
+        } finally { window.removeEventListener("error", recordError); }
+    });
+
 });
