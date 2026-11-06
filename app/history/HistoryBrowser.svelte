@@ -50,7 +50,8 @@
 
 <style>
     .history-browser { container: history / inline-size; display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; color: var(--text); background: var(--surface); font-size: var(--type-ui); }
-    .history-intro { display: flex; align-items: start; gap: 12px; padding: 12px var(--panel-inset); border-block-end: 1px solid var(--rule); }
+    /* the caption introduces the content below it; a rule would make it a third header band */
+    .history-intro { display: flex; align-items: start; gap: 12px; padding: 10px var(--panel-inset) 4px; }
     .history-intro p { flex: 1; margin: 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.6; }
     button { color: var(--text); background: transparent; border: 0; border-radius: var(--radius-control); cursor: pointer; font-size: inherit; }
     button:disabled { cursor: default; color: var(--text-disabled); }

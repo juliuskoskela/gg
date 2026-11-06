@@ -5,4 +5,4 @@
     import ToggleItem from "../controls/ToggleItem.svelte";
 </script>
 
-<PanelTools label="Timeline tools"><ToggleTray label="Timeline density"><ToggleItem icon="list" label="Tall revisions" tip={$historyDensity === "tall" ? "Hide revision authors" : "Show revision authors"} on={$historyDensity === "tall"} onClick={() => historyDensity.set($historyDensity === "tall" ? "compact" : "tall")} /></ToggleTray></PanelTools>
+<PanelTools label="Timeline tools"><ToggleTray label="Timeline density" mode="multi"><ToggleItem icon="list" label="Tall revisions" tip={$historyDensity === "tall" ? "Hide revision authors" : "Show revision authors"} on={$historyDensity === "tall"} onClick={() => historyDensity.set($historyDensity === "tall" ? "compact" : "tall")} /></ToggleTray></PanelTools>

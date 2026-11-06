@@ -68,10 +68,10 @@
 
 {#snippet toolbarToggle()}
     {#if hasTools}
-        <button class="toolbar-toggle" type="button" aria-label={`${toolbarHidden ? "Show" : "Hide"} ${activeLabel} toolbar`}
+        <button class="toolbar-toggle" class:open={!toolbarHidden} type="button" aria-label={`${toolbarHidden ? "Show" : "Hide"} ${activeLabel} toolbar`}
             title={`${toolbarHidden ? "Show" : "Hide"} toolbar`} aria-expanded={!toolbarHidden} aria-controls={`${prefix}-toolbar-${active}`}
             on:click={() => active && toggleToolbar(active)}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" /><path class:collapsed={toolbarHidden} d="M7 7h.01M11 7h.01M15 7h.01" /></svg>
+            <Icon name="sliders" />
         </button>
     {/if}
 {/snippet}
@@ -125,18 +125,21 @@
 </div>
 
 <style>
-    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); }
-    .panel-tabs-bar, .panel-titlebar { min-width: 0; border-block-end: 1px solid var(--panel-header-rule); padding: var(--panel-bar-padding) var(--panel-inset); }
+    /* title and toolbar are one header block, so the only rule is the one closing it off from content */
+    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--panel-header-rule); }
+    /* labels align with the toolbar and content inset; their hover pills overhang into the gutter */
+    .panel-tabs-bar, .panel-titlebar { min-width: 0; padding: var(--panel-bar-padding) var(--panel-inset) var(--panel-bar-padding) calc(var(--panel-inset) - 8px); }
+    .panel-view-top :global(.view-toolbar) { border-block-end: 0; padding-block-start: 0; min-height: 0; }
     .panel-tabs-bar, .panel-titlebar { min-height: var(--panel-tabs-height); }
     .panel-tabs-bar, .panel-titlebar { display: flex; align-items: center; gap: var(--panel-gap); }
-    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: 8px; border-radius: var(--radius-control); background: var(--panel-tab-active); pointer-events: auto; }
+    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: 8px; border-radius: var(--radius-control); pointer-events: auto; }
     .panel-title-item.closable { padding-inline-end: 2px; }
     .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 4px 0 4px 8px; border: 0; border-radius: var(--radius-control); color: var(--text); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
     .panel-title > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     button.panel-title { cursor: grab; }
     .toolbar-toggle { display: grid; place-items: center; flex: none; margin-inline-start: auto; width: var(--panel-control-size); height: var(--panel-control-size); padding: 6px; border: 0; border-radius: var(--radius-control); color: var(--muted); background: transparent; cursor: pointer; pointer-events: auto; }
-    .toolbar-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: var(--icon-stroke); stroke-linecap: round; stroke-linejoin: round; }
-    .toolbar-toggle .collapsed { opacity: .4; }
+    .toolbar-toggle { --icon-size: 16px; }
+    .toolbar-toggle.open { color: var(--text); }
     .toolbar-toggle:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     @media (hover: hover) { .toolbar-toggle:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); } }
     .toolbar-toggle:active { background: color-mix(in srgb, var(--text) 16%, transparent); }
@@ -154,7 +157,7 @@
     [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; overflow: hidden; --icon-size: 14px; }
     .panel-tab-item > .panel-close, .panel-title-item > .panel-close { justify-items: start; padding-inline-start: 4px; }
-    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } }
+    @media (hover: hover) { .panel-tab-item:hover, .panel-title-item:has(> button.panel-title):hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } }
     .panel-tab-item > .panel-tab:focus-visible { outline: none; }
     .panel-tab-item:has(> .panel-tab:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     @media (hover: hover) and (pointer: fine) and (min-width: 601px) {

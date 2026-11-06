@@ -122,7 +122,8 @@
     .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: 3px var(--pane-inset); background: var(--ground); border-block-end: 1px solid var(--rule); min-width: 0; }
     .navigation-trigger { display: grid; place-items: center; width: 32px; min-height: 32px; flex-shrink: 0; padding: 6px; background: transparent; color: var(--text); border: 0; border-radius: var(--radius-control); cursor: pointer; }
     .views-control { margin-inline-start: auto; }
-    .views-control + .topbar-actions { margin-inline-start: 0; }
+    /* views arranges panels, the actions change the repository: keep the two scopes apart */
+    .views-control + .topbar-actions { margin-inline-start: 12px; }
     .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--panel-gap); margin-inline-start: auto; min-width: 0; max-width: 100%; }
     .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--surface); }
     .workspace-sheet.has-error { grid-template-rows: auto minmax(0, 1fr); }
@@ -132,5 +133,5 @@
 
     .navigation-trigger:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { .navigation-trigger { width: 44px; min-height: 44px; } .workspace-topbar { height: auto; min-height: 52px; } }
-    @media (max-width: 600px) { .workspace-topbar { gap: var(--panel-gap); padding: 4px var(--pane-inset); } .topbar-actions { flex: 1 0 100%; justify-content: flex-end; } }
+    @media (max-width: 600px) { .workspace-topbar { gap: var(--panel-gap); padding: 4px var(--pane-inset); } .topbar-actions, .views-control + .topbar-actions { flex: 1 0 100%; justify-content: flex-end; margin-inline-start: 0; } }
 </style>

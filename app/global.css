@@ -130,7 +130,7 @@
   --surface: var(--palette-surface);
   --panel-header-bg: color-mix(in srgb, var(--surface) 72%, var(--ground));
   --panel-toolbar-bg: var(--panel-header-bg);
-  --panel-header-rule: color-mix(in srgb, var(--text) 5%, var(--panel-header-bg));
+  --panel-header-rule: color-mix(in srgb, var(--text) 8%, var(--panel-header-bg));
   --panel-header-control-border: color-mix(in srgb, var(--text) 10%, var(--panel-header-bg));
   --panel-tab-active: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg));
   --raised: var(--palette-raised);
