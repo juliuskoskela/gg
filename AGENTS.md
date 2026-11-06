@@ -120,7 +120,7 @@ Use macros from `src/gui/handler.rs`:
 
 ### Typography
 
-Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--font-emphasis`, `--font-body`, `--font-prose`, `--font-label`, `--font-id`) with `font:`; don't set `font-size`, `line-height` or `font-weight` by hand. Key/value data uses `MetadataList`/`MetadataRow`, history-like entries use `LogList`, in-content navigation uses `.text-link`, and toolbar summaries take `.toolbar-lead`. See `doc/reviews/typography.md`.
+Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--font-emphasis`, `--font-body`, `--font-prose`, `--font-label`, `--font-id`) with `font:`; don't set `font-size`, `line-height` or `font-weight` by hand. Key/value data uses `MetadataList`/`MetadataRow`, history-like entries use `LogList`, in-content navigation uses `.text-link`, and toolbar search fields and summaries take `.toolbar-lead`. See `doc/reviews/typography.md`.
 
 ### Annotations
 

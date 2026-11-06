@@ -39,7 +39,7 @@
     }
     .view-toolbar::-webkit-scrollbar { display: none; }
     .view-toolbar[hidden] { display: none; }
-    /* tools sit at the trailing edge; what summarises the view (counts, select-all, filters) opts into the leading edge.
+    /* tools sit at the trailing edge; what scopes or summarises the view (search, counts, select-all, filters) opts into the leading edge.
        a flexible spacer rather than flex-end keeps overflowing tools scrollable from their start */
     .view-toolbar::before { content: ""; flex: 1 1 0; order: 0; min-width: 0; }
     .view-toolbar > :global(*) { flex-shrink: 0; order: 1; }

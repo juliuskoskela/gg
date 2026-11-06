@@ -26,7 +26,7 @@ Ink has three steps: `--text-strong` for titles, headings and the chosen item; `
 
 Text that can be edited in place reads as text, with a pencil glyph at rest on the field that names the edit, a field tint on hover, a focus ring, and a tooltip naming the action. An editable empty description reads "Add a description". In-content navigation uses `.text-link`: body text with a quiet underline, never a filled button.
 
-Toolbar tools sit at the trailing edge. What summarises the view, such as counts, select-all and view filters, takes `.toolbar-lead`.
+Toolbar tools sit at the trailing edge. What scopes or summarises the view takes `.toolbar-lead` and sits at the leading edge: search fields, counts, select-all and view filters.
 
 ## Validation
 

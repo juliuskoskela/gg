@@ -47,7 +47,7 @@
 <svelte:window on:keydown={keydown} />
 <aside class="file-tree" class:overlay hidden={!visible} id="changed-files" aria-label="Changed files" bind:this={panel}>
     {#if showHeading}<PanelHeader><div class="file-tree-heading">Files <span>{changes.length}</span>{#if onClose}<div class="tree-toggle"><ToggleTray label="Changed files"><ToggleItem kind="disclosure" on text="Tree" label="File tree" tip="Hide file tree" controls="changed-files" onClick={onClose} /></ToggleTray></div>{/if}</div></PanelHeader>{/if}
-    <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div></ViewToolbar>
+    <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter toolbar-lead"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div></ViewToolbar>
     {#if changes.length > 200}<VirtualFileList changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">No matching files</p>{/if}{:else}
     <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" on:keydown={navigateOptions}><FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
 </aside>

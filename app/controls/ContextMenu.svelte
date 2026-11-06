@@ -17,7 +17,8 @@
     export let onClose: () => void;
     let menuElement: HTMLDivElement;
     let previous = document.activeElement as HTMLElement | null;
-    // like native menus, nothing is highlighted until the pointer or arrow keys pick an item
+    // like native menus, nothing is highlighted until the pointer moves or arrow keys pick an item;
+    // a menu that opens under a resting pointer mustn't select whatever lies beneath it
     onMount(() => menuElement?.focus());
     onDestroy(() => { if (document.activeElement === document.body || menuElement?.contains(document.activeElement)) previous?.focus({ preventScroll: true }); });
     function key(event: KeyboardEvent) {
@@ -77,7 +78,7 @@
     {#each grouped as section, index}
         {#if index > 0}<hr />{/if}
         {#each section as command (command.id)}
-            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" on:mouseenter={event => event.currentTarget.focus({ preventScroll: true })} on:click={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
+            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" on:mousemove={event => { if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }} on:click={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
         {/each}
     {/each}
     {#if unavailable}<p class="menu-empty" role="presentation">{unavailable}</p>{/if}
