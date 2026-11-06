@@ -96,7 +96,7 @@ describe("Settings dock and repository actions", () => {
         await remote.selectOption("upstream");
         expect(await remote.inputValue()).toBe("upstream");
         for (let theme of ["dark", "light"]) {
-            await page.getByRole("button", { name: theme === "dark" ? "Dark" : "Light", exact: true }).click();
+            await page.getByRole("button", { name: theme === "dark" ? "Twilight" : "Light", exact: true }).click();
             expect(await page.locator(`#shell.${theme}`).count()).toBe(1);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -108,11 +108,11 @@ describe("Settings dock and repository actions", () => {
         await page.getByRole("button", { name: "Close Settings", exact: true }).click();
         expect(await page.locator("#panel-tab-settings").count()).toBe(0);
         await settings(width);
-        await page.getByRole("button", { name: "Dark", exact: true }).click();
+        await page.getByRole("button", { name: "Twilight", exact: true }).click();
         await page.reload();
         await page.locator("#panel-tab-settings").waitFor();
         expect(await page.locator("#shell.dark").count()).toBe(1);
-        expect(await page.getByRole("button", { name: "Dark", exact: true }).getAttribute("aria-pressed")).toBe("true");
+        expect(await page.getByRole("button", { name: "Twilight", exact: true }).getAttribute("aria-pressed")).toBe("true");
         expect(page.url()).toBe(routeBefore);
         if (width >= 768) {
             if (await page.getByRole("button", { name: "Expand repository navigation", exact: true }).isVisible()) await page.getByRole("button", { name: "Expand repository navigation", exact: true }).click();
