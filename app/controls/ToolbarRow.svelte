@@ -34,12 +34,16 @@
         --border: color-mix(in srgb, var(--text) 14%, var(--panel-toolbar-bg));
         --input-surface: var(--panel-toolbar-bg);
         --panel-tools-wrap: nowrap;
-        --panel-tools-justify: flex-start;
-        --panel-tools-margin: 0;
+        --panel-tools-justify: flex-end;
+        --panel-tools-margin: auto;
     }
     .view-toolbar::-webkit-scrollbar { display: none; }
     .view-toolbar[hidden] { display: none; }
-    .view-toolbar > :global(*) { flex-shrink: 0; }
+    /* tools sit at the trailing edge; what summarises the view (counts, select-all, filters) opts into the leading edge.
+       a flexible spacer rather than flex-end keeps overflowing tools scrollable from their start */
+    .view-toolbar::before { content: ""; flex: 1 1 0; order: 0; min-width: 0; }
+    .view-toolbar > :global(*) { flex-shrink: 0; order: 1; }
+    .view-toolbar > :global(.toolbar-lead) { order: -1; }
     .view-toolbar > :global(.diff-tools) { width: auto; }
     .view-toolbar :global(button:focus-visible) { outline-offset: -2px; }
     .view-toolbar :global(.toolbar-spacer) { margin-inline-start: auto; }

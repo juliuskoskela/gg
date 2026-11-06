@@ -7,6 +7,7 @@
     import { contextCommands, revisionCommands, type Command } from "../commands/registry";
     import Icon from "./Icon.svelte";
     import { annotationCommands } from "../annotations/commands";
+    import { openViewCommands } from "../workspace/viewCommands";
     export let operand: Operand | null = null;
     /** a fixed list, for menus about things that aren't operands, such as diff lines */
     export let items: Command[] | null = null;
@@ -54,10 +55,16 @@
         if (!operand) return [];
         return operand.type === "Revision" ? revisionCommands([operand.header], false, $ignoreToggled, $currentMutation, $mutationPending) : operand.type === "Revisions" ? revisionCommands(operand.headers, false, $ignoreToggled, $currentMutation, $mutationPending) : contextCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending);
     }
-    $: grouped = sections(commands);
+    // every menu ends with the views that can still be opened, so right-clicking is always a way to add one
+    export let views = true;
+    $: viewItems = views ? openViewCommands().filter(command => !command.reason) : [];
+    // destructive actions stay last, after the views
+    $: actionSections = sections(commands);
+    $: destructive = actionSections.filter(section => section.every(command => command.destructive));
+    $: grouped = [...actionSections.filter(section => !destructive.includes(section)), ...(viewItems.length ? [viewItems] : []), ...destructive];
     // a title only when it clarifies scope: several revisions at once
     $: title = heading ?? (operand?.type === "Revisions" && operand.headers.length > 1 ? `${operand.headers.length} revisions` : null);
-    $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? "No actions available") : null;
+    $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? (views ? "All views are open" : "No actions available")) : null;
     $: if (menuElement) {
         let rect = menuElement.getBoundingClientRect();
         menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;

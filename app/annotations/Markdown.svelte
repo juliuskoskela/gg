@@ -22,13 +22,13 @@
 <div class="markdown">{@html html}</div>
 
 <style>
-    .markdown { min-width: 0; overflow-wrap: anywhere; font-size: var(--type-body); line-height: 1.6; color: var(--text); }
+    .markdown { max-width: var(--prose-measure); min-width: 0; overflow-wrap: anywhere; color: var(--text); font: var(--font-prose); }
     .markdown :global(:first-child) { margin-block-start: 0; }
     .markdown :global(:last-child) { margin-block-end: 0; }
     .markdown :global(p), .markdown :global(ul), .markdown :global(ol), .markdown :global(pre), .markdown :global(blockquote) { margin-block: 0 .7em; }
-    .markdown :global(h1), .markdown :global(h2), .markdown :global(h3), .markdown :global(h4) { margin-block: 1em .4em; font-size: var(--type-body); font-weight: 600; }
+    .markdown :global(h1), .markdown :global(h2), .markdown :global(h3), .markdown :global(h4) { margin-block: 1em .4em; color: var(--text-strong); font: var(--weight-strong) var(--type-body)/var(--leading-prose) var(--stack-ui); }
     .markdown :global(ul), .markdown :global(ol) { padding-inline-start: 1.4em; }
-    .markdown :global(code) { padding: .1em .3em; border-radius: var(--radius-sm); background: var(--diff-buffer); font: var(--type-code)/1.5 var(--stack-code); }
+    .markdown :global(code) { padding: .1em .3em; border-radius: var(--radius-sm); background: var(--diff-buffer); font: var(--type-code)/1.5 var(--stack-code); font-variant-ligatures: none; }
     .markdown :global(pre) { overflow-x: auto; padding: 8px 10px; border-radius: var(--radius-control); background: var(--diff-buffer); }
     .markdown :global(pre code) { padding: 0; background: none; }
     .markdown :global(blockquote) { padding-inline-start: 10px; border-inline-start: 2px solid var(--rule); color: var(--muted); }

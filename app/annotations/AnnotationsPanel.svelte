@@ -167,12 +167,14 @@
 {/snippet}
 
 <ViewToolbar label="Annotations tools">
-    {#if visible.length}<NoteCheck checked={allSelected} indeterminate={selected.size > 0 && !allSelected} label="Select all notes" onChange={toggleAll} />{/if}
-    <span class="summary">{selected.size ? `${selected.size} selected` : `${openCount} open`}</span>
-    <ToggleTray label="Show notes">
-        <ToggleItem text="Open" on={!showResolved} onClick={() => showResolved = false} />
-        <ToggleItem text="All" on={showResolved} onClick={() => showResolved = true} />
-    </ToggleTray>
+    <span class="lead toolbar-lead">
+        {#if visible.length}<NoteCheck checked={allSelected} indeterminate={selected.size > 0 && !allSelected} label="Select all notes" onChange={toggleAll} />{/if}
+        <span class="summary">{selected.size ? `${selected.size} selected` : `${openCount} open`}</span>
+        <ToggleTray label="Show notes">
+            <ToggleItem text="Open" on={!showResolved} onClick={() => showResolved = false} />
+            <ToggleItem text="All" on={showResolved} onClick={() => showResolved = true} />
+        </ToggleTray>
+    </span>
     <span class="toolbar-spacer actions">
         {#if copied}<span class="copied" role="status">{copied}</span>{/if}
         <!-- actions on a selection appear with it, so the resting toolbar shows only what applies -->
@@ -292,15 +294,16 @@
 </section>
 
 <style>
-    .summary { color: var(--muted); font-size: var(--type-caption); font-variant-numeric: tabular-nums; }
+    .summary { color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; }
+    .lead { display: inline-flex; align-items: center; gap: var(--panel-gap); }
     .actions { display: inline-flex; align-items: center; gap: 2px; }
-    .copied { margin-inline-end: 8px; color: var(--muted); font-size: var(--type-caption); }
-    .annotations { container: annotations / inline-size; display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; background: var(--surface); color: var(--text); font-size: var(--type-ui); }
+    .copied { margin-inline-end: 8px; color: var(--muted); font: var(--font-label); }
+    .annotations { container: annotations / inline-size; display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; background: var(--surface); color: var(--text); font: var(--font-body); }
     .error { margin: 0; padding: 8px var(--panel-inset); color: var(--negative); }
     .empty { display: grid; justify-items: center; gap: 8px; max-width: 46ch; margin: 48px auto; padding: 0 var(--panel-inset); color: var(--muted); text-align: center; }
     .empty > :global(svg) { --icon-size: 20px; }
-    .empty h3 { margin: 0; color: var(--text); font-size: var(--type-body); font-weight: 500; }
-    .empty p { margin: 0; line-height: 1.6; }
+    .empty h3 { margin: 0; color: var(--text-strong); font: var(--font-heading); }
+    .empty p { margin: 0; font: var(--font-body); }
     .link { padding: 4px 8px; border: 0; background: none; color: var(--text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -320,37 +323,37 @@
     .row > button { display: grid; flex: 1; gap: 3px; min-width: 0; padding: 7px 10px 7px 0; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; text-align: start; cursor: pointer; }
     .row.current { background: var(--interaction-selected); }
     .row.checked:not(.current) { background: var(--interaction-hover); }
-    .row.current .row-title { font-weight: 500; }
+    .row.current .row-title { color: var(--text-strong); font: var(--font-emphasis); }
     .row.resolved .row-title { color: var(--muted); }
     .row.draft .row-title { font-style: italic; }
-    .row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px; }
-    .row-meta { display: flex; align-items: center; gap: 5px; min-width: 0; height: 18px; color: var(--muted); font-size: var(--type-caption); --icon-size: 12px; }
+    .row-title { overflow: hidden; font: var(--font-body); text-overflow: ellipsis; white-space: nowrap; }
+    .row-meta { display: flex; align-items: center; gap: 5px; min-width: 0; height: 18px; color: var(--muted); font: var(--font-label); --icon-size: 12px; }
     .row-meta > :global(svg) { flex: none; }
-    .anchor { min-width: 0; overflow: hidden; font-family: var(--stack-code); text-overflow: ellipsis; white-space: nowrap; }
+    .anchor { min-width: 0; overflow: hidden; font: var(--font-id); text-overflow: ellipsis; white-space: nowrap; }
     /* counts read like notification badges: a number on a soft ink pill */
     .pill { display: inline-flex; flex: none; align-items: center; gap: 3px; height: 16px; min-width: 16px; padding: 0 5px; border-radius: 8px; background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); font: 500 11px/1 var(--stack-ui); font-variant-numeric: tabular-nums; --icon-size: 10px; }
     .draft-tag { display: inline-flex; flex: none; align-items: center; gap: 3px; margin-inline-end: 2px; color: var(--text); font-weight: 500; }
     .flag { display: inline-flex; flex: none; color: var(--muted); }
     .flag.warning { color: var(--warning); }
     .row-age { flex: none; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
-    .location { margin: auto 0 0; padding: 14px 10px 10px; overflow: hidden; color: var(--muted); font-size: var(--type-caption); text-overflow: ellipsis; white-space: nowrap; }
+    .location { margin: auto 0 0; padding: 14px 10px 10px; overflow: hidden; color: var(--muted); font: var(--font-label); text-overflow: ellipsis; white-space: nowrap; }
 
     .detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px var(--panel-inset) 24px; }
     .detail-header { display: flex; align-items: flex-start; gap: 8px; }
     .context { display: grid; flex: 1; gap: 8px; min-width: 0; }
-    .subject { margin: 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+    .subject { margin: 0; overflow: hidden; color: var(--muted); font: var(--font-body); text-overflow: ellipsis; white-space: nowrap; }
     .quote { display: grid; gap: 4px; margin: 0; }
-    .quote figcaption { display: flex; align-items: center; gap: 5px; color: var(--muted); font: var(--type-caption)/1.4 var(--stack-code); --icon-size: 11px; }
+    .quote figcaption { display: flex; align-items: center; gap: 5px; color: var(--muted); font: var(--font-id); --icon-size: 11px; }
     .quote pre { max-height: 200px; margin: 0; padding: 8px 10px; overflow: auto; border-radius: var(--radius-control); background: var(--diff-buffer); font: var(--type-code)/var(--code-leading) var(--stack-code); white-space: pre; }
     .close { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin: -2px -6px 0 0; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
     @media (hover: hover) { .close:hover { background: var(--interaction-hover); color: var(--text); } }
     .close:focus-visible, .post-edit:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 8px 0 0 -8px; padding-block-end: 10px; border-block-end: 1px solid var(--rule); }
-    .tip { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--muted); font-size: var(--type-caption); --icon-size: 12px; }
+    .tip { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--muted); font: var(--font-label); --icon-size: 12px; }
 
     .posts { display: grid; gap: 20px; margin: 16px 0 0; padding: 0; list-style: none; }
-    .byline { display: flex; align-items: baseline; gap: 8px; min-height: 24px; margin: 0 0 4px; color: var(--muted); font-size: var(--type-caption); }
-    .author { color: var(--text); font-size: var(--type-ui); font-weight: 500; }
+    .byline { display: flex; align-items: baseline; gap: 8px; min-height: 24px; margin: 0 0 2px; color: var(--muted); font: var(--font-label); }
+    .author { color: var(--text-strong); font: var(--font-emphasis); }
     .agent { padding: 0 5px; border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 16px; }
     .post-edit { margin-inline-start: auto; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
     @media (hover: hover) and (pointer: fine) {
@@ -363,8 +366,8 @@
     .reply { display: grid; gap: 8px; margin-top: 24px; }
     .post.editing { display: grid; gap: 8px; }
     .compose-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-    .hint { flex: 1; min-width: 0; color: var(--muted); font-size: var(--type-caption); }
-    .hint code { font: var(--type-caption)/1 var(--stack-code); }
+    .hint { flex: 1; min-width: 0; color: var(--muted); font: var(--font-label); }
+    .hint code { font: var(--font-id); }
 
     @container annotations (max-width: 620px) {
         /* too narrow for two columns: the open note takes the whole view */

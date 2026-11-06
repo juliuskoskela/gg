@@ -52,17 +52,19 @@
 </div>
 
 <style>
-    .revision-metadata { container: metadata / inline-size; min-width: 0; }
+    .revision-metadata { min-width: 0; }
     .values { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
     .authors :global(.author) { white-space: normal; color: var(--text); }
-    .revision-metadata :global(.timestamp) { color: var(--text); font-size: var(--type-ui); white-space: normal; }
+    .revision-metadata :global(.timestamp) { color: var(--text); font: var(--font-body); white-space: normal; }
     .warning { color: var(--negative); }
-    .references { display: flex; flex-wrap: wrap; align-items: start; gap: 10px 16px; min-width: 0; }
-    .reference { display: flex; flex-direction: column; align-items: start; gap: 3px; min-width: 0; max-width: 100%; }
+    .references { display: flex; flex-wrap: wrap; align-items: start; gap: var(--gap-row) var(--gap-group); min-width: 0; }
+    .reference { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-width: 100%; }
+    /* a reference is as wide as its name, with its status beside it */
+    .reference > :global(*) { flex: 0 1 auto; width: auto; max-width: 100%; }
     .references :global(.chip) { max-width: 100%; height: auto; min-height: 24px; white-space: normal; overflow-wrap: anywhere; }
     .references :global(.chip svg) { flex-shrink: 0; }
     .references :global(.chip span) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-    .reference-status { color: var(--muted); font-size: var(--type-caption); line-height: 1.5; overflow-wrap: anywhere; }
+    .reference-status { color: var(--muted); font: var(--font-label); overflow-wrap: anywhere; }
     .parents { min-width: 0; margin: -4px -6px; }
     .parents :global(.layout) { min-height: 28px; padding: 4px 6px; }
     .parents.target { outline: var(--focus-width) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-control); }

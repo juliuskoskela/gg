@@ -36,7 +36,7 @@
     .targets { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
     .target { position: relative; display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 24px; padding: 0 8px 0 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font-size: var(--type-caption); --icon-size: 12px; }
     .target > :global(svg) { flex: none; color: var(--muted); }
-    .label { min-width: 0; overflow: hidden; font: var(--type-code)/1 var(--stack-code); text-overflow: ellipsis; white-space: nowrap; }
+    .label { min-width: 0; overflow: hidden; font: var(--font-id); text-overflow: ellipsis; white-space: nowrap; }
     .change, .side { flex: none; color: var(--muted); font: 11px/1 var(--stack-code); }
     .warning { display: inline-flex; color: var(--warning); --icon-size: 12px; }
     .target.warned { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }

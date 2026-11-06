@@ -57,7 +57,7 @@ describe("native history inspection", () => {
     it.each(layouts)("browses exact versions and past repository states in $theme at $width px", async ({ width, theme }) => {
         await arrange(width, theme);
         let before = currentOperation();
-        await ctx.page.getByRole("button", { name: "Evolution", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "Earlier versions of this change" }).click();
         let evolution = ctx.page.getByRole("region", { name: "Evolution", exact: true });
         await evolution.getByRole("button", { name: /Initial parser implementation/ }).waitFor();
         await evolution.getByRole("button", { name: /Initial parser implementation/ }).click();
@@ -76,7 +76,7 @@ describe("native history inspection", () => {
         let history = ctx.page.getByRole("region", { name: "Repository history", exact: true });
         await history.getByRole("button", { name: /describe commit/ }).first().waitFor();
         let previous = operations.entries.find(entry => entry.id !== operations.head_id)!;
-        await history.locator(".history-row").nth(1).click();
+        await history.locator("button[data-log-row]").nth(1).click();
         await expect.poll(() => history.locator(".history-metadata dd").first().textContent()).toBe(previous.id.slice(0, 12));
         await history.getByRole("region", { name: "Historical graph" }).waitFor();
         expect(await history.getByRole("region", { name: "Historical workspaces" }).textContent()).toContain("default");
@@ -95,14 +95,14 @@ describe("native history inspection", () => {
     it("recovers from an operation error and ignores a superseded detail response", async () => {
         await arrange(1440, "dark", "history");
         let history = ctx.page.getByRole("region", { name: "Repository history", exact: true });
-        await history.locator(".history-row").nth(1).waitFor();
+        await history.locator("button[data-log-row]").nth(1).waitFor();
         await history.getByRole("region", { name: "Historical graph" }).waitFor();
         let failed = false;
         await ctx.page.route("**/api/query/query_operation_detail", async route => {
             if (!failed) { failed = true; await route.fulfill({ status: 500, body: "Operation temporarily unavailable" }); }
             else await route.continue();
         });
-        await history.locator(".history-row").nth(1).click();
+        await history.locator("button[data-log-row]").nth(1).click();
         await history.getByRole("button", { name: "Retry operation" }).waitFor();
         await history.getByRole("button", { name: "Retry operation" }).click();
         await history.getByRole("region", { name: "Historical graph" }).waitFor();
@@ -115,9 +115,9 @@ describe("native history inspection", () => {
             if (id === operations.entries[0].id) { started = true; await waiting; }
             await route.continue();
         });
-        await history.locator(".history-row").first().click();
+        await history.locator("button[data-log-row]").first().click();
         await expect.poll(() => started).toBe(true);
-        await history.locator(".history-row").nth(1).click();
+        await history.locator("button[data-log-row]").nth(1).click();
         await expect.poll(() => history.locator(".history-metadata dd").first().textContent()).toBe(operations.entries[1].id.slice(0, 12));
         let completed = ctx.page.waitForResponse(response => response.url().endsWith("/query_operation_detail") && response.request().postDataJSON().id === operations.entries[0].id);
         release!();
@@ -152,17 +152,17 @@ describe("native history inspection", () => {
         await arrange(1440, "dark", "history");
         let history = ctx.page.getByRole("region", { name: "Repository history", exact: true });
         await history.getByRole("button", { name: "Load earlier entries" }).waitFor();
-        expect(await history.locator(".history-row").count()).toBe(40);
+        expect(await history.locator("button[data-log-row]").count()).toBe(40);
         let head = currentOperation();
         await history.getByRole("button", { name: "Load earlier entries" }).click();
-        await expect.poll(() => history.locator(".history-row").count()).toBeGreaterThan(40);
+        await expect.poll(() => history.locator("button[data-log-row]").count()).toBeGreaterThan(40);
         await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
         await ctx.page.getByRole("menuitemcheckbox", { name: "Evolution", exact: true }).click();
         let evolution = ctx.page.getByRole("region", { name: "Evolution", exact: true });
         await evolution.getByRole("button", { name: "Load earlier entries" }).waitFor();
-        expect(await evolution.locator(".history-row").count()).toBe(40);
+        expect(await evolution.locator("button[data-log-row]").count()).toBe(40);
         await evolution.getByRole("button", { name: "Load earlier entries" }).click();
-        await expect.poll(() => evolution.locator(".history-row").count()).toBeGreaterThan(40);
+        await expect.poll(() => evolution.locator("button[data-log-row]").count()).toBeGreaterThan(40);
         expect(currentOperation()).toBe(head);
         expect(errors).toEqual([]);
     });

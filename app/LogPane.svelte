@@ -467,9 +467,9 @@
 {#if integrated}
     <ViewToolbar label="Timeline tools">
         {#if $pickedRevisions.length}
-            <span class="graph-caption picks" role="status"><span class="pick-count">{$pickedRevisions.length}</span>selected</span>
-            <button type="button" class="clear-picks" title="Clear selection (Escape)" on:click={clearPicks}>Clear</button>
-        {:else}<span class="graph-caption">{graphSummary}</span>{/if}
+            <span class="graph-caption picks toolbar-lead" role="status"><span class="pick-count">{$pickedRevisions.length}</span>selected</span>
+            <button type="button" class="clear-picks toolbar-lead" title="Clear selection (Escape)" on:click={clearPicks}>Clear</button>
+        {:else}<span class="graph-caption toolbar-lead">{graphSummary}</span>{/if}
         <span class="toolbar-spacer"><TimelineDisplayOptions /></span>
     </ViewToolbar>
 {/if}

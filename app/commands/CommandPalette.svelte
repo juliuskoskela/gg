@@ -83,14 +83,14 @@
     .palette { position: fixed; inset: min(12vh, 90px) 16px auto; width: min(560px, calc(100% - 32px)); max-width: none; max-height: min(70dvh, 640px); box-sizing: border-box; margin: 0 auto; padding: 0; background: var(--raised); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-surface); box-shadow: var(--shadow-overlay); pointer-events: auto; }
     .palette::backdrop { background: var(--scrim); }
     .content { display: flex; flex-direction: column; max-height: min(70dvh, 640px); padding: 12px; pointer-events: auto; }
-    .heading { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+    .heading { display: flex; align-items: center; justify-content: space-between; color: var(--text-strong); font: var(--font-heading); }
     .heading button { border: 0; background: transparent; color: inherit; font-size: 24px; min-width: 44px; min-height: 44px; }
     .content :global(.text-field) { width: 100%; box-sizing: border-box; min-height: 44px; }
     .results { overflow: auto; margin-top: 8px; pointer-events: auto; }
     .results button { width: 100%; min-height: 44px; padding: 8px; text-align: left; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; display: flex; justify-content: space-between; gap: 8px; }
     .results button:focus, .results button:hover { background: var(--hover); }
     .results button[aria-disabled="true"] { color: var(--text-disabled); }
-    small { display: block; font-size: 12px; color: var(--muted); }
+    small { display: block; color: var(--muted); font: var(--font-label); }
     p { padding: 8px; color: var(--muted); }
 </style>
 

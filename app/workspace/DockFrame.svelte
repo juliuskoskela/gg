@@ -8,7 +8,8 @@
     import type { DockNode, Edge, PanelId } from "./dock";
     import { panelLabel } from "./panels";
     import PanelBody from "./PanelBody.svelte";
-    import { annotations } from "../annotations/store";
+    import { annotations, lineMenu } from "../annotations/store";
+    import { menuPanel } from "./viewCommands";
 
     export let node: DockNode;
     export let path: number[] = [];
@@ -24,6 +25,16 @@
     export let onFocus: (id: PanelId) => void;
     export let onSelectFile: (change: RevChange) => void;
 
+    // right-clicking anywhere in a view offers to open another; text fields and selected text keep the native menu
+    function noteMenuPanel(id: PanelId) { menuPanel.set(id); }
+    function emptyMenu(event: MouseEvent, id: PanelId) {
+        if (event.defaultPrevented) return;
+        let target = event.target as HTMLElement;
+        if (target.closest("input, textarea, select, [contenteditable='true']") || (getSelection()?.toString() ?? "").trim()) return;
+        event.preventDefault();
+        menuPanel.set(id);
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [] });
+    }
     let resizing = false;
     $: openNotes = $annotations.filter(thread => thread.status === "open").length;
     function moveSplitter(event: PointerEvent) {
@@ -64,7 +75,8 @@
         <svelte:self node={node.second} path={[...path, 1]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
     </div>
 {:else}
-    <div class="tabs" data-panel-group={node.active}>
+    <!-- svelte-ignore a11y_no_static_element_interactions (the same views are in the Views menu) -->
+    <div class="tabs" data-panel-group={node.active} on:contextmenu|capture={() => node.type === "tabs" && noteMenuPanel(node.active)} on:contextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
         <PanelGroup>
             <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
                 onSelect={onFocus} {onClose} {onMove} />

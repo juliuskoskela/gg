@@ -118,6 +118,10 @@ Use macros from `src/gui/handler.rs`:
 - `nonfatal!(result)` - log and return early
 - `optional!(result)` - silently ignore (for optional operations)
 
+### Typography
+
+Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--font-emphasis`, `--font-body`, `--font-prose`, `--font-label`, `--font-id`) with `font:`; don't set `font-size`, `line-height` or `font-weight` by hand. Key/value data uses `MetadataList`/`MetadataRow`, history-like entries use `LogList`, in-content navigation uses `.text-link`, and toolbar summaries take `.toolbar-lead`. See `doc/reviews/typography.md`.
+
 ### Annotations
 
 Notes on changes, bookmarks, files and diff lines live in GG's data directory, keyed by jj's `.jj/repo/config-id`; never write into `.jj/` or the working copy. `src/annotations/` owns storage and the `gg annotations` CLI; the worker only adds anchor states. Storage is append-only, one file per event. Frontend code lives in `app/annotations/`. E2E tests get an isolated `GG_DATA_DIR` from the harness.

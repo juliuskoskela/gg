@@ -126,10 +126,10 @@
     .expanded-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .expanded-content.concealed { visibility: hidden; }
     .sheet-handle { position: relative; display: flex; align-items: center; justify-content: flex-end; min-height: 44px; padding: 4px 16px; gap: 4px; color: var(--muted); background: transparent; border: 0; cursor: ns-resize; touch-action: none; flex-shrink: 0; }
-    .handle-label { font-size: 12px; }
+    .handle-label { font: var(--font-label); }
     .grab-mark { width: 32px; height: 4px; border-radius: 2px; background: var(--control); position: absolute; inset-block-start: 10px; inset-inline-start: calc(50% - 16px); }
     .preview-heading { display: flex; align-items: center; gap: 8px; padding: 0 8px 4px 16px; flex-shrink: 0; }
-    .preview-heading h2 { flex: 1; font-size: var(--type-title); line-height: 1.4; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+    .preview-heading h2 { flex: 1; color: var(--text-strong); font: var(--font-title); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
     .preview-heading button { border: 0; background: transparent; color: var(--text); min-width: 44px; min-height: 44px; display: grid; place-items: center; cursor: pointer; }
     .preview-scroll { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; pointer-events: auto; }
     .preview-footer { flex-shrink: 0; padding: 4px 12px max(4px, env(safe-area-inset-bottom)); border-block-start: 1px solid var(--rule); }
@@ -139,9 +139,9 @@
     .collapsed .grab-mark { width: 20px; inset-inline-start: 12px; }
     .collapsed-summary { position: absolute; inset-inline-start: 0; inset-block-start: 0; width: calc(100% - 44px); height: calc(var(--inspector-peek-height, 72px) + env(safe-area-inset-bottom)); padding: 12px 8px calc(12px + env(safe-area-inset-bottom)) 16px; text-align: start; border: 0; background: var(--sheet-surface, var(--raised)); color: var(--text); cursor: pointer; }
     .collapsed-title, .collapsed-meta { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .collapsed-title { font-size: var(--type-ui); font-weight: 500; }
-    .collapsed-meta { margin-block-start: 4px; font-size: var(--type-caption); color: var(--muted); }
-    .message { padding: 12px 16px; font-size: var(--type-ui); color: var(--muted); }
+    .collapsed-title { font: var(--font-emphasis); }
+    .collapsed-meta { margin-block-start: 2px; color: var(--muted); font: var(--font-label); }
+    .message { padding: 12px 16px; color: var(--muted); font: var(--font-body); }
     @media (pointer: coarse) { .sheet-handle { min-height: 44px; } }
     @media (hover: hover) { button:hover { background: var(--hover); } }
 </style>

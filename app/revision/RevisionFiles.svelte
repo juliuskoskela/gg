@@ -59,10 +59,10 @@
     .file-filter :global(.file-search) { width: 100%; }
     .file-tree.overlay { position: absolute; inset-block: 0; inset-inline-end: 0; z-index: 3; width: min(280px, calc(100% - 44px)); border-inline-start: 1px solid var(--rule); box-shadow: var(--shadow-overlay); }
     /* same height as the description row so the tree toggle stays on one line as it moves */
-    .file-tree-heading { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 27px; color: var(--text); font-size: var(--type-ui); }
-    .file-tree-heading span { font-size: var(--type-caption); color: var(--muted); }
+    .file-tree-heading { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 27px; color: var(--text); font: var(--font-body); }
+    .file-tree-heading span { color: var(--muted); font: var(--font-label); }
     .tree-toggle { display: flex; margin-inline-start: auto; }
     .tree-scroll { padding: 0 var(--panel-inset) 8px; flex: 1; overflow: auto; overscroll-behavior: contain; min-height: 0; pointer-events: auto; }
-    .no-results { margin: 8px 4px; font-size: var(--type-ui); color: var(--muted); }
+    .no-results { margin: 8px 4px; color: var(--muted); font: var(--font-body); }
     @media (pointer: coarse), (max-width: 600px) { .file-tree :global(.file-search) { min-height: 44px; } }
 </style>

@@ -80,6 +80,14 @@
                 {#if !items.length}<p class="operation-example">No views open. <button type="button" on:click={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]; active = "diff"; }}>Restore views</button></p>{/if}
             </div>
         </section>
+        <section id="typography" class="description-specimen" aria-labelledby="typography-heading">
+            <h2 id="typography-heading">Type roles</h2><p>Components choose a role, never a size. Each role fixes size, line height and weight together.</p>
+            <dl class="type-roles">
+                {#each [["title", "Record the first runnable release"], ["heading", "Version patch"], ["emphasis", "Thomas Castiglione"], ["body", "Restore file from parent"], ["prose", "Show the change first, followed by its authorship, references and parents."], ["label", "Authored 2 hours ago"], ["id", "wnpusytq 02584342"]] as [role, sample]}
+                    <dt>{role}</dt><dd style:font="var(--font-{role})" class:muted={role === "label"}>{sample}</dd>
+                {/each}
+            </dl>
+        </section>
         <section id="history-colors" class="description-specimen"><h2>History colors</h2><p>Text-grade lane colors are shared by graph stations and revision prefixes. Workspaces use GG+ blue in every family.</p><HistoryColors /></section>
         <section id="description" class="description-specimen" aria-label="Description component preview">
             <h2>Description and metadata</h2><p>One document, aligned fields, and wrapping references. This specimen uses the production description components.</p>
@@ -148,4 +156,8 @@
     .swatches > div { display: grid; gap: 6px; }
     .swatches span { width: 48px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
     @media (max-width: 700px) { .system-page { padding: 20px 16px; } .page-heading { align-items: start; } .page-heading button { flex-shrink: 0; } .workspace-example { grid-template-columns: minmax(0, 1fr); } .navigation-example { border-inline-end: 0; border-block-end: 1px solid var(--rule); } .specimens { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
+    .type-roles { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; gap: 8px 24px; margin: 0; }
+    .type-roles dt { color: var(--muted); font: var(--font-id); }
+    .type-roles dd { margin: 0; color: var(--text); }
+    .type-roles dd.muted { color: var(--muted); }
 </style>
