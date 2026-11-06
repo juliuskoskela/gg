@@ -5,8 +5,9 @@ import { workspaceViews } from "./views";
 import { createWorkspaceController, readToolLayout } from "./state";
 
 let original = location.href;
+let registeredViews = workspaceViews.length;
 afterEach(() => {
-    workspaceViews.splice(3);
+    workspaceViews.splice(registeredViews);
     localStorage.removeItem("gg.workspace.layout");
     history.replaceState(null, "", original);
 });

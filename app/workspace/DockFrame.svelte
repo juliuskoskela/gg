@@ -64,7 +64,7 @@
     </div>
 {:else}
     <div class="tabs" data-panel-group={node.active}>
-        <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={node.active} draggable
+        <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={node.active} draggable
             onSelect={onFocus} {onClose} {onMove} toolsVisible={node.active === "timeline" || (node.active === "diff" && !!detail)}>
             <svelte:fragment slot="tools">{#if node.active === "timeline"}<TimelineDisplayOptions />{:else if node.active === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
         </PanelTabs>

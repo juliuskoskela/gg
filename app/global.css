@@ -136,6 +136,7 @@
   --control: light-dark(var(--neutral-400), var(--neutral-500));
   --control-border: light-dark(#d5d5ce, #3a3a38);
   --input-border: var(--control-border);
+  --field-focus-border: color-mix(in srgb, var(--text) 55%, var(--surface));
   --input-surface: light-dark(#f7f7f5, #232322);
   --control-hover: light-dark(#bcbcb4, #51514d);
   --scrollbar-thumb: light-dark(#0000002b, #ffffff24);
@@ -190,7 +191,7 @@
   --ref-remote: light-dark(#546e7a, #90a4ae);
   --ref-workspace: light-dark(#795582, #b19eb9);
   --ref-tag: light-dark(#8c6b35, #bba47c);
-  --focus-ring: var(--accent);
+  --focus-ring: color-mix(in srgb, var(--text) 65%, var(--surface));
   --popover-surface: light-dark(#ffffff, #282827);
   --sheet-surface: var(--surface);
   --sheet-border: var(--border);
@@ -242,13 +243,13 @@ textarea, select, input {
   color: var(--text);
   caret-color: var(--accent);
 }
-textarea:focus-visible, select:focus-visible, input:focus-visible { border-color: var(--accent); outline: var(--focus-width) solid var(--focus-ring); outline-offset: 1px; background: var(--surface); }
+textarea:focus-visible, select:focus-visible, input:focus-visible { border-color: var(--field-focus-border); outline: none; background: var(--surface); }
 textarea:disabled, input:disabled, select:disabled { border-color: var(--rule); background: var(--raised); color: var(--text-disabled); cursor: default; }
 input[type="checkbox"] { min-height: 16px; width: 16px; height: 16px; padding: 0; accent-color: var(--accent-solid); }
 input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
 select { cursor: pointer; }
 select:disabled { cursor: default; }
-select:open { border-color: var(--accent); background: var(--raised); }
+select:open { border-color: var(--field-focus-border); background: var(--raised); }
 select:not(:disabled):active { border-color: var(--control-hover); background: var(--interaction-pressed); }
 h1, h2, h3, p { margin: 0; }
 h2, h3 { font-size: var(--type-ui); font-weight: 500; color: var(--text-strong); }
@@ -292,7 +293,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   select option:disabled { color: var(--text-disabled); }
   select option:not(:disabled):active { background: var(--interaction-pressed); }
   select option:checked:not(:disabled):active { background: var(--interaction-selected-pressed); }
-  select option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  select option:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
   select hr { margin: 4px; border: 0; border-block-start: 1px solid var(--rule); }
   @media (hover: hover) {
     select option:not(:disabled):hover { background: var(--interaction-hover); }
@@ -308,6 +309,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   textarea, select, input:not([type="checkbox"]):not([type="radio"]) { font-size: max(16px, 1rem); min-height: var(--touch-target); }
 }
 @media (forced-colors: active) {
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 1px solid Highlight; outline-offset: 1px; }
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .selection-item:focus-visible { outline-color: Highlight; }
   .selection-item[aria-selected="true"]:not(:focus-visible), button[aria-pressed="true"]:not(:focus-visible) { outline: 1px solid Highlight; outline-offset: -1px; }
 }

@@ -34,7 +34,16 @@
 
     onMount(() => {
         if (!standalone && new URLSearchParams(window.location.search).get("panel") === "settings") void openSettings();
+        if (!standalone && new URLSearchParams(window.location.search).get("panel") === "history") void openHistory();
     });
+
+    async function openHistory() {
+        if (standalone) { window.location.assign("/?panel=history"); return; }
+        menuOpen = false;
+        dock.open("history");
+        await tick();
+        document.getElementById("panel-tab-history")?.focus();
+    }
 
     async function openSettings() {
         if (standalone) {
@@ -75,7 +84,7 @@
     </header>
     {#if persistentNavigation}
         <aside class="workspace-navigation" id="workspace-navigation" aria-label="Repository navigation">
-            <div class="navigation-scroll"><RepositoryNavigation {workspace} {currentQuery} collapsed={!$navigationExpanded} onSelect={selectView} onWorkingCopy={selectWorkingCopy} /></div>
+            <div class="navigation-scroll"><RepositoryNavigation {workspace} {currentQuery} collapsed={!$navigationExpanded} onSelect={selectView} onHistory={openHistory} onWorkingCopy={selectWorkingCopy} /></div>
             <div class="navigation-footer">
                 <button class="settings-trigger" type="button" aria-label="Settings" title="Settings" aria-controls="panel-settings" on:click={openSettings}><Icon name="settings" />{#if $navigationExpanded}<span>Settings</span>{/if}</button>
                 <PanelToggle label={$navigationExpanded ? "Collapse repository navigation" : "Expand repository navigation"} text={$navigationExpanded ? "Collapse" : ""} controls="workspace-navigation" expanded={$navigationExpanded} onToggle={() => navigationExpanded.update(value => !value)} /></div>
@@ -83,7 +92,7 @@
     {:else}
         <Drawer id="workspace-navigation" open={menuOpen} title="Repository navigation" onClose={() => menuOpen = false}>
             <div class="drawer-navigation">
-                <RepositoryNavigation {workspace} {currentQuery} onSelect={selectView} onWorkingCopy={() => { selectWorkingCopy(); menuOpen = false; }} />
+                <RepositoryNavigation {workspace} {currentQuery} onSelect={selectView} onHistory={openHistory} onWorkingCopy={() => { selectWorkingCopy(); menuOpen = false; }} />
                 <button class="settings-trigger" type="button" aria-label="Settings" aria-controls="panel-settings" on:click={openSettings}><Icon name="settings" /><span>Settings</span></button>
             </div>
         </Drawer>

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness";
 import type { RepoConfig } from "../app/messages/RepoConfig";
@@ -17,6 +17,7 @@ describe("whole-file diff context", () => {
     }
     beforeAll(async () => {
         ctx = await createContext(); extractTestRepo(ctx.tempDir);
+        await mkdir("e2e/results/histories", { recursive: true });
         let original = Array.from({ length: 80 }, (_, i) => `context-line-${String(i).padStart(3, "0")}\n`).join("");
         await writeFile(join(ctx.tempDir, "context.txt"), original);
         url = await startGG(ctx);
@@ -45,21 +46,30 @@ describe("whole-file diff context", () => {
         async function expectHeaderControls() {
             let bounds = (await heading.boundingBox())!;
             let tools = (await controls.boundingBox())!;
-            let count = (await heading.locator(".file-count").boundingBox())!;
-            let totals = (await heading.locator(".diff-stat").boundingBox())!;
+            let count = (await heading.locator("#panel-tab-diff .count").boundingBox())!;
+            let summary = (await ctx.page.locator(".hunk-actions summary").boundingBox())!;
+            let totals = (await ctx.page.locator(".hunk-actions .diff-stat").boundingBox())!;
             expect(tools.x).toBeGreaterThanOrEqual(bounds.x);
             expect(tools.x + tools.width).toBeLessThanOrEqual(bounds.x + bounds.width);
             let close = (await heading.getByRole("button", { name: "Close Diff", exact: true }).boundingBox())!;
-            if (tools.y < close.y + close.height && tools.y + tools.height > close.y) expect(tools.x + tools.width).toBeLessThanOrEqual(close.x);
+            if (tools.y < close.y + close.height && tools.y + tools.height > close.y) expect(tools.x).toBeGreaterThanOrEqual(close.x + close.width);
             expect(tools.x + tools.width).toBeLessThanOrEqual(bounds.x + bounds.width);
             expect(tools.y).toBeGreaterThanOrEqual(bounds.y);
             expect(tools.y + tools.height).toBeLessThanOrEqual(bounds.y + bounds.height);
-            expect(totals.x).toBeGreaterThanOrEqual(count.x + count.width);
+            expect(count.width).toBeGreaterThan(0);
+            expect(totals.x + totals.width).toBeLessThanOrEqual(summary.x + summary.width);
+            expect(totals.x).toBeGreaterThan(summary.x + summary.width / 2);
+            expect(await heading.locator(".diff-stat").count()).toBe(0);
+            expect(await controls.getByRole("group", { name: "Diff layout", exact: true }).innerText()).toBe("");
             expect(await controls.getByRole("button").count()).toBe(5);
+            let positions = await controls.getByRole("button").evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top)));
+            expect(new Set(positions).size).toBe(1);
+            await ctx.page.screenshot({ path: `e2e/results/histories/diff-header-${ctx.page.viewportSize()!.width}.png` });
             expect(await ctx.page.locator(".changes-module .display-options").count()).toBe(0);
-            expect(await heading.locator(".file-count").textContent()).toContain("file");
+            expect(await heading.locator("#panel-tab-diff .count").textContent()).toBe("1");
         }
         await expectHeaderControls();
+        expect(await ctx.page.locator("#panel-tab-tree .count").textContent()).toBe("1");
         let timelineHeader = ctx.page.locator(".panel-view-top").filter({ has: ctx.page.locator("#panel-tab-timeline") });
         expect(await heading.getByRole("tab").count()).toBe(0);
         expect(await timelineHeader.getByRole("tab").count()).toBe(0);

@@ -1,4 +1,5 @@
 import type { ComponentType, SvelteComponent } from "svelte";
+import type { PanelId } from "./dock";
 import type { RepoStatus } from "../messages/RepoStatus";
 import OperationView from "./OperationView.svelte";
 
@@ -7,6 +8,7 @@ export type WorkspaceView = {
     id: string;
     label: string;
     commandLabel?: string;
+    panel?: PanelId;
     destination?: "history" | "inspect";
     scope: "repository" | "revision";
     placement: "graph" | "inspector" | "picker";
@@ -20,9 +22,11 @@ export type WorkspaceView = {
 
 // Registration makes a view discoverable; it does not add a permanent navigation item.
 export let workspaceViews: WorkspaceView[] = [
-    { id: "history", label: "History", commandLabel: "Return to graph", destination: "history", scope: "repository", placement: "graph", mobile: "graph" },
+    { id: "history", label: "Graph", commandLabel: "Return to graph", destination: "history", scope: "repository", placement: "graph", mobile: "graph" },
     { id: "changes", label: "Changes", commandLabel: "Inspect full revision", destination: "inspect", available: context => !!context.hasSelection, scope: "revision", placement: "inspector", mobile: "sheet" },
     { id: "operation", label: "Current operation", scope: "repository", placement: "picker", desktop: "tab", mobile: "full", available: context => !!context.status, component: OperationView },
+    { id: "evolution", label: "Change evolution", panel: "evolution", scope: "revision", placement: "inspector", mobile: "sheet", available: context => !!context.hasSelection },
+    { id: "operation-history", label: "Repository history", panel: "history", scope: "repository", placement: "graph", mobile: "full" },
 ];
 
 // Views opt in to persisted presentation state with a validator; repository data is not stored here.

@@ -46,6 +46,7 @@
     {#if single}
         {@const item = items[0]}
         <div class="panel-titlebar" class:has-tools={hasTools} data-panel-bar>
+            <div class="panel-title-item">
             {#if draggable}
                 <button class="panel-title" id="{prefix}-tab-{item.id}" type="button" data-panel-handle
                     aria-label={item.label} aria-describedby="{prefix}-drag-help-{item.id}" title="Move {item.label} view"
@@ -57,8 +58,9 @@
             {:else}
                 <h2 class="panel-title" tabindex="-1" id="{prefix}-tab-{item.id}"><span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}</h2>
             {/if}
-            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar><slot name="tools" /></div>{/if}
             {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
+            </div>
+            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar><slot name="tools" /></div>{/if}
         </div>
     {:else if items.length > 1}
         <div class="panel-tabs-bar" data-panel-bar>
@@ -88,28 +90,29 @@
     .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); }
     .panel-tabs-bar, .panel-titlebar, .panel-view-toolbar { min-width: 0; border-block-end: 1px solid var(--rule); padding: var(--panel-bar-padding) var(--panel-inset); }
     .panel-tabs-bar, .panel-titlebar { min-height: var(--panel-tabs-height); }
-    .panel-titlebar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--panel-gap); }
-    .panel-titlebar.has-tools { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .panel-titlebar { display: flex; align-items: center; gap: var(--panel-gap); }
+    .panel-titlebar.has-tools { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+    .panel-title-item { display: flex; align-items: center; min-width: 0; pointer-events: auto; }
     .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); color: var(--text-strong); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
     .panel-title > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     button.panel-title { cursor: grab; }
     .panel-grip { flex: none; color: var(--faint); opacity: .65; }
-    .panel-header-tools { min-width: 0; width: 100%; pointer-events: auto; }
-    .panel-titlebar > .panel-close { grid-column: -2 / -1; }
+    .panel-header-tools { min-width: 0; width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; pointer-events: auto; }
+    .panel-header-tools > :global(*) { min-width: max-content; }
     .panel-view-toolbar { display: flex; align-items: center; min-height: var(--panel-toolbar-height); }
     .panel-tabs { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: var(--panel-control-size); overflow-x: auto; pointer-events: auto; }
     .panel-tab-item { display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
     .panel-tab-item.active { color: var(--text-strong); background: var(--panel-tab-active); }
-    .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
+    .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 0 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
     [data-panel-handle]:global(.neodrag-dragging) { opacity: .45; cursor: grabbing; }
     .count { color: var(--muted); font-size: var(--type-caption); font-weight: 400; font-variant-numeric: tabular-nums; }
     [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
     .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; --icon-size: 14px; }
-    @container panel-titlebar (max-width: 520px) {
-        .panel-titlebar.has-tools { grid-template-columns: minmax(0, 1fr) auto; }
-        .panel-titlebar.has-tools .panel-header-tools { grid-column: 1 / -1; grid-row: 2; }
-        .panel-titlebar.has-tools > .panel-close { grid-column: 2; grid-row: 1; }
-    }
+    .panel-tab-item > .panel-close, .panel-title-item > .panel-close { justify-items: start; padding-inline-start: 4px; }
     @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { background: var(--active); color: var(--text-strong); } button.panel-title:hover .panel-grip { opacity: 1; } }
+    @media (hover: hover) and (pointer: fine) and (min-width: 601px) {
+        .panel-tab-item .panel-close, .panel-title-item .panel-close { opacity: 0; transition: opacity var(--motion-feedback) ease-out; }
+        .panel-tab-item:hover .panel-close, .panel-tab-item:focus-within .panel-close, .panel-title-item:hover .panel-close, .panel-title-item:focus-within .panel-close { opacity: 1; }
+    }
     @media (forced-colors: active) { .panel-tab-item.active { background: Highlight; color: HighlightText; } .panel-grip { opacity: 1; } }
 </style>

@@ -17,14 +17,11 @@
     </ToggleTray>
     <ToggleTray label="Diff layout">
         {#each layouts as layout}
-            <ToggleItem icon={layout.icon} label={layout.label} text={layout.label} on={$diffStyle === layout.value} onClick={() => diffStyle.set(layout.value)} />
+            <ToggleItem icon={layout.icon} label={layout.label} on={$diffStyle === layout.value} onClick={() => diffStyle.set(layout.value)} />
         {/each}
     </ToggleTray>
 </div>
 
 <style>
     .display-options { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--tool-group-gap); max-width: 100%; margin-inline-start: auto; }
-    @container diff-tools (max-width: 440px) {
-        .display-options :global(.toggle span:not(.caret)) { display: none; }
-    }
 </style>

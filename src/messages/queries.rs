@@ -197,3 +197,81 @@ pub struct WorkspaceContext {
     pub workspace_path: DisplayPath,
     pub workspaces: Vec<WorkspaceRecord>,
 }
+
+/// A stored commit without flags derived from today's repository view.
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct HistoryRevision {
+    pub id: RevId,
+    pub description: MultilineString,
+    pub author: RevAuthor,
+    pub parent_ids: Vec<String>,
+    pub has_conflict: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct OperationRecord {
+    pub id: String,
+    pub parent_ids: Vec<String>,
+    pub description: String,
+    pub started_at: String,
+    pub finished_at: String,
+    pub username: String,
+    pub hostname: String,
+    pub workspace: Option<String>,
+    pub is_snapshot: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct EvolutionEntry {
+    pub revision: HistoryRevision,
+    pub predecessor_ids: Vec<String>,
+    pub operation: Option<OperationRecord>,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct EvolutionPage {
+    pub entries: Vec<EvolutionEntry>,
+    pub has_more: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct OperationPage {
+    /// fixed anchor for subsequent pages, even when new operations arrive
+    pub head_id: String,
+    pub entries: Vec<OperationRecord>,
+    pub has_more: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct HistoricalBookmark {
+    pub name: String,
+    pub added_ids: Vec<String>,
+    pub removed_ids: Vec<String>,
+    pub has_conflict: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct HistoricalWorkspace {
+    pub name: String,
+    pub commit_id: String,
+}
+
+/// A read-only repository view loaded from an exact operation.
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct OperationDetail {
+    pub operation: OperationRecord,
+    pub parents: Vec<OperationRecord>,
+    pub revisions: Vec<HistoryRevision>,
+    pub has_more_revisions: bool,
+    pub heads: Vec<String>,
+    pub bookmarks: Vec<HistoricalBookmark>,
+    pub workspaces: Vec<HistoricalWorkspace>,
+}

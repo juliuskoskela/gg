@@ -72,7 +72,8 @@
             let id = (event as CustomEvent<string>).detail;
             let view = workspaceViews.find(candidate => candidate.id === id);
             if (!view || (view.available && !view.available({ status: get(repoStatusEvent), hasSelection: !!detail }))) return;
-            if (view.destination === "history") void reveal("timeline");
+            if (view.panel) void reveal(view.panel);
+            else if (view.destination === "history") void reveal("timeline");
             else if (view.destination === "inspect") void reveal("description");
             else if (view.id === "operation") void reveal("operation");
         }
@@ -89,7 +90,7 @@
             <button type="button" on:click={() => window.dispatchEvent(new Event("gg:open-views"))}>Choose a view</button>
         </div>
     {:else if compact}
-        <PanelTabs items={panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} toolsVisible={$dock.compactActive === "timeline" || ($dock.compactActive === "diff" && !!detail)}>
+        <PanelTabs items={panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} toolsVisible={$dock.compactActive === "timeline" || ($dock.compactActive === "diff" && !!detail)}>
             <svelte:fragment slot="tools">{#if $dock.compactActive === "timeline"}<TimelineDisplayOptions />{:else if $dock.compactActive === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
         </PanelTabs>
         {#each panels as id (id)}

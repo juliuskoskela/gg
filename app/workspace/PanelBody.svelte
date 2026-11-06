@@ -13,6 +13,8 @@
     import SelectionRecovery from "../revision/SelectionRecovery.svelte";
     import { repoConfigEvent, repoStatusEvent } from "../stores";
     import type { PanelId } from "./dock";
+    import EvolutionPanel from "../history/EvolutionPanel.svelte";
+    import OperationHistory from "../history/OperationHistory.svelte";
     import OperationView from "./OperationView.svelte";
     import SettingsPanel from "../shell/SettingsPanel.svelte";
 
@@ -30,7 +32,11 @@
     $: file = selectedPath || changes[0]?.path.repo_path || "";
 </script>
 
-{#if id === "settings"}
+{#if id === "evolution"}
+    <EvolutionPanel {headers} {active} />
+{:else if id === "history"}
+    <OperationHistory {active} />
+{:else if id === "settings"}
     <SettingsPanel />
 {:else if id === "timeline"}
     {#key workspace}
