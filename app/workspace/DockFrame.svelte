@@ -65,12 +65,12 @@
 {:else}
     <div class="tabs" data-panel-group={node.active}>
         <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={node.active} draggable
-            onSelect={onFocus} {onClose} {onMove} toolsVisible={node.active === "timeline" || (node.active === "diff" && !!detail)} toolsWrap={node.active === "diff"}>
+            onSelect={onFocus} {onClose} {onMove} toolsVisible={node.active === "timeline" || (node.active === "diff" && !!detail)}>
             <svelte:fragment slot="tools">{#if node.active === "timeline"}<TimelineDisplayOptions />{:else if node.active === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
         </PanelTabs>
         <div class="stack">
             {#each node.panels as id (id)}
-                <div class="panel-body" id="panel-{id}" role="tabpanel" aria-labelledby="panel-tab-{id}" hidden={node.active !== id} inert={node.active !== id}>
+                <div class="panel-body" id="panel-{id}" role={node.panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={node.active !== id} inert={node.active !== id}>
                     <PanelBody {id} active={node.active === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onSelectFile} />
                 </div>
             {/each}

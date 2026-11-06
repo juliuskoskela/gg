@@ -83,6 +83,18 @@ describe("pointer docking", () => {
         expect(flatPanels(await root()).sort()).toEqual(["description", "diff", "timeline", "tree"]);
     }
 
+    it("shows plain draggable titles until views are stacked", async () => {
+        expect(await ctx.page.locator(".workspace-dock [role=tablist]").count()).toBe(0);
+        expect(await ctx.page.locator(".workspace-dock .panel-grip").count()).toBe(4);
+        await groupDescriptionWithTimeline();
+        expect(await group("timeline").getByRole("tablist").count()).toBe(1);
+        expect(await group("timeline").locator(".panel-grip").count()).toBe(0);
+        await ctx.page.getByRole("button", { name: "Close Description", exact: true }).click();
+        expect(await group("timeline").getByRole("tablist").count()).toBe(0);
+        expect(await group("timeline").getByRole("button", { name: "Timeline", exact: true }).count()).toBe(1);
+        expect(await ctx.page.evaluate(() => document.activeElement?.id)).toBe("panel-tab-timeline");
+    });
+
     it.each(["right", "bottom"] as const)("groups a tab then detaches the active tab onto its own group’s %s edge", async edge => {
         await groupDescriptionWithTimeline();
         let grouped = await root();
