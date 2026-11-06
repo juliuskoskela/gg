@@ -47,6 +47,29 @@ describe("Settings dock and repository actions", () => {
         await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("panel-tab-settings");
     }
 
+    it.each([
+        { path: "/log?revset=all()", width: 1440 },
+        { path: "/log?revset=all()", width: 390 },
+        { path: "/revision?revset=fixture-unavailable", width: 1440 },
+        { path: "/revision?revset=fixture-unavailable", width: 390 },
+    ])("opens Settings from legacy $path at $width px and preserves browser Back", async ({ path, width }) => {
+        await page.setViewportSize({ width, height: 960 });
+        await page.goto(`${url}${path}`);
+        await page.evaluate(() => localStorage.clear());
+        await page.reload();
+        let legacy = page.url();
+        expect(await page.locator("#panel-tab-settings").count()).toBe(0);
+        await settings(width);
+        expect(new URL(page.url()).pathname).toBe("/");
+        expect(new URL(page.url()).searchParams.get("panel")).toBe("settings");
+        expect(await page.locator('[aria-label="Settings preferences"]').isVisible()).toBe(true);
+        expect(await page.locator("#panel-tab-settings").count()).toBe(1);
+        await page.goBack();
+        expect(page.url()).toBe(legacy);
+        await page.getByRole("button", { name: width < 768 ? "Open repository navigation" : "Settings", exact: true }).waitFor();
+        expect(await page.locator("#panel-tab-settings").count()).toBe(0);
+    });
+
     it.each([1440, 768, 390, 320])("opens, closes, focuses and preserves settings and toolbar access at %ipx", async width => {
         await page.setViewportSize({ width, height: 960 });
         await page.goto(`${url}/?inspect=fixture-unavailable`);
