@@ -85,7 +85,7 @@ describe("pointer docking", () => {
 
     it("shows plain draggable titles until views are stacked", async () => {
         expect(await ctx.page.locator(".workspace-dock [role=tablist]").count()).toBe(0);
-        expect(await ctx.page.locator(".workspace-dock .panel-grip").count()).toBe(4);
+        expect(await ctx.page.locator(".workspace-dock .panel-grip").count()).toBe(0);
         await groupDescriptionWithTimeline();
         expect(await group("timeline").getByRole("tablist").count()).toBe(1);
         expect(await group("timeline").locator(".panel-grip").count()).toBe(0);

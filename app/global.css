@@ -1,5 +1,6 @@
 @import "modern-normalize";
 @import "./scrollbars.css";
+@import "./display/palettes.css";
 
 @font-face {
   font-family: "IBM Plex Sans";
@@ -124,31 +125,36 @@
 #shell {
   color-scheme: light dark;
   /* chrome and content share a quiet ground; interaction supplies the stronger steps. */
-  --ground: light-dark(#f5f5f3, #1f1f1e);
-  --surface: light-dark(#fafaf9, #1f1f1e);
-  --panel-header-bg: var(--ground);
-  --panel-tab-active: var(--hover);
-  --raised: light-dark(#ffffff, #252524);
-  --hover: light-dark(#eeeeeb, #292928);
-  --active: light-dark(#e7e7e3, #30302f);
-  --border: light-dark(#deded8, #343433);
-  --rule: light-dark(#e7e7e2, #2b2b2a);
-  --control: light-dark(var(--neutral-400), var(--neutral-500));
-  --control-border: light-dark(#d5d5ce, #3a3a38);
+  --ground: var(--palette-ground);
+  --surface: var(--palette-surface);
+  --panel-header-bg: color-mix(in srgb, var(--surface) 72%, var(--ground));
+  --panel-header-rule: color-mix(in srgb, var(--text) 5%, var(--panel-header-bg));
+  --panel-header-control-border: color-mix(in srgb, var(--text) 10%, var(--panel-header-bg));
+  --panel-tab-active: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg));
+  --raised: var(--palette-raised);
+  --hover: color-mix(in srgb, var(--text) 6%, var(--surface));
+  --active: color-mix(in srgb, var(--text) 10%, var(--surface));
+  --border: color-mix(in srgb, var(--text) 16%, var(--surface));
+  --rule: color-mix(in srgb, var(--text) 7%, var(--surface));
+  --control: var(--muted);
+  --control-border: color-mix(in srgb, var(--text) 25%, var(--input-surface));
   --input-border: var(--control-border);
   --field-focus-border: color-mix(in srgb, var(--text) 55%, var(--surface));
-  --input-surface: light-dark(#f7f7f5, #232322);
-  --control-hover: light-dark(#bcbcb4, #51514d);
+  --input-surface: var(--palette-input);
+  --control-hover: color-mix(in srgb, var(--text) 45%, var(--input-surface));
   --scrollbar-thumb: light-dark(#0000002b, #ffffff24);
   --scrollbar-thumb-hover: light-dark(#00000050, #ffffff40);
-  --text: light-dark(#333331, #d4d4d0);
-  --text-strong: light-dark(#1e1e1c, #efefec);
-  --muted: light-dark(#62625c, #a6a6a0);
-  --faint: light-dark(#686862, #95958f);
-  --text-disabled: light-dark(var(--neutral-400), var(--neutral-500));
-  --accent: light-dark(#2a67a3, #85b0d4);
-  --selection-bg: light-dark(#e6e6e0, #323230);
-  --selection-hover: light-dark(#dfdfd8, #383835);
+  --text: var(--palette-text);
+  --text-strong: var(--palette-strong);
+  --muted: var(--palette-muted);
+  --faint: var(--palette-faint);
+  --text-disabled: color-mix(in srgb, var(--text) 40%, var(--surface));
+  --accent: var(--palette-accent);
+  /* jj-inspired identity blue is independent of the selected color family. */
+  --brand: light-dark(#01557f, #8dd1ff);
+  --brand-on-pressed: light-dark(#014e75, #aadcff);
+  --selection-bg: color-mix(in srgb, var(--text) 12%, var(--surface));
+  --selection-hover: color-mix(in srgb, var(--text) 18%, var(--surface));
   --selection-text: var(--text-strong);
   /* ink overlays keep feedback relative to the surface beneath each control. */
   --interaction-hover: color-mix(in srgb, var(--text) 10%, transparent);
@@ -157,42 +163,40 @@
   --interaction-selected-hover: color-mix(in srgb, var(--text) 22%, transparent);
   --interaction-selected-pressed: color-mix(in srgb, var(--text) 26%, transparent);
   --control-pressed: color-mix(in srgb, var(--text) 6%, var(--active));
-  --accent-subtle: light-dark(#ebeff2, #272f34);
-  --accent-border: light-dark(#c8d4de, #3e515f);
-  --accent-solid: light-dark(#1769c7, #2369b3);
-  --accent-solid-hover: light-dark(#115aad, #2872bf);
-  --accent-solid-pressed: light-dark(#0d4c94, #1c5797);
+  --accent-subtle: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  --accent-border: color-mix(in srgb, var(--accent) 32%, var(--surface));
+  --accent-solid: var(--palette-solid);
+  --accent-solid-hover: color-mix(in srgb, var(--palette-solid) 90%, white);
+  --accent-solid-pressed: color-mix(in srgb, var(--palette-solid) 90%, black);
   --text-on-accent: var(--neutral-0);
-  --positive: light-dark(#28742d, #81b385);
-  --negative: light-dark(#b52a2a, #dd8a83);
+  --positive: var(--palette-positive);
+  --negative: var(--palette-negative);
   --danger-solid: light-dark(#c62828, #ac3538);
   --danger-solid-hover: light-dark(#ad2020, #bd3d40);
   --danger-solid-pressed: light-dark(#921b1b, #982d30);
   --text-on-danger: var(--neutral-0);
-  --warning: light-dark(#805800, #d8b866);
-  /* lanes borrow the material file icon hues so graph and file list read as one palette.
-     reds are left out so red keeps meaning conflict or divergence. */
-  --lane-0: light-dark(#1e88e5, #42a5f5);
-  --lane-1: light-dark(#8e24aa, #ba68c8);
-  --lane-2: light-dark(#00897b, #26a69a);
-  --lane-3: light-dark(#e65100, #ffa726);
-  --lane-4: light-dark(#00838f, #4dd0e1);
-  --lane-5: light-dark(#558b2f, #9ccc65);
-  --lane-6: light-dark(#3949ab, #7986cb);
-  --lane-7: light-dark(#a67c00, #ffca28);
+  --warning: var(--palette-warning);
+  /* graph labels use text-grade hues; red remains reserved for conflict and divergence. */
+  --lane-0: var(--palette-type);
+  --lane-1: var(--palette-violet);
+  --lane-2: var(--palette-function);
+  --lane-3: var(--palette-warning);
+  --lane-4: light-dark(#005361, #7edbe5);
+  --lane-5: var(--palette-positive);
+  --lane-6: light-dark(#4b4685, #c8b7ff);
+  --lane-7: light-dark(#694700, #e6c783);
   /* wires stay neutral so colour belongs to the stations; raise the tint to bring lane colour back into them. */
   --graph-wire-tint: 0%;
-  --graph-node-chroma: 72%;
-  --graph-edge: light-dark(#c8c8c0, #40403d);
-  --graph-node: light-dark(var(--neutral-500), #a3a39c);
-  --graph-immutable: light-dark(#587963, #8aa895);
+  --graph-edge: color-mix(in srgb, var(--text) 20%, var(--surface));
+  --graph-node: var(--muted);
+  --graph-immutable: color-mix(in srgb, var(--positive) 65%, var(--muted));
   --graph-context: var(--text-strong);
-  --ref-bookmark: light-dark(#386b94, #8daac1);
-  --ref-remote: light-dark(#546e7a, #90a4ae);
-  --ref-workspace: light-dark(#795582, #b19eb9);
-  --ref-tag: light-dark(#8c6b35, #bba47c);
+  --ref-bookmark: var(--palette-type);
+  --ref-remote: var(--muted);
+  --ref-workspace: var(--brand);
+  --ref-tag: var(--palette-warning);
   --focus-ring: color-mix(in srgb, var(--text) 65%, var(--surface));
-  --popover-surface: light-dark(#ffffff, #282827);
+  --popover-surface: var(--palette-popover);
   --sheet-surface: var(--surface);
   --sheet-border: var(--border);
   --sheet-shadow-color: light-dark(#09090b14, #00000066);
@@ -209,12 +213,12 @@
   --diffs-background: var(--surface);
   --diff-buffer: color-mix(in srgb, var(--text) 4%, var(--surface));
   --diffs-token-comment: var(--muted);
-  --diffs-token-string: var(--positive);
-  --diffs-token-string-expression: var(--positive);
-  --diffs-token-keyword: var(--accent);
-  --diffs-token-constant: light-dark(#8a4b15, #edbc88);
+  --diffs-token-string: var(--palette-string);
+  --diffs-token-string-expression: var(--palette-string);
+  --diffs-token-keyword: var(--palette-keyword);
+  --diffs-token-constant: var(--palette-constant);
   --diffs-token-parameter: var(--text);
-  --diffs-token-function: var(--text);
+  --diffs-token-function: var(--palette-function);
   --diffs-token-punctuation: var(--muted);
   --diffs-token-link: var(--accent);
   --diffs-token-inserted: var(--positive);
@@ -223,7 +227,7 @@
 #shell.light { color-scheme: light; }
 #shell.dark { color-scheme: dark; }
 /* the native titlebar samples the root background on macos. */
-:root { color-scheme: light dark; background: light-dark(#f5f5f3, #1f1f1e); }
+:root { color-scheme: light dark; background: var(--palette-ground); }
 html:has(#shell.light) { color-scheme: light; }
 html:has(#shell.dark) { color-scheme: dark; }
 html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -320,3 +324,10 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
 }
 
 input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--negative); }
+
+/* pointer focus keeps its position without inheriting a keyboard ring from a popup input. */
+#shell[data-focus-modality="pointer"] :focus-visible,
+#shell[data-focus-modality="pointer"] .panel-tab-item:has(> .panel-tab:focus-visible) {
+  --focus-ring: transparent;
+  --field-focus-border: var(--input-border);
+}

@@ -8,15 +8,36 @@ Panel title bars use the shared `PanelTabs` component. Each tab groups its label
 | `--panel-gap` | 8px | Adjacent controls |
 | `--tool-group-gap` | 12px | Independent groups of tools |
 | `--panel-bar-padding` | 5px | Title bar block padding |
-| `--panel-control-size` | 28px | Header controls; 40px on touch |
-| Title bar height | 40px | 52px on touch |
+| `--panel-control-size` | 28px | Header controls; 44px on touch |
+| Title bar height | 40px | 56px on touch |
 
-At a panel width of 520px or less, Diff tools wrap onto a separate row and remain aligned to the trailing edge. The tabs and their close controls stay on the first row. Timeline tools use the same production title bar and spacing conventions.
+Single titles and stacked tabs keep their tools on the same row at every width. Tools keep priority at the trailing edge; the tab strip scrolls and clips into a 12px fade before them. Selected and keyboard-focused tabs are revealed, including after resizing. In extremely narrow split panes, the tool area can scroll horizontally without shrinking controls or adding a row. Timeline and Diff use the same production title bar and spacing conventions.
 
 The design-system preview at `?design-system#panel-spacing` documents these rules beside production Diff and Timeline header examples. Preview controls inherit the shared component styles and tokens; the gallery does not provide its own replacement title bars.
 
 Active tabs and selections use a neutral background and stronger text. Underlines and side stripes remain prohibited. Keyboard focus keeps a complete visible outline.
 
-Validation: 168 component/model tests and 32 E2E tests pass, including responsive chrome at 1440px, 390px and 320px, tool clicks, docking and workspace behavior. Build, Svelte and Node type checks, formatting, Clippy and diff checks pass. Desktop and narrow screenshots are recorded in `.taste-skill/panel-spacing/`.
+Validation: 206 component tests and 55 browser checks cover panel chrome, crowded tabs, narrow tool scrolling, docking, all nine themes, Settings and popup focus. Build, Svelte checks, Clippy, formatting and diff checks pass. Screenshots are recorded in `e2e/results/title-bars/` and `e2e/results/themes/`.
 
-Closable-tab follow-up: close buttons are siblings of their named tab triggers within a shared tab surface, avoiding nested interactive controls. Closing an inactive tab preserves selection; closing the active tab restores focus within its group. Delete closes the focused tab. Pointer drags from a close button cannot start docking. Validation: 174 component/model tests and 13 panel-chrome/docking E2E tests pass, plus build, type, format, Clippy and diff checks. Screenshots are in `.taste-skill/closable-tabs/`.
+Close buttons remain siblings of their named tab triggers within a shared surface. Closing an inactive tab preserves selection; closing the active tab restores focus within its group. Delete closes the focused tab. Pointer drags from a close button cannot start docking.
+
+## Lighter title bars
+
+The panel title is contextual chrome around a code/history workspace. It should identify the view without competing with syntax, graph stations or the workspace brand.
+
+    [ Timeline   Description   Diff 13   ··· clipped ]  [hide wrap] [layout]
+    [ Diff 13                                    ]  [hide wrap] [layout]
+
+The first row is a tabbed group; the second is a standalone, movable view. Both use the same height and trailing tool alignment. A single view keeps plain title semantics and the same active pill as a selected tab. The redundant six-dot grip is removed; its grab cursor, move tooltip and keyboard docking remain. Close icons retain the existing hover stretch, keyboard reveal and touch visibility, and do not get an independent hover surface.
+
+- Header surface: 72% content surface + 28% outer ground. It belongs to the content layer with only a slight material distinction; do not add a visibly raised third band.
+- Header rule: 5% text over that header surface. Tool group outlines: 10% text. These are structural hairlines rather than interactive focus indicators.
+- Title and active-tab text: normal foreground, IBM Plex Sans 13px/20px, weight 500. Inactive tabs: muted foreground, weight 400. Counts: 12px, weight 400. Existing zoom scaling remains unchanged.
+- Selected tab: one soft fill at 6% text over the header. No accent stroke, shadow or tab-strip enclosure. Focus retains one neutral outline, inset so clipping cannot cut it off.
+- Overflow: only tabs move beneath the fixed trailing tools. Native horizontal scrolling and roving arrow/Home/End navigation stay available. The fade reverses in RTL and is removed in forced-colors mode.
+
+The direction was checked against the brief before implementation: hierarchy comes from typography and a small surface step, keeping the user's restrained color system and hover-close behavior. No new component library or font is needed.
+
+References applied selectively: [Apple toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars) for stable, recognizable action placement and restrained grouping; [Material tabs](https://github.com/material-components/material-web/blob/main/docs/components/tabs.md) for same-level content and [its overflow implementation](https://github.com/material-components/material-web/blob/main/tabs/internal/tabs.ts) for revealing the active/focused tab; [shadcn tabs](https://ui.shadcn.com/docs/components/tabs) for foreground/muted hierarchy and restrained active surfaces. GG+ preserves its own neutral selection and single focus stroke rather than adopting library-specific decorations.
+
+Pointer interaction and keyboard focus have separate presentation. Mouse-opened popups restore the trigger's focus without carrying the search input's keyboard ring back onto it. Pointer-focused fields keep their resting border. Tab, arrow navigation and keyboard activation restore the neutral focus indicator; closing a mouse-opened popup with Escape alone does not switch input modality. Focus stays in the correct place rather than being blurred to hide the ring.

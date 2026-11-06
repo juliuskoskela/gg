@@ -24,7 +24,7 @@
         display: flex;
         align-items: center;
         --ref-tone: var(--muted);
-        color: color-mix(in oklab, var(--ref-tone) 32%, var(--text));
+        color: var(--ref-tone);
         border: 1px solid color-mix(in oklab, var(--ref-tone) 12%, transparent);
         border-radius: var(--radius-sm);
         padding: 0 6px;
@@ -39,8 +39,7 @@
     .chip[data-tone="workspace"] { --ref-tone: var(--ref-workspace, var(--muted)); }
     .chip:not(.context):not(.target) > :global(svg:first-child) { color: var(--ref-tone); }
 
-    :global(.selection-item[aria-selected="true"]) .chip { color: color-mix(in oklab, var(--ref-tone) 32%, var(--text-strong)); border-color: color-mix(in oklab, var(--ref-tone) 20%, transparent); }
-    @media (hover: hover) { :global(.selection-item:hover) .chip { color: color-mix(in oklab, var(--ref-tone) 32%, var(--text-strong)); } }
+    :global(.selection-item[aria-selected="true"]) .chip { border-color: color-mix(in oklab, var(--ref-tone) 20%, transparent); }
 
     .context {
         color: inherit;

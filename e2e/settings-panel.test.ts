@@ -96,7 +96,7 @@ describe("Settings dock and repository actions", () => {
         await remote.selectOption("upstream");
         expect(await remote.inputValue()).toBe("upstream");
         for (let theme of ["dark", "light"]) {
-            await page.getByRole("button", { name: theme === "dark" ? "Dark" : "Light", exact: true }).click();
+            await page.getByRole("button", { name: theme === "dark" ? "Twilight" : "Light", exact: true }).click();
             expect(await page.locator(`#shell.${theme}`).count()).toBe(1);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -108,11 +108,11 @@ describe("Settings dock and repository actions", () => {
         await page.getByRole("button", { name: "Close Settings", exact: true }).click();
         expect(await page.locator("#panel-tab-settings").count()).toBe(0);
         await settings(width);
-        await page.getByRole("button", { name: "Dark", exact: true }).click();
+        await page.getByRole("button", { name: "Twilight", exact: true }).click();
         await page.reload();
         await page.locator("#panel-tab-settings").waitFor();
         expect(await page.locator("#shell.dark").count()).toBe(1);
-        expect(await page.getByRole("button", { name: "Dark", exact: true }).getAttribute("aria-pressed")).toBe("true");
+        expect(await page.getByRole("button", { name: "Twilight", exact: true }).getAttribute("aria-pressed")).toBe("true");
         expect(page.url()).toBe(routeBefore);
         if (width >= 768) {
             if (await page.getByRole("button", { name: "Expand repository navigation", exact: true }).isVisible()) await page.getByRole("button", { name: "Expand repository navigation", exact: true }).click();
@@ -133,4 +133,24 @@ describe("Settings dock and repository actions", () => {
             await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("panel-tab-settings");
         }
     });
+    it.each(["pointer", "escape", "keyboard"])("restores Commands focus without carrying a mouse-opened input ring: %s", async mode => {
+        await page.setViewportSize({ width: 1440, height: 960 });
+        await page.goto(`${url}/?panel=settings`);
+        let commands = page.getByRole("button", { name: "Commands", exact: true });
+        if (mode === "keyboard") { await commands.focus(); await commands.press("Enter"); }
+        else await commands.click();
+        let dialog = page.getByRole("dialog", { name: "Commands", exact: true });
+        await dialog.waitFor();
+        await dialog.getByRole("textbox").pressSequentially("view history");
+        if (mode === "pointer") await page.getByRole("button", { name: "Close commands", exact: true }).click();
+        else await page.keyboard.press("Escape");
+        expect(await dialog.count()).toBe(0);
+        expect(await commands.evaluate(element => document.activeElement === element)).toBe(true);
+        let ring = await commands.evaluate(element => ({ visible: element.matches(":focus-visible"), color: getComputedStyle(element).outlineColor, style: getComputedStyle(element).outlineStyle, width: getComputedStyle(element).outlineWidth }));
+        if (mode === "keyboard") { expect(ring.visible).toBe(true); expect(ring.color).not.toBe("rgba(0, 0, 0, 0)"); expect(ring.width).toBe("2px"); }
+        else expect(ring.style === "none" || ring.width === "0px" || ring.color === "rgba(0, 0, 0, 0)").toBe(true);
+        await page.keyboard.press("Tab");
+        expect(await page.locator("#shell").getAttribute("data-focus-modality")).toBe("keyboard");
+    });
+
 });
