@@ -50,7 +50,7 @@ describe("whole-file diff context", () => {
             expect(tools.x).toBeGreaterThanOrEqual(bounds.x);
             expect(tools.x + tools.width).toBeLessThanOrEqual(bounds.x + bounds.width);
             let close = (await heading.getByRole("button", { name: "Close Diff", exact: true }).boundingBox())!;
-            if (tools.y < close.y + close.height && tools.y + tools.height > close.y) expect(tools.x).toBeGreaterThanOrEqual(close.x + close.width);
+            if (tools.y < close.y + close.height && tools.y + tools.height > close.y) expect(tools.x + tools.width).toBeLessThanOrEqual(close.x);
             expect(tools.x + tools.width).toBeLessThanOrEqual(bounds.x + bounds.width);
             expect(tools.y).toBeGreaterThanOrEqual(bounds.y);
             expect(tools.y + tools.height).toBeLessThanOrEqual(bounds.y + bounds.height);
