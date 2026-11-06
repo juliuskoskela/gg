@@ -121,7 +121,7 @@
         if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); show(event.key === "ArrowUp"); }
         else if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); close(true); }
     }}>
-        <span class="place-name workspace-name" class:alternate-workspace={workspaceLabel !== "default"}>{workspaceLabel}</span><span class="place-rule" aria-hidden="true">@</span><span class="place-name project-name">{projectLabel}</span>
+        <span class="place-name workspace-name">{workspaceLabel}</span><span class="place-rule" aria-hidden="true">@</span><span class="place-name project-name">{projectLabel}</span>
         <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </button>
     {#if open}
@@ -175,10 +175,9 @@
     .place { position: relative; display: flex; flex: 1 1 160px; align-items: center; min-width: 0; }
     .place-button { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 32px; padding: 4px 6px; border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: var(--type-ui); line-height: 20px; text-align: start; cursor: pointer; }
     .place-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-    .workspace-name { flex-shrink: 1; }
+    .workspace-name { flex-shrink: 1; color: var(--brand); }
     .project-name { flex-shrink: 2; }
     .place-rule { flex: none; color: var(--muted); }
-    .alternate-workspace { color: var(--ref-workspace); }
     .chevron { flex: none; margin-inline-start: 6px; color: var(--muted); }
     .place-menu { position: absolute; inset-inline-start: 0; inset-block-start: calc(100% + 4px); z-index: 70; width: min(360px, calc(100vw - 24px)); max-height: min(640px, calc(100dvh - 80px)); overflow: auto; overscroll-behavior: contain; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
     .menu-group { display: grid; gap: 2px; padding-block: 5px; border-block-start: 1px solid var(--rule); }
@@ -189,6 +188,8 @@
     .location-item > span, .location-heading > span { min-width: 0; overflow-wrap: anywhere; }
     .location-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
     .location-heading small { flex: none; }
+    .location-item[aria-current="page"] .location-heading > span { color: var(--brand); }
+    .location-item[aria-current="page"]:is(:hover, :active, :focus-visible) .location-heading > span { color: var(--brand-on-pressed); }
     .location-heading small, .location-path, .shortcut, .place-path, .place-note, h2 { color: var(--muted); font-size: var(--type-caption); font-weight: 400; }
     .location-path, .place-path, .place-note { overflow-wrap: anywhere; }
     .shortcut { flex: none; }

@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { focusModality } from "../display/focus";
+    import { effectiveTheme, themePreference, themeFamily, themeFamilies, darkDepth } from "../display/theme";
     import { setContext } from "svelte";
     import RevisionTools from "../revision/RevisionTools.svelte";
     import RevisionOverview from "../revision/RevisionOverview.svelte";
@@ -20,10 +22,11 @@
     import TimelineSection from "../timeline/TimelineSection.svelte";
     import SelectWidget from "../controls/SelectWidget.svelte";
     import type { RevChange } from "../messages/RevChange";
+    import HistoryColors from "./HistoryColors.svelte";
     import RepositoryNavigation from "../shell/RepositoryNavigation.svelte";
 
     setContext("settings", { markUnpushedBookmarks: true });
-    let theme: "light" | "dark" = "dark";
+    $: theme = $effectiveTheme;
     let active = "diff";
     let currentQuery = "all()";
     let wrap = true;
@@ -34,7 +37,7 @@
     let sampleRemote = "origin";
     let samplePreset = "custom";
     let timelineExample: HTMLDivElement;
-    let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.svelte", relative_path: "app/workspace.svelte" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 4 }, to_file: { start: 1, len: 4 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n'] } }], stat: { added: 1, removed: 1 } }];
+    let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.ts", relative_path: "app/workspace.ts" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 6 }, to_file: { start: 1, len: 6 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n', ' // Keep the active panel visible.\n', ' function selectPanel(index: number = 0) { return panels[index]; }\n'] } }], stat: { added: 1, removed: 1 } }];
     let items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }];
     let workspace = { query_choices: { default: "all()", "My revisions": "mine()" } };
     let rows = [
@@ -46,9 +49,9 @@
     ];
 </script>
 
-<div id="shell" class={theme}>
+<div id="shell" use:focusModality class={theme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
     <main class="system-page">
-        <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><button type="button" on:click={() => theme = theme === "dark" ? "light" : "dark"}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></header>
+        <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><div class="gallery-theme-controls"><SelectWidget label="Color family" value={$themeFamily} options={themeFamilies.map(family => ({ value: family.id, label: family.label }))} on:change={event => themeFamily.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").ThemeFamily)} let:option>{option.label}</SelectWidget><SelectWidget label="Dark depth" value={$darkDepth} options={[{ value: "twilight", label: "Twilight" }, { value: "midnight", label: "Midnight" }]} on:change={event => darkDepth.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").DarkDepth)} let:option>{option.label}</SelectWidget><button type="button" on:click={() => themePreference.set(theme === "dark" ? "light" : "dark")}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></div></header>
         <section id="panel-spacing" class="spacing-specimen" aria-labelledby="spacing-heading">
             <h2 id="spacing-heading">Panel structure and spacing</h2>
             <p>Each tab pairs its label with its own close button. Tools align to the trailing edge. The Diff header below and Timeline specimen use the production components.</p>
@@ -60,7 +63,7 @@
                 <div><dt>Controls</dt><dd>28px; 44px on touch</dd></div>
                 <div><dt>Title bar</dt><dd>40px; 56px on touch</dd></div>
             </dl>
-            <p>A single view has a plain title; tabs appear only for stacked views. Stacked-view tools occupy a separate row. At 520px and below, single-view tools wrap below the title. Header backgrounds and divider lines span the full panel width.</p>
+            <p>A single view has a plain title; tabs appear only for stacked views. Tools stay on the title or tab row at every width. Overflowing tabs scroll beneath the fixed tools; keyboard navigation reveals the active tab. Header backgrounds and divider lines span the full panel width.</p>
         </section>
         <section class="workspace-example" aria-label="Workspace components">
             <aside class="navigation-example"><PanelHeader><h2>Repository</h2></PanelHeader><div class="navigation-content"><RepositoryNavigation {workspace} {currentQuery} onSelect={value => currentQuery = value} onWorkingCopy={() => currentQuery = "@"} /></div></aside>
@@ -69,14 +72,15 @@
                 {#each items as item}
                     <div id="example-{item.id}" role={items.length > 1 ? "tabpanel" : "region"} aria-labelledby="example-tab-{item.id}" hidden={active !== item.id}>
                         {#if item.id === "diff"}
-                            <div class="diff-example"><DiffViewer change={sampleChanges[0]} themeOverride={theme} /></div><PanelFooter><div class="example-file-navigation"><Icon name="chevron-up" /><Icon name="chevron-down" /><Icon name="file-text" /><span>app/workspace.svelte</span></div></PanelFooter>
-                        {:else if item.id === "edit"}<PanelHeader><Icon name="file-text" /><span>app/workspace.svelte</span></PanelHeader><TextAreaField label="Example editor" spellcheck="false" value={rows.filter(row => row.kind !== "removed").map(row => row.text).join("\n")} />
+                            <div class="diff-example"><DiffViewer change={sampleChanges[0]} themeOverride={theme} /></div><PanelFooter><div class="example-file-navigation"><Icon name="chevron-up" /><Icon name="chevron-down" /><Icon name="file-text" /><span>app/workspace.ts</span></div></PanelFooter>
+                        {:else if item.id === "edit"}<PanelHeader><Icon name="file-text" /><span>app/workspace.ts</span></PanelHeader><TextAreaField label="Example editor" spellcheck="false" value={rows.filter(row => row.kind !== "removed").map(row => row.text).join("\n")} />
                         {:else}<PanelHeader><h2>Current operation</h2></PanelHeader><p class="operation-example">No pending operation in this component preview.</p>{/if}
                     </div>
                 {/each}
                 {#if !items.length}<p class="operation-example">No views open. <button type="button" on:click={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]; active = "diff"; }}>Restore views</button></p>{/if}
             </div>
         </section>
+        <section id="history-colors" class="description-specimen"><h2>History colors</h2><p>Text-grade lane colors are shared by graph stations and revision prefixes. Workspaces use GG+ blue in every family.</p><HistoryColors /></section>
         <section id="description" class="description-specimen" aria-label="Description component preview">
             <h2>Description and metadata</h2><p>One document, aligned fields, and wrapping references. This specimen uses the production description components.</p>
             <div class="description-sample"><PanelTabs items={[{ id: "description", label: "Description" }]} active="description" prefix="specimen" onSelect={() => {}} /><div id="specimen-description" role="region" aria-labelledby="specimen-tab-description"><RevisionOverview revs={revisionFixture} readOnly /></div></div>
@@ -102,6 +106,7 @@
     #shell { height: 100%; overflow: auto; background: var(--ground); color: var(--text); font: var(--type-ui)/1.5 var(--stack-ui); pointer-events: auto; }
     .system-page { max-width: 1280px; margin: auto; padding: 32px; }
     .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 28px; }
+    .gallery-theme-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 8px; pointer-events: auto; }
     h1 { font-size: 24px; font-weight: 500; letter-spacing: -.025em; }
     h2 { font-size: var(--type-ui); font-weight: 500; }
     p { color: var(--muted); }

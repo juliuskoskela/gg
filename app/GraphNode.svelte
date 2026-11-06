@@ -17,7 +17,7 @@
     $: diamond = `M9,${cy - r - 0.5} L${9 + r + 0.5},${cy} L9,${cy + r + 0.5} L${9 - r - 0.5},${cy} Z`;
 </script>
 
-<g class="station" class:own-wc={header.is_working_copy && header.working_copy_of == null} style="--lane: var(--lane-{lane % 8})">
+<g class="station" class:workspace={header.is_working_copy} style="--lane: var(--lane-{lane % 8})">
     {#if selected}<circle class="halo" cx="9" {cy} r={r + 4} />{/if}
 
     {#if header.is_working_copy}
@@ -33,15 +33,13 @@
 </g>
 
 <style>
-    /* mixing toward muted grey lowers chroma without dimming the station */
-    .station { pointer-events: none; --station: color-mix(in oklab, var(--lane) var(--graph-node-chroma), var(--muted)); }
-    .station.own-wc { --station: var(--positive); }
+    .station { pointer-events: none; --station: var(--lane); }
+    .station.workspace { --station: var(--brand); }
     circle, path { pointer-events: none; }
 
     .mutable { fill: var(--station); }
-    .immutable { fill: color-mix(in oklab, var(--station) 78%, var(--surface)); }
+    .immutable { fill: var(--station); }
 
-    /* other workspaces keep the @ shape but stay on their lane colour; green marks only this workspace */
     .ring { fill: none; stroke: var(--station); stroke-width: 2; }
     .core { fill: var(--station); }
 

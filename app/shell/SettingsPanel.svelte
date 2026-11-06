@@ -1,9 +1,10 @@
 <script lang="ts">
-    import { effectiveTheme, themePreference } from "../display/theme";
+    import { effectiveTheme, effectiveAppearance, setAppearance, useDefaultAppearance, themePreference } from "../display/theme";
     import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
     import { mutationPending } from "../operations";
     import { currentMutation, ignoreToggled, repoStatusEvent } from "../stores";
     import ToggleWidget from "../controls/ToggleWidget.svelte";
+    import ThemeFamilyPicker from "../display/ThemeFamilyPicker.svelte";
     import Icon from "../controls/Icon.svelte";
 
     $: busy = !!$currentMutation || $mutationPending;
@@ -15,13 +16,16 @@
     <div class="settings-content">
         <section aria-labelledby="appearance-heading">
             <h2 id="appearance-heading">Appearance</h2>
-            <div class="setting-row">
-                <div class="setting-copy"><h3>Theme</h3><p>Choose a light or dark workspace.</p></div>
-                <div class="theme-choices" role="group" aria-label="Theme">
-                    <button type="button" aria-pressed={$effectiveTheme === "light"} on:click={() => themePreference.set("light")}><Icon name="sun" />Light</button>
-                    <button type="button" aria-pressed={$effectiveTheme === "dark"} on:click={() => themePreference.set("dark")}><Icon name="moon" />Dark</button>
+            <ThemeFamilyPicker />
+            <div class="setting-row appearance-row">
+                <div class="setting-copy"><h3>Light level</h3><p>Choose a light workspace or one of two dark depths.</p></div>
+                <div class="theme-choices" role="group" aria-label="Appearance">
+                    <button type="button" aria-pressed={$effectiveAppearance === "light"} on:click={() => setAppearance("light")}><Icon name="sun" />Light</button>
+                    <button type="button" aria-pressed={$effectiveAppearance === "twilight"} on:click={() => setAppearance("twilight")}><Icon name="sunset" />Twilight</button>
+                    <button type="button" aria-pressed={$effectiveAppearance === "midnight"} on:click={() => setAppearance("midnight")}><Icon name="moon" />Midnight</button>
                 </div>
             </div>
+            <div class="appearance-default"><button type="button" on:click={useDefaultAppearance} disabled={$themePreference === null}>Use repository or system appearance</button>{#if $themePreference === null}<span>Automatic · {$effectiveTheme === "light" ? "Light" : $effectiveAppearance === "twilight" ? "Twilight" : "Midnight"}</span>{/if}</div>
         </section>
         <section aria-labelledby="zoom-heading">
             <h2 id="zoom-heading">{$nativeZoomEnabled ? "App zoom" : "Browser zoom"}</h2>
@@ -61,6 +65,9 @@
     h3 { margin: 0; font-size: var(--type-ui); font-weight: 500; }
     p { margin: 5px 0 0; font-size: var(--type-ui); line-height: 1.55; color: var(--muted); overflow-wrap: anywhere; }
     .setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+    .appearance-row { margin-block-start: 20px; }
+    .appearance-default { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; color: var(--muted); font-size: var(--type-caption); }
+    .appearance-default button { border-color: transparent; padding-inline: 0; color: var(--muted); font-size: var(--type-caption); text-align: start; white-space: normal; }
     .setting-copy { flex: 1 1 200px; }
     .theme-choices, .zoom-controls { display: flex; align-items: center; gap: 4px; }
     button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); min-width: var(--control-height); padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); background: transparent; font-size: var(--type-ui); cursor: pointer; }

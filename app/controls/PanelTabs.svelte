@@ -21,7 +21,32 @@
 
     async function revealActive(id: Id) {
         await tick();
-        document.getElementById(`${prefix}-tab-${id}`)?.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        let tab = document.getElementById(`${prefix}-tab-${id}`);
+        let item = tab?.parentElement;
+        let strip = tab?.closest<HTMLElement>(".panel-tabs");
+        if (!item || !strip) return;
+        let rtl = getComputedStyle(strip).direction === "rtl";
+        let bounds = strip.getBoundingClientRect(), target = item.getBoundingClientRect();
+        let left = bounds.left + (rtl ? 12 : 2), right = bounds.right - (rtl ? 2 : 12);
+        // oversized touch tabs reveal their label first; native nearest scrolling can hide it.
+        let delta = target.width > right - left ? (rtl ? target.right - right : target.left - left)
+            : target.left < left ? target.left - left : target.right > right ? target.right - right : 0;
+        if (delta) strip.scrollBy({ left: delta, behavior: "instant" });
+    }
+
+    async function revealTool(event: FocusEvent) {
+        let strip = event.currentTarget as HTMLElement, control = event.target as HTMLElement;
+        await tick();
+        if (!strip.isConnected || !control.isConnected) return;
+        let bounds = strip.getBoundingClientRect(), target = control.getBoundingClientRect();
+        let delta = target.left < bounds.left ? target.left - bounds.left : target.right > bounds.right ? target.right - bounds.right : 0;
+        if (delta) strip.scrollBy({ left: delta, behavior: "instant" });
+    }
+
+    function observeTabs(node: HTMLElement) {
+        let observer = new ResizeObserver(() => { if (active) void revealActive(active); });
+        observer.observe(node);
+        return { destroy: () => observer.disconnect() };
     }
 
     function keydown(event: KeyboardEvent, index: number) {
@@ -38,21 +63,20 @@
         event.preventDefault();
         let id = items[(next + items.length) % items.length].id;
         onSelect(id);
-        document.getElementById(`${prefix}-tab-${id}`)?.focus();
+        document.getElementById(`${prefix}-tab-${id}`)?.focus({ preventScroll: true });
     }
 </script>
 
 <div class="panel-view-top">
     {#if single}
         {@const item = items[0]}
-        <div class="panel-titlebar" class:has-tools={hasTools} data-panel-bar>
-            <div class="panel-title-item">
+        <div class="panel-titlebar" data-panel-bar>
+            <div class="panel-title-item" class:closable={!!onClose}>
             {#if draggable}
                 <button class="panel-title" id="{prefix}-tab-{item.id}" type="button" data-panel-handle
                     aria-label={item.label} aria-describedby="{prefix}-drag-help-{item.id}" title="Move {item.label} view"
                     use:panelDraggable={{ id: item.id as PanelId, enabled: true, move: onMove }}
                     on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, 0)}>
-                    <svg class="panel-grip" width="8" height="12" viewBox="0 0 8 12" fill="currentColor" aria-hidden="true"><circle cx="2" cy="2" r="1" /><circle cx="6" cy="2" r="1" /><circle cx="2" cy="6" r="1" /><circle cx="6" cy="6" r="1" /><circle cx="2" cy="10" r="1" /><circle cx="6" cy="10" r="1" /></svg>
                     <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
                 </button>
             {:else}
@@ -60,11 +84,11 @@
             {/if}
             {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
             </div>
-            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar><slot name="tools" /></div>{/if}
+            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar on:focusin={revealTool}><slot name="tools" /></div>{/if}
         </div>
     {:else if items.length > 1}
         <div class="panel-tabs-bar" data-panel-bar>
-            <div class="panel-tabs" role="tablist" aria-label={label}>
+            <div class="panel-tabs" use:observeTabs role="tablist" aria-label={label}>
                 {#each items as item, index (item.id)}
                     <div class="panel-tab-item" class:closable={!!onClose} class:active={active === item.id} role="presentation">
                         <!-- svelte-ignore a11y_interactive_supports_focus (roving focus is managed by the tabs) -->
@@ -72,7 +96,7 @@
                             aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
                             use:panelDraggable={{ id: item.id as PanelId, enabled: draggable, move: onMove }}
                             aria-describedby={draggable ? `${prefix}-drag-help-${items[0]?.id}` : undefined}
-                            on:focus={event => { if (event.currentTarget.matches(":focus-visible")) event.currentTarget.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" }); }}
+                            on:focus={() => void revealActive(item.id)}
                             on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, index)}>
                             <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
                         </div>
@@ -80,44 +104,46 @@
                     </div>
                 {/each}
             </div>
+            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar on:focusin={revealTool}><slot name="tools" /></div>{/if}
         </div>
-        {#if hasTools}<div class="panel-view-toolbar" data-panel-toolbar><slot name="tools" /></div>{/if}
     {/if}
     {#if draggable && items.length}<span id="{prefix}-drag-help-{items[0].id}" hidden>Space to pick up, Tab to choose a panel, arrows to split, Enter to drop, Escape to cancel.</span>{/if}
 </div>
 
 <style>
     .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); }
-    .panel-tabs-bar, .panel-titlebar, .panel-view-toolbar { min-width: 0; border-block-end: 1px solid var(--rule); padding: var(--panel-bar-padding) var(--panel-inset); }
+    .panel-tabs-bar, .panel-titlebar { min-width: 0; border-block-end: 1px solid var(--panel-header-rule); padding: var(--panel-bar-padding) var(--panel-inset); }
     .panel-tabs-bar, .panel-titlebar { min-height: var(--panel-tabs-height); }
-    .panel-titlebar { display: flex; align-items: center; gap: var(--panel-gap); }
-    .panel-titlebar.has-tools { display: grid; grid-template-columns: auto minmax(0, 1fr); }
-    .panel-title-item { display: flex; align-items: center; min-width: 0; pointer-events: auto; }
-    .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); color: var(--text-strong); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
+    .panel-tabs-bar, .panel-titlebar { display: flex; align-items: center; gap: var(--panel-gap); }
+    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: 8px; border-radius: var(--radius-control); background: var(--panel-tab-active); pointer-events: auto; }
+    .panel-title-item.closable { padding-inline-end: 2px; }
+    .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 4px 0 4px 8px; border: 0; border-radius: var(--radius-control); color: var(--text); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
     .panel-title > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     button.panel-title { cursor: grab; }
-    .panel-grip { flex: none; color: var(--faint); opacity: .65; }
-    .panel-header-tools { min-width: 0; width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; pointer-events: auto; }
-    .panel-header-tools > :global(*) { min-width: max-content; }
-    .panel-view-toolbar { display: flex; align-items: center; min-height: var(--panel-toolbar-height); }
-    .panel-tabs { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: var(--panel-control-size); overflow-x: auto; pointer-events: auto; }
+    .panel-header-tools { position: relative; z-index: 1; flex: 0 0 auto; margin-inline-start: auto; min-width: 0; max-width: calc(100% - 32px); overflow-x: auto; overscroll-behavior-inline: contain; pointer-events: auto; --border: var(--panel-header-control-border); --panel-tools-wrap: nowrap; }
+    .panel-header-tools.panel-header-tools > :global(*) { flex: none; width: max-content; min-width: max-content; }
+    .panel-tabs { display: flex; flex: 1; align-items: center; gap: 4px; min-width: 0; min-height: var(--panel-control-size); overflow-x: auto; overscroll-behavior-inline: contain; scroll-padding-inline: 2px 12px; padding-inline-end: 12px; pointer-events: auto; mask-image: linear-gradient(to right, black calc(100% - 12px), transparent); }
+    .panel-tabs:dir(rtl) { mask-image: linear-gradient(to left, black calc(100% - 12px), transparent); }
+    .panel-tabs, .panel-header-tools { scrollbar-width: none; }
+    .panel-tabs::-webkit-scrollbar, .panel-header-tools::-webkit-scrollbar { display: none; }
     .panel-tab-item { padding-inline-end: 8px; display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
     .panel-tab-item.closable { padding-inline-end: 2px; }
-    .panel-tab-item.active { color: var(--text-strong); background: var(--panel-tab-active); }
-    .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 0 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
+    .panel-tab-item.active { color: var(--text); background: var(--panel-tab-active); }
+    .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 0 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 400; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
+    .panel-tab-item.active > .panel-tab { font-weight: 500; }
     [data-panel-handle]:global(.neodrag-dragging) { opacity: .45; cursor: grabbing; }
     .count { color: var(--muted); font-size: var(--type-caption); font-weight: 400; font-variant-numeric: tabular-nums; }
-    [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
+    [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; overflow: hidden; --icon-size: 14px; }
     .panel-tab-item > .panel-close, .panel-title-item > .panel-close { justify-items: start; padding-inline-start: 4px; }
-    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } button.panel-title:hover .panel-grip { opacity: 1; } }
+    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { color: var(--text-strong); } }
     .panel-tab-item > .panel-tab:focus-visible { outline: none; }
-    .panel-tab-item:has(> .panel-tab:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
+    .panel-tab-item:has(> .panel-tab:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     @media (hover: hover) and (pointer: fine) and (min-width: 601px) {
-        .panel-tab-item.closable { padding-inline-end: 8px; transition: padding-inline-end var(--motion-feedback) ease-out; }
+        .panel-tab-item.closable, .panel-title-item.closable { padding-inline-end: 8px; transition: padding-inline-end var(--motion-feedback) ease-out; }
         .panel-tab-item .panel-close, .panel-title-item .panel-close { width: 0; padding-inline-start: 0; opacity: 0; transition: width var(--motion-feedback) ease-out, padding-inline-start var(--motion-feedback) ease-out, opacity var(--motion-feedback) ease-out; }
-        .panel-tab-item.closable:hover, .panel-tab-item.closable:has(:focus-visible) { padding-inline-end: 2px; }
+        .panel-tab-item.closable:hover, .panel-tab-item.closable:has(:focus-visible), .panel-title-item.closable:hover, .panel-title-item.closable:has(:focus-visible) { padding-inline-end: 2px; }
         .panel-tab-item:hover .panel-close, .panel-tab-item:has(:focus-visible) .panel-close, .panel-title-item:hover .panel-close, .panel-title-item:has(:focus-visible) .panel-close { width: 24px; padding-inline-start: 4px; opacity: 1; }
     }
-    @media (forced-colors: active) { .panel-tab-item.active { background: Highlight; color: HighlightText; } .panel-grip { opacity: 1; } }
+    @media (forced-colors: active) { .panel-tabs { mask-image: none; } .panel-tab-item.active { background: Highlight; color: HighlightText; } }
 </style>
