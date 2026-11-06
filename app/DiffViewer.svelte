@@ -4,27 +4,21 @@
     // keep syntax and diff surfaces on the same theme as the surrounding workspace.
     registerCustomCSSVariableTheme("gg", {});
 
-    let chevron = (path: string) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='${path}'/></svg>`)}")`;
-    // collapsed blocks read as one quiet fold row: chevron + count, the whole row is the target.
-    // the library's per-direction expand glyphs are replaced because a block always unfolds whole.
     let FOLD_CSS = `
-        [data-separator=line-info] [data-separator-wrapper] { cursor: pointer; }
-        [data-expand-button] { border-right: 0 !important; background: transparent !important; }
-        [data-expand-button] [data-icon] { display: none; }
-        [data-expand-button]::before { content: ""; width: 14px; height: 14px; background: currentColor; -webkit-mask: ${chevron("M6 9l6 6 6-6")} center / contain no-repeat; mask: ${chevron("M6 9l6 6 6-6")} center / contain no-repeat; }
-        [data-separator-content] { background: transparent !important; padding-inline-start: 0 !important; }
-        [data-separator-content]:hover { text-decoration: none; }
-        [data-unmodified-lines] { display: flex; align-items: center; align-self: stretch; flex: 1; font-size: var(--type-caption); }
-        [data-separator=line-info] [data-separator-wrapper] { transition: color 120ms ease, background-color 120ms ease; }
-        [data-separator=line-info] [data-separator-wrapper]:hover { background-color: var(--hover) !important; }
-        [data-separator=line-info] [data-separator-wrapper]:hover :is([data-expand-button], [data-separator-content]) { color: var(--text); }
-        @media (prefers-reduced-motion: reduce) { [data-separator=line-info] [data-separator-wrapper] { transition: none; } }
+        [data-separator=custom] { height: 32px; margin: 0; }
+        [data-gutter] [data-separator=custom] { display: block; position: relative; z-index: 2; }
+        [data-gutter] [data-separator=custom] slot { display: block; position: absolute; inset-inline-start: var(--diffs-column-number-width, 0px); width: var(--diffs-column-content-width, 100%); }
+        [data-content] [data-separator=custom] slot { display: none; }
+        [data-line-annotation] { --diffs-annotation-bg: var(--surface); }
+        @media (pointer: coarse), (max-width: 600px) { [data-separator=custom] { height: 48px; } }
     `;
 </script>
 
 <script lang="ts">
-    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation } from "@pierre/diffs";
+    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData } from "@pierre/diffs";
     import { onMount } from "svelte";
+    import { createDiffFoldRow } from "./revision/DiffFoldRow";
+    import { FoldingFileDiff } from "./revision/FoldingFileDiff";
     import DiffScrollbars from "./revision/DiffScrollbars.svelte";
     import type { RevChange } from "./messages/RevChange";
     import { changePatch } from "./diff";
@@ -40,6 +34,10 @@
     let renderedKey = "";
     let disconnectColumns = () => {};
     let host: HTMLDivElement;
+    let leadingFold: HTMLDivElement;
+    let pendingAnchor: { gap: number; top: number; left: number; focus: boolean } | undefined;
+    let toggling = false;
+    let leadingKey = "";
     let width = 0;
     $: resolvedStyle = $diffStyle === "auto" ? (width >= 720 ? "split" : "unified") : $diffStyle;
     let viewer: FileDiff<number> | File | undefined;
@@ -48,7 +46,6 @@
     let scrollColumns: HTMLElement[] = [];
     // gap index i is the unchanged block before hunk i; hunks.length is the block after the last hunk
     let unfolded = new Set<number>();
-    type Expansions = { getExpandedHunksMap(): Map<number, unknown>; renderCache?: { highlighted?: boolean }; clearRenderCache(): void };
     $: options = {
         theme: "gg",
         themeType: themeOverride ?? $effectiveTheme,
@@ -58,11 +55,12 @@
         // one click unfolds the whole block, so never split it into partial chunks
         expansionLineCount: 1_000_000_000,
         loadDiffFiles: loadFullFiles && !fullContext ? loadDiffFiles : undefined,
+        hunkSeparators: renderSeparator,
         renderAnnotation: renderFold,
         lineDiffType: "word-alt" as const,
         enableLineSelection: true,
         disableFileHeader: true,
-        onPostRender: connectScrollColumns,
+        onPostRender: postRender,
         unsafeCSS: ":host { color-scheme: inherit !important; --diffs-font-family: var(--stack-code); --diffs-font-size: var(--type-code); --diffs-line-height: calc(var(--type-code) * var(--code-leading)); --diffs-bg-context-override: var(--surface); --diffs-bg-buffer-override: var(--diff-buffer); --diffs-bg-separator-override: var(--raised); --diffs-fg-number-override: var(--muted); --diffs-addition-color-override: var(--positive); --diffs-deletion-color-override: var(--negative); --diffs-selection-color-override: var(--selection-bg); --diffs-bg-addition-override: var(--diff-addition); --diffs-bg-addition-emphasis-override: var(--diff-addition-emphasis); --diffs-bg-deletion-override: var(--diff-deletion); --diffs-bg-deletion-emphasis-override: var(--diff-deletion-emphasis); } [data-code] { scrollbar-width: none; } [data-code]::-webkit-scrollbar { height: 0; }" + FOLD_CSS,
     } satisfies FileDiffOptions<number, undefined>;
     async function loadDiffFiles(fileDiff: FileDiffMetadata) {
@@ -71,10 +69,7 @@
     }
     function gapAnchors(fileDiff: FileDiffMetadata, gap: number): { additions: number; deletions: number } | null {
         let hunks = fileDiff.hunks;
-        if (gap === 0) {
-            let first = hunks[0];
-            return first && first.additionStart > 1 ? { additions: first.additionStart - 1, deletions: first.deletionStart - 1 } : null;
-        }
+        if (gap === 0) return null;
         let previous = hunks[gap - 1];
         if (!previous) return null;
         return { additions: previous.additionStart + Math.max(previous.additionCount, 1) - 1, deletions: previous.deletionStart + Math.max(previous.deletionCount, 1) - 1 };
@@ -83,48 +78,103 @@
         let hunks = fileDiff.hunks;
         if (gap < hunks.length) return hunks[gap].collapsedBefore;
         let last = hunks[hunks.length - 1];
-        return last ? Math.max(0, fileDiff.additionLines.length - (last.additionStart + last.additionCount - 1)) : 0;
+        return last ? Math.max(0, fileDiff.additionLines.length - (last.additionStart + Math.max(last.additionCount, 1) - 1)) : 0;
     }
     function foldAnnotations(fileDiff: FileDiffMetadata): DiffLineAnnotation<number>[] {
         let result: DiffLineAnnotation<number>[] = [];
         for (let gap of [...unfolded].sort((a, b) => a - b)) {
             let anchor = gapAnchors(fileDiff, gap);
             if (!anchor) continue;
-            result.push({ side: "additions", lineNumber: anchor.additions, metadata: gap });
-            if (resolvedStyle === "split") result.push({ side: "deletions", lineNumber: anchor.deletions, metadata: gap });
+            let previous = fileDiff.hunks[gap - 1];
+            // a pure insertion/deletion has no line to annotate on its empty side.
+            if (resolvedStyle === "split" && previous.deletionCount > 0) result.push({ side: "deletions", lineNumber: anchor.deletions, metadata: gap });
+            if (previous.additionCount > 0) result.push({ side: "additions", lineNumber: anchor.additions, metadata: gap });
+            else if (resolvedStyle !== "split") result.push({ side: "deletions", lineNumber: anchor.deletions, metadata: gap });
         }
         return result;
+    }
+    function renderSeparator(hunk: HunkData) {
+        if (fullContext) return null;
+        let lines = hunk.lineCountKnown ? hunk.lines : undefined;
+        let button = createDiffFoldRow({ gap: hunk.hunkIndex, lines, expanded: false, onToggle: button => toggle(hunk.hunkIndex, button) });
+        button.disabled = !hunk.expandable;
+        return button;
     }
     function renderFold(annotation: DiffLineAnnotation<number>, fileDiff: FileDiffMetadata) {
         let gap = annotation.metadata;
         if (gap === undefined) return undefined;
-        let lines = gapSize(fileDiff, gap);
-        let button = document.createElement("button");
-        button.type = "button";
-        button.className = "diff-fold";
-        button.setAttribute("aria-expanded", "true");
-        button.title = "Collapse unmodified lines";
-        button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg><span>${lines} unmodified ${lines === 1 ? "line" : "lines"}</span>`;
-        // the diff host treats pointer events as line selection
-        button.addEventListener("pointerdown", event => event.stopPropagation());
-        button.addEventListener("click", event => { event.stopPropagation(); fold(gap); });
-        return button;
+        return createDiffFoldRow({ gap, lines: gapSize(fileDiff, gap), expanded: true, onToggle: button => toggle(gap, button) });
     }
-    function expansions() {
-        return (viewer as unknown as { hunksRenderer: Expansions }).hunksRenderer;
+    function postRender(node: HTMLElement) {
+        connectScrollColumns(node);
+        let columns = Array.from(node.shadowRoot?.querySelectorAll<HTMLElement>("[data-code]:not([data-diffs-scrollbar-measure])") ?? []);
+        let lines = viewer instanceof FoldingFileDiff && viewer.diff ? gapSize(viewer.diff, 0) : 0;
+        let nextLeadingKey = unfolded.has(0) ? `${columns.length}:${lines}` : "";
+        if (nextLeadingKey !== leadingKey) {
+            leadingKey = nextLeadingKey;
+            leadingFold.replaceChildren();
+            leadingFold.style.gridTemplateColumns = `repeat(${Math.max(columns.length, 1)}, minmax(0, 1fr))`;
+            if (unfolded.has(0)) for (let column of columns) {
+                let cell = document.createElement("div");
+                cell.style.paddingInlineStart = getComputedStyle(column).getPropertyValue("--diffs-column-number-width");
+                cell.append(createDiffFoldRow({ gap: 0, lines, expanded: true, onToggle: button => toggle(0, button) }));
+                leadingFold.append(cell);
+            }
+        }
+        restoreAnchor();
     }
-    function currentDiff() {
-        return (viewer as unknown as { getWorkingDiff(): FileDiffMetadata | undefined }).getWorkingDiff();
+    function restoreAnchor() {
+        if (!pendingAnchor) return;
+        let buttons = Array.from(host.parentElement?.querySelectorAll<HTMLButtonElement>(`.diff-fold[data-fold-gap="${pendingAnchor.gap}"]`) ?? []);
+        let left = pendingAnchor.left;
+        let button = buttons.sort((a, b) => Math.abs(a.getBoundingClientRect().left - left) - Math.abs(b.getBoundingClientRect().left - left))[0];
+        if (!button) return;
+        let delta = button.getBoundingClientRect().top - pendingAnchor.top;
+        // compensate every scroll ancestor, including the browser document, without scrolling unrelated panes.
+        for (let parent = host.parentElement; parent && Math.abs(delta) > 0.5; parent = parent.parentElement) {
+            if (parent.scrollHeight <= parent.clientHeight) continue;
+            if (!/(auto|scroll)/.test(getComputedStyle(parent).overflowY) && parent !== document.scrollingElement) continue;
+            let before = parent.scrollTop;
+            parent.scrollTop += delta;
+            delta -= parent.scrollTop - before;
+        }
+        if (pendingAnchor.focus) button.focus({ preventScroll: true });
     }
-    function fold(gap: number) {
-        if (!(viewer instanceof FileDiff)) return;
-        unfolded.delete(gap);
-        let renderer = expansions();
-        renderer.getExpandedHunksMap().delete(gap);
-        if (renderer.renderCache?.highlighted !== true) renderer.clearRenderCache();
-        let fileDiff = currentDiff();
-        if (fileDiff) viewer.setLineAnnotations(foldAnnotations(fileDiff));
-        viewer.rerender();
+    async function toggle(gap: number, button: HTMLButtonElement) {
+        if (!(viewer instanceof FoldingFileDiff) || toggling) return;
+        let current = viewer;
+        error = "";
+        toggling = true;
+        pendingAnchor = { gap, top: button.getBoundingClientRect().top, left: button.getBoundingClientRect().left, focus: button.matches(":focus") };
+        button.setAttribute("aria-busy", "true");
+        try {
+            if (!unfolded.has(gap)) {
+                // annotations must reference complete line arrays, not the patch's packed line indices.
+                await current.prepareForEditing();
+                if (viewer !== current) return;
+                unfolded.add(gap);
+                current.setLineAnnotations(foldAnnotations(current.diff!));
+                current.expandHunk(gap, "both", Number.POSITIVE_INFINITY);
+            } else {
+                unfolded.delete(gap);
+                current.collapse(gap);
+                current.setLineAnnotations(foldAnnotations(current.diff!));
+                current.rerender();
+            }
+            // ResizeManager and highlighting may each produce a second layout pass.
+            let anchor = pendingAnchor;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                if (pendingAnchor !== anchor) return;
+                restoreAnchor();
+                pendingAnchor = undefined;
+            }));
+        } catch (cause) {
+            pendingAnchor = undefined;
+            error = `Couldn’t load unmodified lines: ${cause instanceof Error ? cause.message : String(cause)}`;
+        } finally {
+            button.removeAttribute("aria-busy");
+            toggling = false;
+        }
     }
     function connectScrollColumns(node: HTMLElement) {
         disconnectColumns();
@@ -149,6 +199,9 @@
         renderedKey = `${readingKey}:${resolvedStyle}`;
         viewer?.cleanUp();
         host.replaceChildren();
+        leadingFold.replaceChildren();
+        leadingKey = "";
+        pendingAnchor = undefined;
         scrollColumns = [];
         unfolded = new Set();
         error = "";
@@ -163,15 +216,7 @@
                 if (fullContext) fileDiff.isPartial = false;
                 fileDiff.name = change.path.relative_path;
                 fileDiff.prevName = undefined;
-                let diffViewer = new FileDiff<number>(options);
-                let expand = diffViewer.expandHunk;
-                // separators always unfold their whole block, and we remember it so it can be folded again
-                diffViewer.expandHunk = (gap, _direction, _count) => {
-                    unfolded.add(gap);
-                    let working = currentDiff();
-                    if (working) diffViewer.setLineAnnotations(foldAnnotations(working));
-                    expand(gap, "both", Number.POSITIVE_INFINITY);
-                };
+                let diffViewer = new FoldingFileDiff(options);
                 viewer = diffViewer;
                 diffViewer.render({ fileDiff, containerWrapper: host });
             }
@@ -184,6 +229,7 @@
 {#if change.has_conflict}<p class="notice">Unresolved conflict — showing conflict markers.</p>{/if}
 {#if error}<p class="notice" role="status">{error}</p>{/if}
 <div dir="ltr" class="diff-viewer" bind:clientWidth={width} aria-label={`Diff for ${change.path.relative_path}`}>
+    <div class="diff-leading-fold" bind:this={leadingFold}></div>
     <div class="diff-content" bind:this={host}></div>
     <DiffScrollbars columns={scrollColumns} />
 </div>
@@ -192,13 +238,18 @@
     .diff-viewer { pointer-events: auto; user-select: text; min-width: 0; }
     .diff-viewer :global(diffs-container) { pointer-events: auto; }
     .notice { padding: 12px; color: var(--muted); font-size: 13px; }
-    /* the unfolded counterpart of a separator: same row, chevron flipped, so expand and collapse share one place */
     .diff-viewer :global(.diff-fold) {
-        display: flex; align-items: center; gap: 0; width: 100%; height: 24px; padding: 0; margin: 2px 0;
-        border: 0; border-radius: 6px; background: transparent; color: var(--muted);
-        font: var(--type-caption) var(--stack-ui); text-align: start; cursor: pointer;
+        display: flex; align-items: center; gap: 6px; width: calc(100% - 16px); min-height: 28px; padding: 4px 8px; margin: 2px 8px;
+        border: 0; border-radius: 4px; background: var(--raised); color: var(--muted);
+        font: var(--type-caption) var(--stack-ui); line-height: 20px; text-align: start; cursor: pointer; white-space: normal;
     }
-    .diff-viewer :global(.diff-fold svg) { width: 22px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    @media (hover: hover) { .diff-viewer :global(.diff-fold:hover) { background: var(--hover); color: var(--text); } }
+    .diff-viewer :global(.diff-fold svg) { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    @media (hover: hover) { .diff-viewer :global(.diff-fold:not(:disabled):hover) { background: var(--interaction-hover, var(--hover)); color: var(--text); } }
+    @media (pointer: coarse), (max-width: 600px) { .diff-viewer :global(.diff-fold) { min-height: 44px; } }
     .diff-viewer :global(.diff-fold:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
+    .diff-viewer :global(.diff-fold:disabled) { cursor: default; }
+    .diff-viewer :global(.diff-fold[aria-busy=true]) { cursor: progress; }
+    .diff-content, .diff-leading-fold { overflow-anchor: none; }
+    .diff-leading-fold { display: grid; }
+    .diff-leading-fold:not(:empty) { padding-top: 8px; }
 </style>

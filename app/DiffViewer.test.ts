@@ -80,6 +80,53 @@ describe("syntax diff viewer", () => {
         expect(root()?.textContent).toContain("new middle");
         expect(root()?.querySelector('[data-line-type="change-addition"]')).not.toBeNull();
         expect(container.textContent).not.toContain("Couldn’t render");
+        expect(container.querySelector(".diff-fold")).toBeNull();
+    });
+
+    it("keeps unavailable context disabled and reports loading failures without losing the control", async () => {
+        let { default: DiffViewer } = await import("./DiffViewer.svelte");
+        let change: RevChange = { kind: "Modified", has_conflict: false, path: { repo_path: "file.txt", relative_path: "file.txt" }, hunks: [{ location: { from_file: { start: 11, len: 1 }, to_file: { start: 11, len: 1 } }, lines: { lines: ["-before\n", "+after\n"] } }] };
+        let { container, rerender } = render(DiffViewer, { props: { change } });
+        let fold = () => container.querySelector<HTMLButtonElement>('.diff-fold[data-fold-gap="0"]');
+        await waitFor(() => expect(fold()?.disabled).toBe(true));
+        let attempts = 0;
+        await rerender({ change, loadFullFiles: async () => {
+            if (++attempts === 1) throw Error("File could not be read");
+            let before = "context\n".repeat(10) + "before\n" + "context\n".repeat(9);
+            return { before, after: before.replace("before", "after") };
+        } });
+        await waitFor(() => expect(fold()?.disabled).toBe(false));
+        fold()!.click();
+        await waitFor(() => expect(container.textContent).toContain("Couldn’t load unmodified lines"));
+        expect(fold()?.getAttribute("aria-expanded")).toBe("false");
+        expect(fold()?.hasAttribute("aria-busy")).toBe(false);
+        fold()!.click();
+        await waitFor(() => expect(fold()?.getAttribute("aria-expanded")).toBe("true"));
+        expect(attempts).toBe(2);
+        expect(container.textContent).not.toContain("Couldn’t load unmodified lines");
+        expect(fold()?.hasAttribute("aria-busy")).toBe(false);
+    });
+
+    it("keeps collapse reachable after a hunk with an empty addition side", async () => {
+        let { default: DiffViewer } = await import("./DiffViewer.svelte");
+        let { diffStyle } = await import("./stores");
+        diffStyle.set("unified");
+        let before = Array.from({ length: 60 }, (_, i) => `line ${i + 1}\n`);
+        let after = before.filter((_, i) => i !== 10);
+        after[38] = "changed 40\n";
+        let change: RevChange = { kind: "Modified", has_conflict: false, path: { repo_path: "file.txt", relative_path: "file.txt" }, hunks: [
+            { location: { from_file: { start: 11, len: 1 }, to_file: { start: 11, len: 0 } }, lines: { lines: ["-line 11\n"] } },
+            { location: { from_file: { start: 40, len: 1 }, to_file: { start: 39, len: 1 } }, lines: { lines: ["-line 40\n", "+changed 40\n"] } },
+        ] };
+        let { container } = render(DiffViewer, { props: { change, loadFullFiles: async () => ({ before: before.join(""), after: after.join("") }) } });
+        let fold = () => container.querySelector<HTMLButtonElement>('.diff-fold[data-fold-gap="1"]');
+        await waitFor(() => expect(fold()).not.toBeNull());
+        fold()!.click();
+        await waitFor(() => expect(fold()?.getAttribute("aria-expanded")).toBe("true"));
+        expect(fold()!.getBoundingClientRect().height).toBeGreaterThan(0);
+        fold()!.click();
+        await waitFor(() => expect(fold()?.getAttribute("aria-expanded")).toBe("false"));
+        diffStyle.set("auto");
     });
 
 });
