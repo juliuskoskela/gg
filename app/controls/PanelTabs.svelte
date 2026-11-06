@@ -1,4 +1,5 @@
 <script lang="ts" generics="Id extends string">
+    import { tick } from "svelte";
     import Icon from "./Icon.svelte";
     import { panelDraggable } from "../workspace/panelDrag";
     import type { Edge, PanelId } from "../workspace/dock";
@@ -9,15 +10,24 @@
     export let prefix = "panel";
     export let draggable = false;
     export let toolsVisible = true;
-    export let toolsWrap = false;
     export let onSelect: (id: Id) => void;
     export let onClose: ((id: Id) => void) | null = null;
     export let onMove: (id: PanelId, target: PanelId, edge: Edge) => void = () => {};
 
 
+    $: single = items.length === 1;
+    $: hasTools = toolsVisible && !!$$slots.tools;
+    $: if (active && !single) void revealActive(active);
+
+    async function revealActive(id: Id) {
+        await tick();
+        document.getElementById(`${prefix}-tab-${id}`)?.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+
     function keydown(event: KeyboardEvent, index: number) {
         if (event.target !== event.currentTarget) return;
         if (event.key === "Delete" && onClose) { event.preventDefault(); onClose(items[index].id); return; }
+        if (single) return;
         let rtl = getComputedStyle(event.currentTarget as HTMLElement).direction === "rtl";
         let next = index;
         if (event.key === "Home") next = 0;
@@ -32,49 +42,74 @@
     }
 </script>
 
-<!-- svelte-ignore a11y_interactive_supports_focus (focus is managed by the tabs) -->
-<div class="panel-tabs-bar">
-<div class="panel-tabs-layout" class:has-tools={toolsVisible && !!$$slots.tools} class:wrap-tools={toolsVisible && toolsWrap && !!$$slots.tools}>
-
-<div class="panel-tabs" role="tablist" aria-label={label}>
-    {#each items as item, index (item.id)}
-        <div class="panel-tab-item" class:active={active === item.id} role="presentation">
-        <div class="panel-tab" role="tab" id="{prefix}-tab-{item.id}" tabindex={active === item.id ? 0 : -1}
-            aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
-            use:panelDraggable={{ id: item.id as PanelId, enabled: draggable, move: onMove }}
-            aria-describedby={draggable ? `${prefix}-drag-help-${items[0]?.id}` : undefined}
-            on:focus={event => { if (event.currentTarget.matches(":focus-visible")) event.currentTarget.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" }); }}
-            on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, index)}>
-            <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
+<div class="panel-view-top">
+    {#if single}
+        {@const item = items[0]}
+        <div class="panel-titlebar" class:has-tools={hasTools} data-panel-bar>
+            {#if draggable}
+                <button class="panel-title" id="{prefix}-tab-{item.id}" type="button" data-panel-handle
+                    aria-label={item.label} aria-describedby="{prefix}-drag-help-{item.id}" title="Move {item.label} view"
+                    use:panelDraggable={{ id: item.id as PanelId, enabled: true, move: onMove }}
+                    on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, 0)}>
+                    <svg class="panel-grip" width="8" height="12" viewBox="0 0 8 12" fill="currentColor" aria-hidden="true"><circle cx="2" cy="2" r="1" /><circle cx="6" cy="2" r="1" /><circle cx="2" cy="6" r="1" /><circle cx="6" cy="6" r="1" /><circle cx="2" cy="10" r="1" /><circle cx="6" cy="10" r="1" /></svg>
+                    <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
+                </button>
+            {:else}
+                <h2 class="panel-title" tabindex="-1" id="{prefix}-tab-{item.id}"><span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}</h2>
+            {/if}
+            {#if hasTools}<div class="panel-header-tools" data-panel-toolbar><slot name="tools" /></div>{/if}
+            {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
         </div>
-        {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click|stopPropagation={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
+    {:else if items.length > 1}
+        <div class="panel-tabs-bar" data-panel-bar>
+            <div class="panel-tabs" role="tablist" aria-label={label}>
+                {#each items as item, index (item.id)}
+                    <div class="panel-tab-item" class:active={active === item.id} role="presentation">
+                        <!-- svelte-ignore a11y_interactive_supports_focus (roving focus is managed by the tabs) -->
+                        <div class="panel-tab" role="tab" id="{prefix}-tab-{item.id}" data-panel-handle tabindex={active === item.id ? 0 : -1}
+                            aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
+                            use:panelDraggable={{ id: item.id as PanelId, enabled: draggable, move: onMove }}
+                            aria-describedby={draggable ? `${prefix}-drag-help-${items[0]?.id}` : undefined}
+                            on:focus={event => { if (event.currentTarget.matches(":focus-visible")) event.currentTarget.parentElement?.scrollIntoView({ block: "nearest", inline: "nearest" }); }}
+                            on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, index)}>
+                            <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
+                        </div>
+                        {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click|stopPropagation={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
+                    </div>
+                {/each}
+            </div>
         </div>
-    {/each}
-</div>
-{#if draggable}<span id="{prefix}-drag-help-{items[0]?.id}" hidden>Space to pick up, Tab to choose a panel, arrows to split, Enter to drop, Escape to cancel.</span>{/if}
-{#if toolsVisible && $$slots.tools}<div class="panel-header-tools"><slot name="tools" /></div>{/if}
-</div>
+        {#if hasTools}<div class="panel-view-toolbar" data-panel-toolbar><slot name="tools" /></div>{/if}
+    {/if}
+    {#if draggable && items.length}<span id="{prefix}-drag-help-{items[0].id}" hidden>Space to pick up, Tab to choose a panel, arrows to split, Enter to drop, Escape to cancel.</span>{/if}
 </div>
 
 <style>
-    .panel-tabs-bar { flex-shrink: 0; min-width: 0; background: var(--panel-header-bg); border-block-end: 1px solid var(--rule); container: panel-titlebar / inline-size; }
-    .panel-tabs-layout { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: calc(var(--panel-tabs-height) - 1px); padding: var(--panel-bar-padding) var(--panel-inset); }
-    .has-tools.wrap-tools .panel-tabs { flex: 0 1 auto; }
-    .panel-header-tools { display: flex; align-items: center; justify-content: flex-end; flex: none; min-width: 0; margin-inline-start: auto; pointer-events: auto; }
-    .wrap-tools .panel-header-tools { flex: 1; }
-    @container panel-titlebar (max-width: 520px) {
-        .panel-tabs-layout.wrap-tools { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--panel-gap); row-gap: var(--panel-gap); }
-        .wrap-tools .panel-header-tools { grid-column: 1 / -1; grid-row: 2; width: 100%; }
-        .wrap-tools .panel-tabs { grid-column: 1 / -1; grid-row: 1; }
-    }
-    .panel-tabs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; min-height: var(--panel-control-size); padding: 0; overflow-x: auto; pointer-events: auto; }
+    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); }
+    .panel-tabs-bar, .panel-titlebar, .panel-view-toolbar { min-width: 0; border-block-end: 1px solid var(--rule); padding: var(--panel-bar-padding) var(--panel-inset); }
+    .panel-tabs-bar, .panel-titlebar { min-height: var(--panel-tabs-height); }
+    .panel-titlebar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--panel-gap); }
+    .panel-titlebar.has-tools { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); color: var(--text-strong); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
+    .panel-title > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    button.panel-title { cursor: grab; }
+    .panel-grip { flex: none; color: var(--faint); opacity: .65; }
+    .panel-header-tools { min-width: 0; width: 100%; pointer-events: auto; }
+    .panel-titlebar > .panel-close { grid-column: -2 / -1; }
+    .panel-view-toolbar { display: flex; align-items: center; min-height: var(--panel-toolbar-height); }
+    .panel-tabs { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: var(--panel-control-size); overflow-x: auto; pointer-events: auto; }
     .panel-tab-item { display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
     .panel-tab-item.active { color: var(--text-strong); background: var(--panel-tab-active); }
     .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
-    .panel-tab:global(.neodrag-dragging) { opacity: .45; cursor: grabbing; }
+    [data-panel-handle]:global(.neodrag-dragging) { opacity: .45; cursor: grabbing; }
     .count { color: var(--muted); font-size: var(--type-caption); font-weight: 400; font-variant-numeric: tabular-nums; }
-    .panel-tab:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
-    button { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 14px; }
-    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } button:hover { background: var(--active); color: var(--text-strong); } }
-    @media (forced-colors: active) { .panel-tab-item.active { background: Highlight; color: HighlightText; } }
+    [data-panel-handle]:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
+    .panel-close { display: grid; place-items: center; flex-shrink: 0; width: var(--panel-control-size); height: var(--panel-control-size); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; --icon-size: 14px; }
+    @container panel-titlebar (max-width: 520px) {
+        .panel-titlebar.has-tools { grid-template-columns: minmax(0, 1fr) auto; }
+        .panel-titlebar.has-tools .panel-header-tools { grid-column: 1 / -1; grid-row: 2; }
+        .panel-titlebar.has-tools > .panel-close { grid-column: 2; grid-row: 1; }
+    }
+    @media (hover: hover) { .panel-tab-item:hover { background: var(--hover); color: var(--text); } .panel-close:hover { background: var(--active); color: var(--text-strong); } button.panel-title:hover .panel-grip { opacity: 1; } }
+    @media (forced-colors: active) { .panel-tab-item.active { background: Highlight; color: HighlightText; } .panel-grip { opacity: 1; } }
 </style>

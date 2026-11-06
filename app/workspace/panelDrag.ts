@@ -15,7 +15,7 @@ function landingAt(x: number, y: number, id: PanelId): Landing | null {
     });
     if (!group) return null;
     let box = group.getBoundingClientRect();
-    let header = group.querySelector<HTMLElement>(".panel-tabs-bar")!.getBoundingClientRect();
+    let header = group.querySelector<HTMLElement>("[data-panel-bar]")!.getBoundingClientRect();
     let target = group.dataset.panelGroup as PanelId;
     let edge: Edge = "tab";
     if (y > header.bottom) {
@@ -34,7 +34,7 @@ function landingAt(x: number, y: number, id: PanelId): Landing | null {
             if (tab === [...group.querySelectorAll("[role=tab]")].at(-1) && x > rect.left + rect.width / 2) edge = "tab-end";
         } else edge = "tab-end";
     }
-    let tabs = group.querySelectorAll("[role=tab]");
+    let tabs = group.querySelectorAll("[data-panel-handle]");
     if (tabs.length === 1 && target === id) return null;
     if (edge === "tab-end" && target === id) {
         target = [...tabs].map(tab => tab.id.replace("panel-tab-", "") as PanelId).find(panel => panel !== id) ?? target;
@@ -134,7 +134,7 @@ export function panelDraggable(node: HTMLElement, options: { id: PanelId; enable
             let x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
             if (event.key === "ArrowLeft") x = rect.left + 8;
             if (event.key === "ArrowRight") x = rect.right - 8;
-            if (event.key === "ArrowUp") y = group.querySelector(".panel-tabs-bar")!.getBoundingClientRect().bottom + 8;
+            if (event.key === "ArrowUp") y = group.querySelector("[data-panel-bar]")!.getBoundingClientRect().bottom + 8;
             if (event.key === "ArrowDown") y = rect.bottom - 8;
             panelDragging.set({ id: options.id, x, y, landing: landingAt(x, y, options.id) });
         }

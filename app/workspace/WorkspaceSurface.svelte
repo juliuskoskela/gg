@@ -64,7 +64,7 @@
         let next = remaining.find(tab => tab.getAttribute("aria-selected") === "true") ?? remaining[0];
         dock.close(id);
         await tick();
-        (document.getElementById(next?.id ?? "") ?? document.querySelector<HTMLElement>(".workspace-dock [role='tab']") ?? document.getElementById("views-menu"))?.focus();
+        (document.getElementById(next?.id ?? "") ?? document.querySelector<HTMLElement>(".workspace-dock [data-panel-handle]") ?? document.getElementById("views-menu"))?.focus();
     }
 
     onMount(() => {
@@ -89,11 +89,11 @@
             <button type="button" on:click={() => window.dispatchEvent(new Event("gg:open-views"))}>Choose a view</button>
         </div>
     {:else if compact}
-        <PanelTabs items={panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} toolsVisible={$dock.compactActive === "timeline" || ($dock.compactActive === "diff" && !!detail)} toolsWrap={$dock.compactActive === "diff"}>
+        <PanelTabs items={panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} toolsVisible={$dock.compactActive === "timeline" || ($dock.compactActive === "diff" && !!detail)}>
             <svelte:fragment slot="tools">{#if $dock.compactActive === "timeline"}<TimelineDisplayOptions />{:else if $dock.compactActive === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
         </PanelTabs>
         {#each panels as id (id)}
-            <div class="panel-body" id="panel-{id}" role="tabpanel" aria-labelledby="panel-tab-{id}" hidden={$dock.compactActive !== id} inert={$dock.compactActive !== id}>
+            <div class="panel-body" id="panel-{id}" role={panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={$dock.compactActive !== id} inert={$dock.compactActive !== id}>
                 <PanelBody {id} active={$dock.compactActive === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} onSelectFile={selectFile} />
             </div>
         {/each}

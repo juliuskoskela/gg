@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import PanelTabs from "./PanelTabs.svelte";
+import PanelTabsHarness from "./test/PanelTabsHarness.svelte";
 
 afterEach(cleanup);
 
@@ -42,4 +43,29 @@ describe("panel header tabs", () => {
         expect(onSelect).toHaveBeenLastCalledWith("diff");
         expect(document.activeElement).toBe(diff);
     });
+    it("uses a plain movable title when only one view is open", async () => {
+        let onClose = vi.fn();
+        let { getByRole, queryByRole } = render(PanelTabs, { items: items.slice(0, 1), active: "diff", draggable: true, onSelect: () => {}, onClose });
+        expect(queryByRole("tablist")).toBeNull();
+        expect(queryByRole("tab")).toBeNull();
+        let title = getByRole("button", { name: "Diff" });
+        expect(title.querySelector(".panel-grip")).not.toBeNull();
+        expect(title.contains(getByRole("button", { name: "Close Diff" }))).toBe(false);
+        await fireEvent.keyDown(title, { key: "Delete" });
+        expect(onClose).toHaveBeenCalledWith("diff");
+    });
+    it("puts active view tools outside the tab strip", () => {
+        let { getByRole } = render(PanelTabsHarness);
+        let tabs = getByRole("tablist");
+        let tools = getByRole("button", { name: "Wrap lines" });
+        expect(tabs.closest("[data-panel-bar]")?.contains(tools)).toBe(false);
+        expect(tools.closest("[data-panel-toolbar]")).not.toBeNull();
+        expect(tools.closest("[data-panel-toolbar]")!.previousElementSibling).toBe(tabs.closest("[data-panel-bar]"));
+    });
+    it("keeps a single title and its tools outside tab semantics", () => {
+        let { getByRole, queryByRole } = render(PanelTabsHarness, { items: items.slice(0, 1) });
+        expect(queryByRole("tablist")).toBeNull();
+        expect(getByRole("heading", { name: "Diff" }).parentElement?.contains(getByRole("button", { name: "Wrap lines" }))).toBe(true);
+    });
+
 });
