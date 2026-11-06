@@ -1,0 +1,12 @@
+# Workspace interaction guidelines
+
+Preserve the quiet neutral surfaces, fine rules, IBM Plex interface text and JetBrains Mono code of the [design sweep](ui-design-sweep.md). Stronger feedback belongs to an interaction, selection or focus state.
+
+- Dropdown fills composite the current theme's `text` color over their actual surface. Use `interaction-hover` (10%), `interaction-pressed` (16%), `interaction-selected` (14%), `interaction-selected-hover` (22%) and `interaction-selected-pressed` (26%). Keep label opacity at 1; highlighted secondary labels use `text`. Disabled items do not acquire hover or pressed fills. Keyboard focus retains the shared focus ring.
+- A single view has a plain title and, where docking is available, a quiet grip. Tabs represent multiple views sharing one content area. Keep statistics and tools outside the tab strip, in the active view's fixed toolbar. Single-view controls can share the title row where space permits. See the [header review](../design/reviews/view-headers.md).
+- All unmodified diff blocks use the same fold control, with the chevron inside its surface. Opening a block leaves its collapse control above the revealed lines. Preserve the clicked row's viewport position and keyboard focus. Display expansion must not alter mutation hunk boundaries. See [folding behavior and dependency constraints](../DIFF-FOLDING.md).
+- The workspace identity opens repository navigation: repository actions, named workspaces and recent locations. Use a path form in web mode and native repository commands in desktop mode. Restore trigger focus on dismissal and reject obsolete query results.
+- Settings opens from the gear above the navigation collapse control, or from the bottom of the mobile navigation drawer. It is a dockable view independent of revision loading. Theme choices persist; native app zoom keeps its existing controller and shortcuts. Web mode explains browser zoom. Repository protection remains unavailable while a mutation is running.
+- Removing the top-right overflow menu must keep remote selection, Fetch, Push, Undo, Redo, Refresh and Commands reachable. Narrow layouts wrap these actions and retain 44px targets.
+
+The component suite and disposable-repository browser checks verify the combined implementation. Dedicated folding scenarios use only in-memory files. Visual review covers both themes and 320, 390, 768 and 1440px layouts; native operating-system dialogs and webview-specific rendering need their own environment checks.

@@ -96,7 +96,7 @@ describe("self-hosted development checkout", () => {
         for (let cycle = 0; cycle < 2; cycle++) {
             await expect.poll(() => ctx.page.locator(".description-panel .revision-id").textContent()).toContain(oldId.change.hex.slice(0, 8));
             await ctx.page.waitForLoadState("networkidle");
-            let tools = ctx.page.getByRole("tab", { name: "Revision tools", exact: true });
+            let tools = ctx.page.locator("#panel-tab-revision-tools");
             if (!(await tools.count())) {
                 await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
                 await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools", exact: true }).click();

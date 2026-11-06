@@ -40,7 +40,7 @@ describe("whole-file diff context", () => {
         expect(await text()).not.toContain("context-line-000");
         await expect.poll(() => ctx.page.locator(".hunk-actions summary").textContent()).toContain("2");
         let toggle = ctx.page.getByRole("button", { name: "Hide unmodified lines", exact: true });
-        let heading = ctx.page.locator(".panel-tabs-bar").filter({ has: ctx.page.getByRole("tab", { name: "Diff", exact: true }) });
+        let heading = ctx.page.locator(".panel-view-top").filter({ has: ctx.page.locator("#panel-tab-diff") });
         let controls = heading.locator(".display-options");
         async function expectHeaderControls() {
             let bounds = (await heading.boundingBox())!;
@@ -60,8 +60,9 @@ describe("whole-file diff context", () => {
             expect(await heading.locator(".file-count").textContent()).toContain("file");
         }
         await expectHeaderControls();
-        let timelineHeader = ctx.page.locator(".panel-tabs-bar").filter({ has: ctx.page.getByRole("tab", { name: "Timeline", exact: true }) });
-        expect((await timelineHeader.boundingBox())!.height).toBe((await heading.boundingBox())!.height);
+        let timelineHeader = ctx.page.locator(".panel-view-top").filter({ has: ctx.page.locator("#panel-tab-timeline") });
+        expect(await heading.getByRole("tab").count()).toBe(0);
+        expect(await timelineHeader.getByRole("tab").count()).toBe(0);
         expect(await timelineHeader.getByRole("button", { name: "Tall revisions", exact: true }).count()).toBe(1);
         let timelineFooter = (await ctx.page.locator(".timeline-footer").boundingBox())!;
         let diffFooter = (await ctx.page.locator(".diff-footer").boundingBox())!;
