@@ -165,6 +165,8 @@ pub struct AnnotationThread {
 pub struct AnnotationList {
     /// where the notes are stored, so people can find, back up or delete them
     pub location: String,
+    /// who the app writes as, so it can offer to edit that person's posts
+    pub me: AnnotationAuthor,
     pub threads: Vec<AnnotationThread>,
 }
 

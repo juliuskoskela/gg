@@ -4,56 +4,82 @@
     import ActionWidget from "../controls/ActionWidget.svelte";
     import ToggleTray from "../controls/ToggleTray.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
-    import TextAreaField from "../controls/TextAreaField.svelte";
     import Icon from "../controls/Icon.svelte";
     import { getInput } from "../ipc";
     import { revisionSelectEvent } from "../stores";
     import { workspaceController } from "../workspace/state";
+    import type { AnnotationAnchor } from "../messages/AnnotationAnchor";
+    import type { AnnotationPost } from "../messages/AnnotationPost";
     import type { AnnotationThread } from "../messages/AnnotationThread";
     import Markdown from "./Markdown.svelte";
+    import NoteCheck from "./NoteCheck.svelte";
+    import NoteEditor from "./NoteEditor.svelte";
     import { anchorIcon, anchorLabel } from "./anchors";
-    import { annotationError, annotationList, copyAnnotations, loadAnnotations, openAnnotation, sendAnnotations } from "./store";
+    import { annotationError, annotationList, copyAnnotations, discardDraft, draft, draftFocus, DRAFT, loadAnnotations, openAnnotation, saveDraft, sendAnnotations } from "./store";
 
     export let active: boolean;
 
     let showResolved = false;
     let selected = new Set<string>();
     let reply = "";
+    let editing: { post: string; body: string } | null = null;
     let busy = false;
     let copied = "";
     let copiedTimer: ReturnType<typeof setTimeout> | undefined;
+    let now = Date.now();
 
     $: threads = $annotationList?.threads ?? [];
+    $: me = $annotationList?.me;
     $: visible = threads.filter(thread => showResolved || thread.status === "open");
     $: openCount = threads.filter(thread => thread.status === "open").length;
-    $: current = visible.find(thread => thread.id === $openAnnotation) ?? threads.find(thread => thread.id === $openAnnotation) ?? visible[0] ?? null;
+    $: showingDraft = $openAnnotation === DRAFT && !!$draft;
+    $: current = showingDraft ? null : threads.find(thread => thread.id === $openAnnotation) ?? null;
+    $: detailOpen = showingDraft || !!current;
     // selection only names notes that still exist and are listed
     $: selected = new Set([...selected].filter(id => visible.some(thread => thread.id === id)));
     $: allSelected = visible.length > 0 && selected.size === visible.length;
+    // an edit or reply belongs to the note it was started on
+    $: if (current?.id !== editingFor) { editing = null; reply = ""; editingFor = current?.id; }
+    let editingFor: string | undefined;
 
     // an agent may reply from the command line while the view is open
     let poll: ReturnType<typeof setInterval> | undefined;
     $: {
         clearInterval(poll);
-        poll = active ? setInterval(() => { if (document.visibilityState === "visible" && !busy) loadAnnotations(); }, 3000) : undefined;
+        poll = active ? setInterval(() => { now = Date.now(); if (document.visibilityState === "visible" && !busy) loadAnnotations(); }, 3000) : undefined;
         if (active) loadAnnotations();
     }
     onDestroy(() => { clearInterval(poll); clearTimeout(copiedTimer); });
 
     // a plain-text title: markdown syntax would be noise in a one-line list
-    function firstLine(thread: AnnotationThread) {
-        let line = thread.posts[0]?.body.split("\n").find(text => text.trim()) ?? "";
+    function plain(body: string) {
+        let line = body.split("\n").find(text => text.trim()) ?? "";
         return line.replace(/^\s*(#+|[-*+]|\d+\.|>)\s+/, "").replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/(\*\*|__|\*|_|`)(.+?)\1/g, "$2").trim();
     }
 
-    let relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-    function age(timestamp: string, now = Date.now()) {
-        let seconds = Math.max(0, (now - new Date(timestamp).getTime()) / 1000);
-        if (seconds < 60) return "just now";
+    let relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "short" });
+    function age(timestamp: string, reference: number) {
+        let seconds = Math.max(0, (reference - new Date(timestamp).getTime()) / 1000);
         for (let [unit, size] of [["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60]] as const) {
             if (seconds >= size) return relative.format(-Math.floor(seconds / size), unit);
         }
         return "just now";
+    }
+
+    function mine(post: AnnotationPost) {
+        return !!me && post.author.name === me.name && post.author.kind === me.kind;
+    }
+
+    function ids(anchor: AnnotationAnchor) {
+        return { change: anchor.change_id.slice(0, 12), commit: anchor.commit_id.slice(0, 12) };
+    }
+
+    function toggleOpen(id: string) {
+        openAnnotation.set($openAnnotation === id ? null : id);
+    }
+
+    function close() {
+        openAnnotation.set(null);
     }
 
     function toggle(id: string) {
@@ -66,10 +92,10 @@
         selected = allSelected ? new Set() : new Set(visible.map(thread => thread.id));
     }
 
-    async function copy(ids: string[], label: string) {
+    async function copy(ids: string[]) {
         if (!ids.length) return;
         if (await copyAnnotations(ids)) {
-            copied = label;
+            copied = ids.length === 1 ? "Copied 1 note" : `Copied ${ids.length} notes`;
             clearTimeout(copiedTimer);
             copiedTimer = setTimeout(() => copied = "", 2400);
         }
@@ -88,6 +114,25 @@
         if (await run(() => sendAnnotations({ type: "Reply", id, body: reply }))) reply = "";
     }
 
+    async function saveEdit() {
+        if (!current || !editing?.body.trim() || busy) return;
+        let { post, body } = editing, id = current.id;
+        if (await run(() => sendAnnotations({ type: "Edit", id, post, body }))) editing = null;
+    }
+
+    async function save() {
+        if (busy) return;
+        await run(saveDraft);
+    }
+
+    async function discard() {
+        if ($draft?.body.trim()) {
+            let answer = await getInput("Discard this note?", "The text you wrote will be lost.", [{ label: "Note", choices: ["Keep editing", "Discard"] }]);
+            if (answer?.Note !== "Discard") return;
+        }
+        discardDraft();
+    }
+
     function setStatus(thread: AnnotationThread) {
         run(() => sendAnnotations({ type: "SetStatus", id: thread.id, status: thread.status === "open" ? "resolved" : "open" }));
     }
@@ -98,7 +143,7 @@
         if (answer?.Delete !== "Delete") return;
         if (await run(() => sendAnnotations({ type: "Delete", ids }))) {
             selected = new Set();
-            if ($openAnnotation && ids.includes($openAnnotation)) openAnnotation.set(null);
+            if ($openAnnotation && ids.includes($openAnnotation)) close();
         }
     }
 
@@ -121,95 +166,142 @@
         return "The change has been rewritten since this note was written.";
     }
 
-    function replyKey(event: KeyboardEvent) {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); sendReply(); }
+    function keydown(event: KeyboardEvent) {
+        if (event.key === "Escape" && detailOpen && !event.defaultPrevented) { event.preventDefault(); close(); }
     }
 </script>
 
+{#snippet where(anchor: AnnotationAnchor, subject: string)}
+    <div class="where">
+        <p class="target"><Icon name={anchorIcon(anchor)} /><span class="anchor">{anchorLabel(anchor)}</span></p>
+        <p class="facts">{#if subject}<span class="subject">{subject}</span>{/if}<span>change <code>{ids(anchor).change}</code></span><span>commit <code>{ids(anchor).commit}</code></span></p>
+    </div>
+{/snippet}
+
 <ViewToolbar label="Annotations tools">
-    <span class="summary">{openCount} open</span>
+    {#if visible.length}<NoteCheck checked={allSelected} indeterminate={selected.size > 0 && !allSelected} label="Select all notes" onChange={toggleAll} />{/if}
+    <span class="summary">{selected.size ? `${selected.size} selected` : `${openCount} open`}</span>
     <ToggleTray label="Show notes">
         <ToggleItem text="Open" on={!showResolved} onClick={() => showResolved = false} />
         <ToggleItem text="All" on={showResolved} onClick={() => showResolved = true} />
     </ToggleTray>
     <span class="toolbar-spacer actions">
         {#if copied}<span class="copied" role="status">{copied}</span>{/if}
-        <ActionWidget safe disabled={!selected.size} onClick={() => copy([...selected], selected.size === 1 ? "Copied 1 note" : `Copied ${selected.size} notes`)}><Icon name="clipboard" />Copy{selected.size ? ` ${selected.size}` : ""}</ActionWidget>
-        <ActionWidget safe disabled={!selected.size || busy} onClick={() => remove([...selected])}><Icon name="trash-2" />Delete</ActionWidget>
+        <!-- actions on a selection appear with it, so the resting toolbar shows only what applies -->
+        {#if selected.size}
+            <ActionWidget safe onClick={() => copy([...selected])}><Icon name="clipboard" />Copy selected</ActionWidget>
+            <ActionWidget safe disabled={busy} onClick={() => remove([...selected])}><Icon name="trash-2" />Delete selected</ActionWidget>
+        {/if}
     </span>
 </ViewToolbar>
 
-<section class="annotations" aria-label="Annotations">
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape closes the open note from anywhere in the view) -->
+<section class="annotations" aria-label="Annotations" on:keydown={keydown}>
     {#if $annotationError}<p class="error" role="alert">{$annotationError}</p>{/if}
-    {#if !visible.length}
+    {#if !visible.length && !$draft}
         <div class="empty">
             <Icon name="message-square" />
             <h3>{threads.length ? "No open notes" : "No notes yet"}</h3>
-            <p>Right-click a change, bookmark, file or diff hunk and choose Annotate. Notes stay on this computer until you copy them.</p>
+            <p>Right-click a change, bookmark, file or diff line and choose Annotate. Notes stay on this computer until you copy them.</p>
             {#if threads.length}<button type="button" class="link" on:click={() => showResolved = true}>Show resolved notes</button>{/if}
         </div>
     {:else}
-        <div class="layout">
+        <div class="layout" class:open={detailOpen}>
             <div class="index">
-                <label class="select-all"><input type="checkbox" checked={allSelected} indeterminate={selected.size > 0 && !allSelected} on:change={toggleAll} />Select all</label>
-                <ul class="rows" aria-label="Notes">
+                <ul class="rows" class:selecting={selected.size > 0} aria-label="Notes">
+                    {#if $draft}
+                        <li class="row draft" class:current={showingDraft}>
+                            <span class="check-slot"></span>
+                            <button type="button" aria-expanded={showingDraft} aria-controls="annotation-detail" on:click={() => showingDraft ? close() : openAnnotation.set(DRAFT)}>
+                                <span class="row-title">{plain($draft.body) || "Unsaved note"}</span>
+                                <span class="row-meta"><span class="draft-tag"><Icon name="edit-3" />Draft</span><span class="anchor">{anchorLabel($draft.anchor)}</span></span>
+                            </button>
+                        </li>
+                    {/if}
                     {#each visible as thread (thread.id)}
-                        <li class="row" class:current={thread.id === current?.id} class:resolved={thread.status === "resolved"}>
-                            <input type="checkbox" aria-label="Select note: {firstLine(thread)}" checked={selected.has(thread.id)} on:change={() => toggle(thread.id)} />
-                            <button type="button" aria-current={thread.id === current?.id ? "true" : undefined} on:click={() => openAnnotation.set(thread.id)}>
-                                <span class="row-title">{firstLine(thread)}</span>
+                        <li class="row" class:current={thread.id === current?.id} class:checked={selected.has(thread.id)} class:resolved={thread.status === "resolved"}>
+                            <span class="check-slot"><NoteCheck checked={selected.has(thread.id)} label="Select note: {plain(thread.posts[0]?.body ?? "")}" onChange={() => toggle(thread.id)} /></span>
+                            <button type="button" aria-expanded={thread.id === current?.id} aria-controls="annotation-detail" on:click={() => toggleOpen(thread.id)}>
+                                <span class="row-title">{plain(thread.posts[0]?.body ?? "")}</span>
                                 <span class="row-meta">
                                     <Icon name={anchorIcon(thread.anchor)} /><span class="anchor">{anchorLabel(thread.anchor)}</span>
-                                    {#if thread.posts.length > 1}<span class="replies"><Icon name="corner-down-right" />{thread.posts.length - 1}</span>{/if}
+                                    {#if thread.posts.length > 1}<span class="replies" title="{thread.posts.length - 1} {thread.posts.length === 2 ? 'reply' : 'replies'}"><Icon name="corner-down-right" />{thread.posts.length - 1}</span>{/if}
                                     {#if thread.state.type === "rewritten" || thread.state.type === "missing"}<span class="outdated" title={stateNote(thread)}>Outdated</span>{/if}
                                     {#if thread.status === "resolved"}<span>Resolved</span>{/if}
+                                    <time class="row-age" datetime={thread.updated_at}>{age(thread.updated_at, now)}</time>
                                 </span>
                             </button>
                         </li>
                     {/each}
                 </ul>
-                {#if $annotationList}<p class="location" title={$annotationList.location}>Stored in {$annotationList.location}</p>{/if}
+                {#if $annotationList}<p class="location" title={$annotationList.location}>Stored on this computer in {$annotationList.location}</p>{/if}
             </div>
 
-            <!-- svelte-ignore a11y_no_noninteractive_tabindex (the thread scrolls independently) -->
-            <article class="detail" tabindex="0" aria-label="Note">
-                {#if current}
-                    <header class="detail-header">
-                        <p class="target"><Icon name={anchorIcon(current.anchor)} /><span class="anchor">{anchorLabel(current.anchor)}</span></p>
-                        {#if current.subject}<p class="subject">{current.subject}</p>{/if}
-                        <p class="ids">change <code>{current.anchor.change_id.slice(0, 12)}</code> · commit <code>{current.anchor.commit_id.slice(0, 12)}</code> · {current.workspace || "workspace"}</p>
+            {#if detailOpen}
+                <article class="detail" id="annotation-detail" aria-label={showingDraft ? "New note" : "Note"}>
+                    {#if showingDraft && $draft}
+                        <header class="detail-header">
+                            {@render where($draft.anchor, $draft.subject)}
+                            <button type="button" class="close" aria-label="Close draft" title="Close (the draft is kept)" on:click={close}><Icon name="x" /></button>
+                        </header>
+                        {#if $draft.anchor.kind === "lines" && $draft.anchor.quote}<pre class="quote" aria-label="Annotated code">{$draft.anchor.quote}</pre>{/if}
+                        <div class="compose">
+                            <NoteEditor bind:value={$draft.body} label="Note" rows={8} placeholder="What did you notice?" focusKey={$draftFocus} onSubmit={save} />
+                            <div class="compose-actions">
+                                <span class="hint">Saved on this computer only. You can keep browsing while you write.</span>
+                                <ActionWidget safe secondary disabled={busy} onClick={discard}>Discard</ActionWidget>
+                                <ActionWidget safe primary disabled={!$draft.body.trim() || busy} onClick={save}>Save note</ActionWidget>
+                            </div>
+                        </div>
+                    {:else if current}
+                        <header class="detail-header">
+                            {@render where(current.anchor, current.subject)}
+                            <button type="button" class="close" aria-label="Close note" title="Close" on:click={close}><Icon name="x" /></button>
+                        </header>
                         <div class="detail-actions">
                             <ActionWidget safe secondary disabled={current.state.type === "missing"} onClick={() => current && showTarget(current)}><Icon name="crosshair" />Show change</ActionWidget>
-                            <ActionWidget safe secondary onClick={() => current && copy([current.id], "Copied note")}><Icon name="clipboard" />Copy</ActionWidget>
+                            <ActionWidget safe secondary onClick={() => current && copy([current.id])}><Icon name="clipboard" />Copy</ActionWidget>
                             <ActionWidget safe secondary disabled={busy} onClick={() => current && setStatus(current)}><Icon name={current.status === "open" ? "check" : "rotate-ccw"} />{current.status === "open" ? "Resolve" : "Reopen"}</ActionWidget>
                             <ActionWidget safe secondary tip="Delete note" disabled={busy} onClick={() => current && remove([current.id])}><Icon name="trash-2" /></ActionWidget>
                         </div>
-                    </header>
-                    {#if stateNote(current)}<p class="state" role="note"><Icon name="alert-circle" />{stateNote(current)}</p>{/if}
-                    {#if current.anchor.kind === "lines" && current.anchor.quote}<pre class="quote">{current.anchor.quote}</pre>{/if}
-                    <ol class="posts" aria-label="Thread">
-                        {#each current.posts as post (post.id)}
-                            <li class="post">
-                                <p class="byline"><span class="author">{post.author.name}</span>{#if post.author.kind === "agent"}<span class="agent">Agent</span>{/if}<time datetime={post.created_at} title={new Date(post.created_at).toLocaleString()}>{age(post.created_at)}</time>{#if post.edited_at}<span>edited</span>{/if}</p>
-                                <Markdown source={post.body} />
-                            </li>
-                        {/each}
-                    </ol>
-                    <div class="reply">
-                        <TextAreaField bind:value={reply} label="Reply" rows={3} placeholder="Reply…" on:keydown={replyKey} />
-                        <div class="reply-actions">
-                            <span class="hint">Agents can reply with <code>gg annotations reply {current.id.slice(0, 8)}</code></span>
-                            <ActionWidget safe primary disabled={!reply.trim() || busy} onClick={sendReply}>Reply</ActionWidget>
+                        {#if stateNote(current)}<p class="state" role="note"><Icon name="alert-circle" />{stateNote(current)}</p>{/if}
+                        {#if current.anchor.kind === "lines" && current.anchor.quote}<pre class="quote" aria-label="Annotated code">{current.anchor.quote}</pre>{/if}
+                        <ol class="posts" aria-label="Thread">
+                            {#each current.posts as post (post.id)}
+                                <li class="post" class:editing={editing?.post === post.id}>
+                                    <p class="byline">
+                                        <span class="author">{post.author.name}</span>{#if post.author.kind === "agent"}<span class="agent">Agent</span>{/if}
+                                        <time datetime={post.created_at} title={new Date(post.created_at).toLocaleString()}>{age(post.created_at, now)}</time>{#if post.edited_at}<span title={new Date(post.edited_at).toLocaleString()}>edited</span>{/if}
+                                        {#if mine(post) && editing?.post !== post.id}<button type="button" class="post-edit" on:click={() => editing = { post: post.id, body: post.body }}>Edit</button>{/if}
+                                    </p>
+                                    {#if editing?.post === post.id}
+                                        <NoteEditor bind:value={editing.body} label="Edit note" rows={5} focusKey={post.id} onSubmit={saveEdit} onCancel={() => editing = null} />
+                                        <div class="compose-actions">
+                                            <ActionWidget safe secondary onClick={() => editing = null}>Cancel</ActionWidget>
+                                            <ActionWidget safe primary disabled={!editing.body.trim() || editing.body === post.body || busy} onClick={saveEdit}>Save</ActionWidget>
+                                        </div>
+                                    {:else}
+                                        <Markdown source={post.body} />
+                                    {/if}
+                                </li>
+                            {/each}
+                        </ol>
+                        <div class="reply">
+                            <NoteEditor bind:value={reply} label="Reply" rows={3} placeholder="Reply…" onSubmit={sendReply} />
+                            <div class="compose-actions">
+                                <span class="hint">Agents can reply with <code>gg annotations reply {current.id.slice(0, 8)}</code></span>
+                                <ActionWidget safe primary disabled={!reply.trim() || busy} onClick={sendReply}>Reply</ActionWidget>
+                            </div>
                         </div>
-                    </div>
-                {/if}
-            </article>
+                    {/if}
+                </article>
+            {/if}
         </div>
     {/if}
 </section>
 
 <style>
-    .summary { color: var(--muted); font-size: var(--type-caption); }
+    .summary { color: var(--muted); font-size: var(--type-caption); font-variant-numeric: tabular-nums; }
     .actions { display: inline-flex; align-items: center; gap: 2px; }
     .copied { margin-inline-end: 8px; color: var(--muted); font-size: var(--type-caption); }
     .annotations { container: annotations / inline-size; display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; background: var(--surface); color: var(--text); font-size: var(--type-ui); }
@@ -218,53 +310,84 @@
     .empty > :global(svg) { --icon-size: 20px; }
     .empty h3 { margin: 0; color: var(--text); font-size: var(--type-body); font-weight: 500; }
     .empty p { margin: 0; line-height: 1.6; }
-    .link { padding: 4px 8px; border: 0; background: none; color: var(--accent); cursor: pointer; }
-    .layout { display: grid; grid-template-columns: minmax(220px, 36%) minmax(0, 1fr); flex: 1; min-height: 0; }
-    .index { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; border-inline-end: 1px solid var(--rule); }
-    .select-all { display: flex; align-items: center; gap: 8px; padding: 4px 6px 6px; color: var(--muted); font-size: var(--type-caption); }
-    .rows { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-    .row { display: flex; align-items: flex-start; gap: 2px; border-radius: var(--radius-control); }
-    .row > input { flex: none; margin: 12px 4px 0 6px; }
-    .row > button { display: grid; flex: 1; gap: 4px; min-width: 0; padding: 8px 8px 8px 4px; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; text-align: start; cursor: pointer; }
+    .link { padding: 4px 8px; border: 0; background: none; color: var(--text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 0; }
+    .layout.open { grid-template-columns: minmax(240px, 34%) minmax(0, 1fr); }
+    .index { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 4px 0; }
+    .layout.open .index { border-inline-end: 1px solid var(--rule); }
+
+    .rows { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+    .row { position: relative; display: flex; align-items: flex-start; border-radius: var(--radius-control); }
+    .check-slot { display: grid; place-items: center; flex: none; width: 28px; height: 38px; }
+    /* checks appear where they can be used: on hover or focus, and everywhere once a selection exists */
+    @media (hover: hover) and (pointer: fine) {
+        .check-slot { opacity: 0; }
+        .row:hover .check-slot, .row:focus-within .check-slot, .rows.selecting .check-slot { opacity: 1; }
+    }
+    .row > button { display: grid; flex: 1; gap: 3px; min-width: 0; padding: 7px 10px 7px 0; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; text-align: start; cursor: pointer; }
     .row.current { background: var(--interaction-selected); }
+    .row.checked:not(.current) { background: var(--interaction-hover); }
     .row.current .row-title { font-weight: 500; }
     .row.resolved .row-title { color: var(--muted); }
-    .row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row.draft .row-title { font-style: italic; }
+    .row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px; }
     .row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: var(--type-caption); --icon-size: 12px; }
+    .row-meta > :global(svg) { flex: none; }
     .anchor { min-width: 0; overflow: hidden; font-family: var(--stack-code); text-overflow: ellipsis; white-space: nowrap; }
-    .replies { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+    .replies, .draft-tag { display: inline-flex; flex: none; align-items: center; gap: 3px; }
+    .draft-tag { color: var(--text); }
     .outdated { flex: none; color: var(--warning); }
-    .location { margin: auto 0 0; padding: 12px 6px 4px; overflow: hidden; color: var(--muted); font-size: var(--type-caption); text-overflow: ellipsis; white-space: nowrap; }
-    .detail { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 14px var(--panel-inset) 24px; }
-    .detail:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
-    .detail-header { display: grid; gap: 2px; padding-block-end: 10px; border-block-end: 1px solid var(--rule); }
-    .detail-header > p { margin: 0; min-width: 0; }
-    .target { display: flex; align-items: center; gap: 8px; font-size: var(--type-body); font-weight: 500; overflow-wrap: anywhere; --icon-size: 14px; }
-    .target > :global(svg) { flex: none; }
-    .target .anchor { font-size: var(--type-code); }
-    .subject { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
-    .ids { overflow: hidden; color: var(--muted); font-size: var(--type-caption); text-overflow: ellipsis; white-space: nowrap; }
-    .ids code { font: var(--type-caption)/1 var(--stack-code); color: var(--text); }
-    .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 8px 0 0 -8px; }
+    .row-age { flex: none; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+    .location { margin: auto 0 0; padding: 14px 10px 10px; overflow: hidden; color: var(--muted); font-size: var(--type-caption); text-overflow: ellipsis; white-space: nowrap; }
+
+    .detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px var(--panel-inset) 24px; }
+    .detail-header { display: flex; align-items: flex-start; gap: 8px; }
+    .where { display: grid; flex: 1; gap: 2px; min-width: 0; }
+    .where p { margin: 0; min-width: 0; }
+    .target { display: flex; align-items: center; gap: 8px; font-weight: 500; overflow-wrap: anywhere; --icon-size: 14px; }
+    .target > :global(svg) { flex: none; color: var(--muted); }
+    .target .anchor { font-size: var(--type-code); white-space: normal; }
+    .facts { display: flex; flex-wrap: wrap; gap: 0 12px; color: var(--muted); font-size: var(--type-caption); }
+    .facts code { font: var(--type-caption)/1.4 var(--stack-code); color: var(--text); }
+    .subject { flex-basis: 100%; overflow: hidden; color: var(--text); font-size: var(--type-ui); text-overflow: ellipsis; white-space: nowrap; }
+    .close { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin: -4px -6px 0 0; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
+    @media (hover: hover) { .close:hover { background: var(--interaction-hover); color: var(--text); } }
+    .close:focus-visible, .post-edit:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
+    .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 8px 0 0 -8px; padding-block-end: 10px; border-block-end: 1px solid var(--rule); }
     .state { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--warning); --icon-size: 14px; }
     .quote { max-height: 200px; margin: 12px 0 0; padding: 8px 10px; overflow: auto; border-radius: var(--radius-control); background: var(--diff-buffer); font: var(--type-code)/var(--code-leading) var(--stack-code); white-space: pre; }
-    .posts { display: grid; gap: 18px; margin: 16px 0 0; padding: 0; list-style: none; }
-    .byline { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; color: var(--muted); font-size: var(--type-caption); }
+
+    .posts { display: grid; gap: 20px; margin: 16px 0 0; padding: 0; list-style: none; }
+    .byline { display: flex; align-items: baseline; gap: 8px; min-height: 24px; margin: 0 0 4px; color: var(--muted); font-size: var(--type-caption); }
     .author { color: var(--text); font-size: var(--type-ui); font-weight: 500; }
-    .agent { padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
-    .reply { display: grid; gap: 8px; margin-top: 20px; padding-top: 14px; border-block-start: 1px solid var(--rule); }
-    .reply-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .hint { min-width: 0; color: var(--muted); font-size: var(--type-caption); }
+    .agent { padding: 0 5px; border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 16px; }
+    .post-edit { margin-inline-start: auto; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+    @media (hover: hover) and (pointer: fine) {
+        .post-edit { opacity: 0; }
+        .post:hover .post-edit, .post:focus-within .post-edit { opacity: 1; }
+        .post-edit:hover { background: var(--interaction-hover); color: var(--text); }
+    }
+
+    .compose { display: grid; gap: 10px; margin-top: 14px; }
+    .reply { display: grid; gap: 8px; margin-top: 24px; }
+    .post.editing { display: grid; gap: 8px; }
+    .compose-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+    .hint { flex: 1; min-width: 0; color: var(--muted); font-size: var(--type-caption); }
     .hint code { font: var(--type-caption)/1 var(--stack-code); }
+
     @container annotations (max-width: 620px) {
-        .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(120px, 40%) minmax(0, 1fr); }
-        .index { border-inline-end: 0; border-block-end: 1px solid var(--rule); }
+        /* too narrow for two columns: the open note takes the whole view */
+        .layout.open { grid-template-columns: minmax(0, 1fr); }
+        .layout.open .index { display: none; }
         .hint { display: none; }
     }
-    @media (hover: hover) { .row:not(.current):hover { background: var(--interaction-hover); } }
+    @media (hover: hover) { .row:not(.current):not(.checked):hover { background: var(--interaction-hover); } }
     .row > button:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
     @media (pointer: coarse), (max-width: 600px) {
         .row > button { min-height: 44px; }
-        .row > input, .select-all > input { width: 22px; height: 22px; margin: 11px 6px; }
+        .check-slot { width: 40px; height: 48px; }
+        .close { width: 44px; height: 44px; }
+        .post-edit { min-height: 36px; }
     }
 </style>

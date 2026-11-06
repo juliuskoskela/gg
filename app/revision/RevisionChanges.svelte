@@ -14,7 +14,7 @@
     import DiffTools from "./DiffTools.svelte";
     import Icon from "../controls/Icon.svelte";
     import { linesAnchor, MAX_LINES, subjectOf } from "../annotations/anchors";
-    import { lineMenu, openComposer } from "../annotations/store";
+    import { lineMenu, startDraft } from "../annotations/store";
     import { navigateOptions } from "../controls/optionNavigation";
 
     export let focused = false;
@@ -75,7 +75,7 @@
             id: "annotate-lines", label, icon: "message-square", scope: "Annotation", reason,
             execute: async () => {
                 if (!header || !file) return;
-                openComposer({ anchor: await linesAnchor(header, file, range.side, range.start, range.end, loadFullFiles), subject: subjectOf(header) });
+                startDraft({ anchor: await linesAnchor(header, file, range.side, range.start, range.end, loadFullFiles), subject: subjectOf(header) });
             },
         }] });
     }

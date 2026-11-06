@@ -1,5 +1,6 @@
 import { derived, get, writable } from "svelte/store";
-import { annotate } from "../ipc";
+import { annotate, getInput } from "../ipc";
+import { dock } from "../workspace/dock";
 import type { AnnotationList } from "../messages/AnnotationList";
 import type { AnnotationRequest } from "../messages/AnnotationRequest";
 import type { AnnotationThread } from "../messages/AnnotationThread";
@@ -8,10 +9,32 @@ import type { Command } from "../commands/registry";
 
 export let annotationList = writable<AnnotationList | null>(null);
 export let annotationError = writable("");
-/** the note open in the Annotations view */
+/** the note open in the Annotations view: a note id, the draft, or nothing */
 export let openAnnotation = writable<string | null>(null);
-/** the note being written; null when the composer is closed */
-export let composer = writable<AnchorDraft | null>(null);
+export const DRAFT = "draft";
+
+export type Draft = AnchorDraft & { body: string; startedAt: string };
+const DRAFT_KEY = "gg.annotations.draft";
+
+// a draft is work in progress: it survives switching views and reloading, until saved or discarded
+function restoreDraft(): Draft | null {
+    try {
+        let raw = typeof localStorage === "undefined" ? null : localStorage.getItem(DRAFT_KEY);
+        let value = raw ? JSON.parse(raw) : null;
+        return value && typeof value.body === "string" && value.anchor?.change_id ? value : null;
+    } catch {
+        return null;
+    }
+}
+export let draft = writable<Draft | null>(restoreDraft());
+draft.subscribe(value => {
+    try {
+        if (typeof localStorage === "undefined") return;
+        if (value) localStorage.setItem(DRAFT_KEY, JSON.stringify(value)); else localStorage.removeItem(DRAFT_KEY);
+    } catch { /* the draft stays in memory */ }
+});
+/** increments when the editor should take focus */
+export let draftFocus = writable(0);
 
 export let annotations = derived(annotationList, list => list?.threads ?? []);
 /** open notes per change, for markers in the timeline and file tree */
@@ -44,18 +67,45 @@ export function loadAnnotations() {
     return sendAnnotations({ type: "List" });
 }
 
-export async function createAnnotation(draft: AnchorDraft, body: string): Promise<boolean> {
+export async function saveDraft(): Promise<boolean> {
+    let current = get(draft);
+    if (!current?.body.trim()) return false;
     let before = new Set(get(annotations).map(thread => thread.id));
-    let saved = await sendAnnotations({ type: "Create", anchor: draft.anchor, subject: draft.subject, body });
+    let saved = await sendAnnotations({ type: "Create", anchor: current.anchor, subject: current.subject, body: current.body });
     if (saved) {
-        let created = get(annotations).find(thread => !before.has(thread.id));
-        if (created) openAnnotation.set(created.id);
+        draft.set(null);
+        openAnnotation.set(get(annotations).find(thread => !before.has(thread.id))?.id ?? null);
     }
     return saved;
 }
 
-export function openComposer(draft: AnchorDraft) {
-    composer.set(draft);
+export function discardDraft() {
+    draft.set(null);
+    if (get(openAnnotation) === DRAFT) openAnnotation.set(null);
+}
+
+function sameAnchor(a: AnchorDraft, b: AnchorDraft) {
+    return JSON.stringify(a.anchor) === JSON.stringify(b.anchor);
+}
+
+/** starts a note in the Annotations view, keeping the rest of the app usable while writing */
+export async function startDraft(next: AnchorDraft) {
+    let current = get(draft);
+    if (current && current.body.trim() && !sameAnchor(current, next)) {
+        let answer = await getInput("Replace your unsaved note?", "You have an unsaved note. Starting a new one discards it.", [{ label: "Note", choices: ["Keep editing", "Discard and start new"] }]);
+        if (answer?.Note !== "Discard and start new") {
+            showDraft();
+            return;
+        }
+    }
+    if (!current || !sameAnchor(current, next) || !current.body.trim()) draft.set({ ...next, body: current && sameAnchor(current, next) ? current.body : "", startedAt: new Date().toISOString() });
+    showDraft();
+}
+
+export function showDraft() {
+    openAnnotation.set(DRAFT);
+    dock.open("annotations");
+    draftFocus.update(value => value + 1);
 }
 
 export async function exportAnnotations(ids: string[]): Promise<string | null> {

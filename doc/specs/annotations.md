@@ -6,10 +6,10 @@ Every annotation is the root of a thread. Its first post is the note; later post
 
 ## Using them
 
-- **Annotate.** Right-click a change or bookmark in the timeline, a file in the file tree, a hunk's actions, or a line in the diff, and choose *Annotate…*. Select several lines first to annotate the range. The command palette offers *Annotate change…* for the selected revision. Annotating never touches history, so it works on immutable revisions too.
-- **Write.** Notes are markdown with a live preview. Ctrl/⌘+Enter saves.
-- **Review.** *Views → Annotations* lists notes, newest activity first. Selecting one shows its location, the annotated code for line notes, and the thread. Notes can be replied to, resolved, reopened and deleted.
-- **Copy.** Select notes and choose *Copy* to put markdown on the clipboard: each note's location (change and commit ids, path, lines, revision subject), the quoted code and the thread, plus one line explaining how to reply.
+- **Annotate.** Right-click a change or bookmark in the timeline, a file in the file tree, a hunk's actions, a line in the diff, or the change and commit ids in Description, and choose *Annotate…*. Select several lines first to annotate the range. The command palette offers *Annotate change…* for the selected revision. Annotating never touches history, so it works on immutable revisions too.
+- **Write.** A new note opens as a draft in the Annotations view, not in a dialog, so you can keep browsing revisions, files and diffs while writing. The draft stays at the top of the list until it is saved or discarded, including across reloads. Starting another note while a draft has text asks first. Notes are markdown with a preview; Ctrl/⌘+Enter saves.
+- **Review.** *Views → Annotations* lists notes, newest activity first. Clicking a note opens its location, the annotated code for line notes and the thread beside the list; clicking it again, the close button or Escape closes it. Your own posts can be edited; notes can be replied to, resolved, reopened and deleted.
+- **Copy.** Tick notes, or the check beside the count to select every listed note, and choose *Copy selected* to put markdown on the clipboard: each note's location (change and commit ids, path, lines, revision subject), the quoted code and the thread, plus one line explaining how to reply.
 - **Markers.** Changes and files with open notes show a note marker. Hovering previews the notes; clicking opens them.
 
 ## Agents and the command line
@@ -71,4 +71,4 @@ Note bodies may come from agents or other tools. Markdown is sanitized: no scrip
 
 This is the core layer. A plugin could build forge reviews on it, for example syncing threads with Tangled or GitHub. The plugin would supply what only the forge knows, such as merges and remote comments. It would record that as events and relocations, never by editing notes directly. Review mode (PR #14) predates this layer; moving it onto these anchors and threads is follow-up work.
 
-Not included yet: markers in the diff gutter, editing a post from the app (the store and command line support edits), and creating notes from the command line.
+Not included yet: markers in the diff gutter, editing from the command line, and creating notes from the command line.

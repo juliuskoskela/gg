@@ -42,7 +42,7 @@ describe("annotations", () => {
         let notes = page.getByRole("list", { name: "Notes" });
         await expect.poll(() => notes.locator("li").count()).toBe(1);
         expect(await notes.textContent()).toContain("Why does this rename drop the old path?");
-        expect(await page.getByRole("tab", { name: "Annotations" }).textContent()).toContain("1");
+        await expect.poll(() => page.getByRole("tab", { name: "Annotations" }).textContent()).toContain("1");
 
         // the note lives outside the repository, keyed by jj's repository id
         let repos = readdirSync(join(ctx.dataDir, "repos"));
@@ -59,8 +59,8 @@ describe("annotations", () => {
         expect(await page.getByText("Agent", { exact: true }).count()).toBe(1);
         await page.screenshot({ path: "e2e/results/annotations/thread-1440.png" });
 
-        await page.getByRole("checkbox", { name: "Select all" }).check();
-        await page.getByRole("button", { name: "Copy 1" }).click();
+        await page.getByRole("checkbox", { name: "Select all notes" }).check();
+        await page.getByRole("button", { name: "Copy selected" }).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("gg annotations reply");
         let copied = await page.evaluate(() => navigator.clipboard.readText());
         expect(copied).toContain("Why does this rename **drop** the old path?");

@@ -63,9 +63,12 @@ describe("annotation markdown", () => {
 describe("annotations view", () => {
     let calls: { cmd: string; args: any }[];
     let list: AnnotationList;
-    beforeEach(() => {
+    beforeEach(async () => {
+        let { openAnnotation, draft } = await import("./store");
+        openAnnotation.set(null);
+        draft.set(null);
         calls = [];
-        list = { location: "/data/gg/repos/abc", threads: [thread(), thread({ id: "8cabc639bbbb", status: "open", posts: [...thread().posts, { id: "p2", author: { name: "claude", kind: "agent" }, created_at: new Date().toISOString(), body: "Because." }] })] };
+        list = { location: "/data/gg/repos/abc", me: { name: "Ada", kind: "human" }, threads: [thread(), thread({ id: "8cabc639bbbb", status: "open", posts: [...thread().posts, { id: "p2", author: { name: "claude", kind: "agent" }, created_at: new Date().toISOString(), body: "Because." }] })] };
         setupMocks((cmd, args) => {
             calls.push({ cmd, args });
             if (cmd === "annotations") return list;
@@ -83,8 +86,8 @@ describe("annotations view", () => {
         await fireEvent.click(view.getByRole("list", { name: "Notes" }).querySelectorAll("li button")[1]);
         await waitFor(() => expect(view.getByText("Agent")).toBeTruthy());
 
-        await fireEvent.click(view.getByRole("checkbox", { name: "Select all" }));
-        await fireEvent.click(view.getByRole("button", { name: "Copy 2" }));
+        await fireEvent.click(view.getByRole("checkbox", { name: "Select all notes" }));
+        await fireEvent.click(view.getByRole("button", { name: "Copy selected" }));
         await waitFor(() => expect(writeText).toHaveBeenCalledWith("## Note"));
         expect(calls.find(call => call.cmd === "export_annotations")?.args.ids).toEqual(["3f2a91c0aaaa", "8cabc639bbbb"]);
 
@@ -94,8 +97,44 @@ describe("annotations view", () => {
         await waitFor(() => expect(calls.some(call => call.cmd === "annotations" && call.args.request.type === "Reply" && call.args.request.body === "Thanks")).toBe(true));
     });
 
+    it("opens and closes a note, and edits only your own posts", async () => {
+        let { default: Panel } = await import("./AnnotationsPanel.svelte");
+        let view = render(Panel, { props: { active: true } });
+        await waitFor(() => expect(view.getByRole("list", { name: "Notes" }).querySelectorAll("li")).toHaveLength(2));
+        expect(view.queryByRole("article")).toBeNull();
+        let row = view.getByRole("list", { name: "Notes" }).querySelectorAll<HTMLButtonElement>("li button")[1];
+        await fireEvent.click(row);
+        await waitFor(() => expect(view.getByRole("article", { name: "Note" })).toBeTruthy());
+        expect(row.getAttribute("aria-expanded")).toBe("true");
+        // Ada wrote the note; the agent's reply isn't hers to edit
+        expect(view.getAllByRole("button", { name: "Edit" })).toHaveLength(1);
+        await fireEvent.click(view.getByRole("button", { name: "Edit" }));
+        await fireEvent.input(view.getByRole("textbox", { name: "Edit note" }), { target: { value: "Why this, exactly?" } });
+        await fireEvent.click(view.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(calls.some(call => call.args?.request?.type === "Edit" && call.args.request.post === "p1" && call.args.request.body === "Why this, exactly?")).toBe(true));
+        await fireEvent.click(row);
+        await waitFor(() => expect(view.queryByRole("article")).toBeNull());
+    });
+
+    it("keeps a draft in the view while the rest of the app stays usable", async () => {
+        let { startDraft, draft } = await import("./store");
+        let { default: Panel } = await import("./AnnotationsPanel.svelte");
+        let view = render(Panel, { props: { active: true } });
+        await startDraft({ anchor: { kind: "file", change_id: id.change.hex, commit_id: id.commit.hex, path: "src/a.ts" }, subject: "rename c.txt" });
+        let editor = await waitFor(() => view.getByRole("textbox", { name: "Note" }));
+        await fireEvent.input(editor, { target: { value: "Check **this** file" } });
+        await fireEvent.click(view.getByRole("button", { name: "Close draft" }));
+        // closing keeps the draft as a row to come back to
+        await waitFor(() => expect(view.getByText("Check this file")).toBeTruthy());
+        await fireEvent.click(view.getByText("Check this file"));
+        await fireEvent.click(await waitFor(() => view.getByRole("button", { name: "Save note" })));
+        await waitFor(() => expect(calls.some(call => call.args?.request?.type === "Create" && call.args.request.body === "Check **this** file" && call.args.request.anchor.path === "src/a.ts")).toBe(true));
+        let { get } = await import("svelte/store");
+        expect(get(draft)).toBeNull();
+    });
+
     it("explains how to start when there are no notes", async () => {
-        list = { location: "/data", threads: [] };
+        list = { location: "/data", me: { name: "Ada", kind: "human" }, threads: [] };
         let { default: Panel } = await import("./AnnotationsPanel.svelte");
         let view = render(Panel, { props: { active: true } });
         await waitFor(() => expect(view.getByText("No notes yet")).toBeTruthy());

@@ -31,8 +31,7 @@
         ignoreToggled,
     } from "./stores.js";
     import ContextMenu from "./controls/ContextMenu.svelte";
-    import AnnotationComposer from "./annotations/AnnotationComposer.svelte";
-    import { composer, lineMenu, loadAnnotations } from "./annotations/store";
+    import { lineMenu, loadAnnotations } from "./annotations/store";
     import Pane from "./shell/Pane.svelte";
     import TitlebarInset from "./shell/TitlebarInset.svelte";
     import Zone from "./objects/Zone.svelte";
@@ -357,12 +356,6 @@
             </ModalOverlay>
         {/if}
 
-
-        {#if $composer}
-            <ModalOverlay>
-                <AnnotationComposer draft={$composer} onClose={() => composer.set(null)} />
-            </ModalOverlay>
-        {/if}
 
         {#if $currentInput}
             <ModalOverlay>

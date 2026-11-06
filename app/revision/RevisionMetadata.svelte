@@ -10,6 +10,8 @@
     import TagObject from "../objects/TagObject.svelte";
     import RevisionObject from "../objects/RevisionObject.svelte";
     import Zone from "../objects/Zone.svelte";
+    import { anchorFor } from "../annotations/anchors";
+    import { copyText, lineMenu, startDraft } from "../annotations/store";
 
     export let revs: Extract<RevsResult, { type: "Detail" }>;
     $: singleton = revs.headers.length === 1;
@@ -20,6 +22,17 @@
     $: references = revs.headers.flatMap(header => header.refs.map(ref => ({ header, ref })));
     $: bookmarks = references.filter(item => item.ref.type !== "Tag");
     $: tags = references.filter(item => item.ref.type === "Tag");
+
+    // ids are where people point when they talk about a revision, so they offer annotating and copying
+    function idMenu(event: MouseEvent, kind: "change" | "commit") {
+        let draft = anchorFor({ type: "Revision", header: newest });
+        let hex = kind === "change" ? newest.id.change.hex : newest.id.commit.hex;
+        event.preventDefault();
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [
+            { id: "annotate", label: "Annotate change…", icon: "message-square", scope: "Annotation", reason: draft ? null : "Select one revision", execute: () => { if (draft) startDraft(draft); } },
+            { id: "copy-id", label: kind === "change" ? "Copy change ID" : "Copy commit ID", icon: "clipboard", scope: "Revision", reason: null, execute: () => { copyText(hex); } },
+        ] });
+    }
 </script>
 
 <div class="revision-metadata">
@@ -28,8 +41,8 @@
         <MetadataRow label={authors.length === 1 ? "Author" : "Authors"}><div class="values authors">{#each authors as author}<AuthorSpan {author} />{/each}</div></MetadataRow>
         <MetadataRow label="Authored"><TimestampSpan timestamp={newest.author.timestamp} /></MetadataRow>
         {#if singleton}
-            <MetadataRow label="Change"><span class="revision-id" title={newest.id.change.hex}><IdSpan selectable id={newest.id.change} /></span></MetadataRow>
-            <MetadataRow label="Commit"><span class="commit-identity" title={newest.id.commit.hex}><IdSpan selectable id={newest.id.commit} /></span></MetadataRow>
+            <MetadataRow label="Change"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="revision-id" title={newest.id.change.hex} on:contextmenu={event => idMenu(event, "change")}><IdSpan selectable id={newest.id.change} /></span></MetadataRow>
+            <MetadataRow label="Commit"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="commit-identity" title={newest.id.commit.hex} on:contextmenu={event => idMenu(event, "commit")}><IdSpan selectable id={newest.id.commit} /></span></MetadataRow>
         {/if}
         {#if bookmarks.length}<MetadataRow label="Bookmarks"><div class="references" aria-label="Revision bookmarks">{#each bookmarks as { header, ref }}{#if ref.type === "LocalBookmark" || ref.type === "RemoteBookmark"}<div class="reference"><BookmarkObject {header} {ref} /><span class="reference-status">{bookmarkStatus(ref)}</span></div>{/if}{/each}</div></MetadataRow>{/if}
         {#if tags.length}<MetadataRow label="Tags"><div class="references" aria-label="Revision tags">{#each tags as { header, ref }}{#if ref.type === "Tag"}<TagObject {header} {ref} />{/if}{/each}</div></MetadataRow>{/if}

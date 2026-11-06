@@ -62,6 +62,7 @@ pub fn handle(ws: &WorkspaceSession, request: AnnotationRequest) -> Result<Annot
     }
     Ok(AnnotationList {
         location: store.location().display().to_string(),
+        me: author(ws),
         threads,
     })
 }
