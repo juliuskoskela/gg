@@ -1,3 +1,5 @@
+import "../global.css";
+import { page, userEvent } from "vitest/browser";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render } from "@testing-library/svelte";
 import { setupMocks, cleanupMocks } from "../mocks";
@@ -43,6 +45,30 @@ describe("ContextMenu (revert)", () => {
 
     afterEach(async () => {
         await cleanupMocks();
+    });
+
+    it("moves one visible highlight between pointer and keyboard without executing an action", async () => {
+        let { default: ContextMenu } = await import("./ContextMenu.svelte");
+        let onClose = vi.fn();
+        let { container } = render(ContextMenu, { props: { operand: { type: "Revision", header: mockHeader }, x: 20, y: 20, onClose } });
+        container.id = "shell";
+        container.className = "dark";
+        let menu = container.querySelector<HTMLElement>('[role="menu"]')!;
+        let items = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+        await expect.poll(() => document.activeElement).toBe(menu);
+        await userEvent.keyboard("{ArrowDown}");
+        expect(document.activeElement).toBe(items[0]);
+        expect(getComputedStyle(items[0]).outlineStyle).toBe("solid");
+        expect(getComputedStyle(items[0]).backgroundColor).not.toBe(getComputedStyle(items[1]).backgroundColor);
+        await page.elementLocator(items[1]).hover();
+        expect(document.activeElement).toBe(items[1]);
+        expect(getComputedStyle(items[0]).backgroundColor).not.toBe(getComputedStyle(items[1]).backgroundColor);
+        await userEvent.keyboard("{ArrowDown}");
+        expect(document.activeElement).toBe(items[2]);
+        expect(mutationCalls).toHaveLength(0);
+        expect(onClose).not.toHaveBeenCalled();
+        await userEvent.keyboard("{Escape}");
+        expect(onClose).toHaveBeenCalledOnce();
     });
 
     it("clicking 'Back out into working copy' calls backout_revisions", async () => {

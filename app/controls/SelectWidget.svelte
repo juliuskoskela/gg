@@ -1,4 +1,4 @@
-<script lang="ts" generics="T extends {value: string, separator?: boolean}">
+<script lang="ts" generics="T extends {value: string, separator?: boolean, disabled?: boolean}">
     import { createEventDispatcher } from "svelte";
     import Icon from "./Icon.svelte";
 
@@ -27,7 +27,7 @@
             {#if option.separator}
                 <hr class="separator" />
             {:else}
-                <option selected={value == option.value} value={option.value}>
+                <option selected={value == option.value} value={option.value} disabled={option.disabled}>
                     <slot {option}>{option.value}</slot>
                 </option>
             {/if}
