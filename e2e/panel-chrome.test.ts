@@ -31,11 +31,11 @@ describe("shared panel chrome", () => {
             let bar = top.querySelector("[data-panel-bar]")!.getBoundingClientRect();
             let toolbar = top.querySelector("[data-panel-toolbar]");
             let tools = toolbar?.getBoundingClientRect();
-            let controls = [...top.querySelectorAll("[data-panel-toolbar] button, .panel-close")].filter(button => !button.closest("[role=tablist]")).map(button => button.getBoundingClientRect());
+            let controls = [...top.querySelectorAll("[data-panel-toolbar] button, .panel-close")].filter(button => !button.closest("[role=tablist]")).map(button => ({ bounds: button.getBoundingClientRect(), close: button.classList.contains("panel-close") }));
             return { tabCount: tabs?.querySelectorAll("[role=tab]").length ?? 0, titleCount: top.querySelectorAll(".panel-title").length,
                 tabsContainTools: !!tabs?.contains(toolbar), toolsTop: tools?.top, barBottom: bar.bottom,
                 single: !!top.querySelector(".panel-titlebar"),
-                controls: controls.map(control => ({ left: control.left, right: control.right, top: control.top, bottom: control.bottom, width: control.width, height: control.height })),
+                controls: controls.map(({ bounds: control, close }) => ({ close, left: control.left, right: control.right, top: control.top, bottom: control.bottom, width: control.width, height: control.height })),
                 rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } };
         }));
         expect(tops.length).toBeGreaterThan(0);
@@ -50,7 +50,8 @@ describe("shared panel chrome", () => {
                 if (top.toolsTop !== undefined) expect(top.toolsTop).toBeLessThan(top.barBottom);
             }
             for (let control of top.controls) {
-                expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 44);
+                if (control.close && width > 600) expect([0, 24]).toContain(Math.round(control.width));
+                else expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 44);
                 expect(control.height).toBe(width > 600 ? 28 : 44);
                 expect(control.left).toBeGreaterThanOrEqual(top.rect.left + 12);
                 if (!top.single || width > 320) expect(control.right).toBeLessThanOrEqual(top.rect.right - 12);
@@ -75,6 +76,8 @@ describe("shared panel chrome", () => {
         await active.waitFor();
         expect(await active.getAttribute("aria-selected")).toBe("true");
         let closeTimeline = ctx.page.getByRole("button", { name: "Close Timeline", exact: true });
+        await ctx.page.locator("#panel-tab-timeline").hover();
+        await expect.poll(async () => (await closeTimeline.boundingBox())!.width).toBe(24);
         let closeBox = (await closeTimeline.boundingBox())!;
         await ctx.page.mouse.move(closeBox.x + closeBox.width / 2, closeBox.y + closeBox.height / 2);
         await ctx.page.mouse.down();
@@ -82,11 +85,13 @@ describe("shared panel chrome", () => {
         expect(await ctx.page.locator(".dock-drag-ghost").count()).toBe(0);
         await ctx.page.mouse.up();
         expect(await ctx.page.locator("#panel-tab-timeline").count()).toBe(1);
+        await ctx.page.locator("#panel-tab-timeline").hover();
         await closeTimeline.click();
         expect(await ctx.page.locator("#panel-tab-timeline").count()).toBe(0);
         expect(await active.getAttribute("aria-selected")).toBe("true");
         expect(await ctx.page.evaluate(() => document.activeElement?.id)).toBe("panel-tab-description");
         expect(await ctx.page.locator(".dock-drag-ghost").count()).toBe(0);
+        await ctx.page.locator("#panel-tab-description").hover();
         await ctx.page.getByRole("button", { name: "Close Description", exact: true }).click();
         expect(await ctx.page.locator("#panel-tab-description").count()).toBe(0);
         expect(await ctx.page.locator("#panel-tab-diff").getAttribute("aria-selected")).toBe("true");

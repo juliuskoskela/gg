@@ -104,6 +104,7 @@ describe("Settings dock and repository actions", () => {
         }
         await settings(width);
         expect(await page.locator("#panel-tab-settings").count()).toBe(1);
+        await page.locator("#panel-tab-settings").hover();
         await page.getByRole("button", { name: "Close Settings", exact: true }).click();
         expect(await page.locator("#panel-tab-settings").count()).toBe(0);
         await settings(width);

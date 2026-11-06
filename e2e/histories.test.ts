@@ -167,26 +167,42 @@ describe("native history inspection", () => {
         expect(errors).toEqual([]);
     });
 
-    it("reveals tab close controls on hover or keyboard focus without moving labels", async () => {
-        await arrange(1440, "dark");
+    it.each(["light", "dark"])("expands the tab pill to reveal its close icon in %s", async theme => {
+        await arrange(1440, theme);
         await ctx.page.evaluate(() => localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, root: { type: "tabs", active: "description", panels: ["description", "history"] }, compactActive: "description" })));
         await ctx.page.reload();
         let close = ctx.page.getByRole("button", { name: "Close History", exact: true });
         let tab = ctx.page.locator("#panel-tab-history");
-        await close.waitFor();
+        await close.waitFor({ state: "attached" });
         await ctx.page.getByRole("button", { name: "Views", exact: true }).focus();
         await ctx.page.mouse.move(0, 0);
         await expect.poll(() => close.evaluate(node => getComputedStyle(node).opacity)).toBe("0");
-        let before = await tab.boundingBox();
+        let pill = tab.locator("..");
+        let before = (await tab.boundingBox())!;
+        let collapsed = (await pill.boundingBox())!;
+        expect(await close.evaluate(node => node.getBoundingClientRect().width)).toBe(0);
+        expect(collapsed.width - before.width).toBe(8);
+        await ctx.page.screenshot({ path: `e2e/results/histories/tab-pill-${theme}-rest.png` });
         await tab.hover();
         await expect.poll(() => close.evaluate(node => getComputedStyle(node).opacity)).toBe("1");
-        expect(await tab.boundingBox()).toEqual(before);
+        await expect.poll(async () => (await close.boundingBox())!.width).toBe(24);
+        await expect.poll(async () => Math.round((await pill.boundingBox())!.width - collapsed.width)).toBe(18);
+        expect((await tab.boundingBox())!.x).toBe(before.x);
+        expect((await tab.boundingBox())!.width).toBe(before.width);
+        await close.hover();
+        expect(await close.evaluate(node => getComputedStyle(node).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+        await ctx.page.screenshot({ path: `e2e/results/histories/tab-pill-${theme}-hover.png` });
         let label = (await tab.locator("span").last().boundingBox())!;
         let icon = (await close.locator("svg").boundingBox())!;
         expect(icon.x - (label.x + label.width)).toBeGreaterThanOrEqual(3);
         expect(icon.x - (label.x + label.width)).toBeLessThanOrEqual(5);
         await ctx.page.mouse.move(0, 0);
+        await expect.poll(async () => Math.round((await pill.boundingBox())!.width)).toBe(Math.round(collapsed.width));
+        await tab.click();
+        await ctx.page.mouse.move(0, 0);
+        await expect.poll(() => close.evaluate(node => getComputedStyle(node).opacity)).toBe("0");
         await tab.focus();
+        await ctx.page.keyboard.press("Tab");
         await expect.poll(() => close.evaluate(node => getComputedStyle(node).opacity)).toBe("1");
         await close.focus();
         await ctx.page.keyboard.press("Enter");
