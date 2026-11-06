@@ -3,8 +3,7 @@
     import type { RepoConfig } from "../messages/RepoConfig";
     import type { RevsResult } from "../messages/RevsResult";
     import type { RevChange } from "../messages/RevChange";
-    import TimelineDisplayOptions from "../timeline/TimelineDisplayOptions.svelte";
-    import DiffTools from "../revision/DiffTools.svelte";
+    import PanelGroup from "../controls/PanelGroup.svelte";
     import PanelTabs from "../controls/PanelTabs.svelte";
     import type { DockNode, Edge, PanelId } from "./dock";
     import { panelLabel } from "./panels";
@@ -64,17 +63,17 @@
     </div>
 {:else}
     <div class="tabs" data-panel-group={node.active}>
-        <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={node.active} draggable
-            onSelect={onFocus} {onClose} {onMove} toolsVisible={node.active === "timeline" || (node.active === "diff" && !!detail)}>
-            <svelte:fragment slot="tools">{#if node.active === "timeline"}<TimelineDisplayOptions />{:else if node.active === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
-        </PanelTabs>
-        <div class="stack">
-            {#each node.panels as id (id)}
-                <div class="panel-body" id="panel-{id}" role={node.panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={node.active !== id} inert={node.active !== id}>
-                    <PanelBody {id} active={node.active === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onSelectFile} />
-                </div>
-            {/each}
-        </div>
+        <PanelGroup>
+            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={node.active} draggable
+                onSelect={onFocus} {onClose} {onMove} />
+            <div class="stack">
+                {#each node.panels as id (id)}
+                    <div class="panel-body" id="panel-{id}" role={node.panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={node.active !== id} inert={node.active !== id}>
+                        <PanelBody {id} active={node.active === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onSelectFile} />
+                    </div>
+                {/each}
+            </div>
+        </PanelGroup>
     </div>
 {/if}
 

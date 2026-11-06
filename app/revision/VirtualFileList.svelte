@@ -11,7 +11,7 @@
     let height = 440;
     let top = 0;
     let previousChanges: RevChange[];
-    let rowHeight = 44;
+    let rowHeight = 24;
     $: if (changes !== previousChanges) { previousChanges = changes; top = 0; if (viewport) viewport.scrollTop = 0; }
     $: start = Math.max(0, Math.floor(top / rowHeight) - 4);
     $: end = Math.min(changes.length, start + Math.ceil(height / rowHeight) + 8);
@@ -48,9 +48,9 @@
 </div>
 
 <style>
-    .virtual-files { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; pointer-events: auto; }
+    .virtual-files { position: relative; flex: 1; margin-inline: var(--panel-inset); min-height: 0; overflow: auto; overscroll-behavior: contain; pointer-events: auto; }
     .file-space { position: relative; }
-    .row-measure { position: absolute; width: 1px; height: max(44px, calc(var(--type-ui) * 1.5 + 14px)); visibility: hidden; pointer-events: none; }
+    .row-measure { position: absolute; width: 1px; height: var(--file-row-height); visibility: hidden; pointer-events: none; }
     .file-row { position: absolute; inset-inline: 0; }
-    .file-row :global(.layout) { height: 100%; min-height: 100%; }
+    .file-row :global(.layout) { height: var(--file-row-height); min-height: var(--file-row-height); }
 </style>

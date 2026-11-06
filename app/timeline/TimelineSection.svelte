@@ -4,14 +4,15 @@
 
     export let element: HTMLDivElement;
     export let showHeader = true;
+    export let showSummary = true;
 </script>
 
 <section class="timeline-panel" inert={$hasModal}>
     {#if showHeader && $$slots.header}
         <header class="timeline-header"><slot name="header" /></header>
     {/if}
-    <div class="timeline-section graph-body" bind:this={element}>
-        <div class="timeline-summary"><slot name="summary" /></div>
+    <div class="timeline-section graph-body" class:unsummarised={!showSummary} bind:this={element}>
+        {#if showSummary}<div class="timeline-summary"><slot name="summary" /></div>{/if}
         <div class="timeline-viewport"><slot /></div>
         <PanelFooter className="timeline-footer"><slot name="footer" /></PanelFooter>
     </div>
@@ -44,6 +45,8 @@
         min-height: 0;
     }
 
+    .timeline-section.unsummarised { grid-template-rows: minmax(0, 1fr) auto; }
+
     .timeline-summary {
         display: grid;
         align-items: center;
@@ -61,6 +64,8 @@
     }
 
     @media (pointer: coarse) {
-        .timeline-summary { min-height: 44px; }
+        .timeline-section.unsummarised { grid-template-rows: minmax(0, 1fr) auto; }
+
+    .timeline-summary { min-height: 44px; }
     }
 </style>

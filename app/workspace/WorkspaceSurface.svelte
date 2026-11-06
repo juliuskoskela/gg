@@ -8,8 +8,7 @@
     import { setCommandOperand } from "../commands/context";
     import { revisionIdentity } from "../revision/data";
     import { changeSelectEvent, repoConfigEvent, repoStatusEvent, revisionReviewState } from "../stores";
-    import TimelineDisplayOptions from "../timeline/TimelineDisplayOptions.svelte";
-    import DiffTools from "../revision/DiffTools.svelte";
+    import PanelGroup from "../controls/PanelGroup.svelte";
     import PanelTabs from "../controls/PanelTabs.svelte";
     import { dock, openPanels, type PanelId } from "./dock";
     import DockFrame from "./DockFrame.svelte";
@@ -90,14 +89,14 @@
             <button type="button" on:click={() => window.dispatchEvent(new Event("gg:open-views"))}>Choose a view</button>
         </div>
     {:else if compact}
-        <PanelTabs items={panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} toolsVisible={$dock.compactActive === "timeline" || ($dock.compactActive === "diff" && !!detail)}>
-            <svelte:fragment slot="tools">{#if $dock.compactActive === "timeline"}<TimelineDisplayOptions />{:else if $dock.compactActive === "diff" && detail}<DiffTools {changes} />{/if}</svelte:fragment>
-        </PanelTabs>
-        {#each panels as id (id)}
-            <div class="panel-body" id="panel-{id}" role={panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={$dock.compactActive !== id} inert={$dock.compactActive !== id}>
-                <PanelBody {id} active={$dock.compactActive === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} onSelectFile={selectFile} />
-            </div>
-        {/each}
+        <PanelGroup>
+            <PanelTabs items={panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} />
+            {#each panels as id (id)}
+                <div class="panel-body" id="panel-{id}" role={panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={$dock.compactActive !== id} inert={$dock.compactActive !== id}>
+                    <PanelBody {id} active={$dock.compactActive === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} onSelectFile={selectFile} />
+                </div>
+            {/each}
+        </PanelGroup>
     {:else}
         <DockFrame node={$dock.root} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} onClose={closePanel} onMove={(id, target, edge) => dock.move(id, target, edge)} onResize={(splitPath, ratio) => dock.resize(splitPath, ratio)} onFocus={id => dock.focus(id)} onSelectFile={selectFile} />
     {/if}

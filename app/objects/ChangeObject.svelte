@@ -69,7 +69,7 @@
     let:context
     let:hint>
     <Zone {operand} let:target>
-        <div class="layout" class:target class:wrap class:deleted={change.kind === "Deleted"}>
+        <div class="layout" class:tree class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
             <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
             {#if change.has_conflict}
@@ -108,6 +108,10 @@
         padding-inline-start: 3px;
     }
 
+    .layout.tree { min-height: var(--file-row-height); padding-block: 2px; }
+    .layout.tree:has(.tool) { padding-block: 0; }
+    .layout.tree .tool :global(button) { min-height: var(--file-row-height); min-width: var(--file-row-height); padding-block: 0; }
+
     .name {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -125,7 +129,7 @@
     .stat.plain span { color: inherit; }
     .tool { display: flex; flex: 0 0 auto; margin-inline-start: auto; }
 
-    @media (pointer: coarse), (max-width: 600px) { .layout { min-height: 44px; } }
+    @media (pointer: coarse), (max-width: 600px) { .layout:not(.tree) { min-height: 44px; } }
     .layout.wrap .name { white-space: normal; overflow-wrap: anywhere; }
 
     .layout.target {

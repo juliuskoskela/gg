@@ -98,10 +98,14 @@
 
 <style>
     .repository-toolbar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--tool-group-gap); padding: 0; background: transparent; border: 0; border-radius: var(--radius-control); box-shadow: none; pointer-events: auto; min-width: 0; }
-    .commands-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); border: 0; border-radius: var(--radius-control); padding: 5px var(--control-padding-inline); background: transparent; color: var(--text); cursor: pointer; }
+    .commands-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); border: 0; border-radius: var(--radius-control); padding: 5px var(--control-padding-inline); background: transparent; color: var(--text); line-height: 20px; cursor: pointer; }
     @media (hover: hover) { .commands-button:hover { background: var(--hover); } }
     .commands-button:active { background: var(--control-pressed); }
-    .sync-actions, .history-actions { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; flex-wrap: nowrap; }
+    /* proximity carries the grouping: related actions touch, groups get the wider gap */
+    .repository-toolbar { gap: 20px; }
+    .sync-actions, .history-actions { display: flex; align-items: center; gap: 2px; min-width: 0; flex-wrap: nowrap; }
+    .remote-select :global(select) { height: var(--control-height); padding-block: 0; }
+    .remote-select :global(.select-trigger) { min-height: 0; height: 100%; padding-block: 0; }
     .remote-select { width: 104px; min-width: 0; }
     .repository-toolbar :global(button:not(.select-trigger)) { font-size: var(--type-ui); max-width: 100%; }
     .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .commands-button { height: var(--control-height); }
@@ -116,6 +120,13 @@
     }
     @media (max-width: 1100px) { .action-label { display: none; } }
     @media (max-width: 600px) {
-        .repository-toolbar { flex: 0 1 auto; gap: var(--panel-gap); justify-content: flex-end; }
+        /* one row of actions; the narrowest screens scroll it rather than stacking a third chrome row */
+        .repository-toolbar { flex: 0 1 auto; flex-wrap: nowrap; gap: 2px; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-inline-start: auto; }
+        .repository-toolbar::-webkit-scrollbar { display: none; }
+        .sync-actions, .history-actions { gap: 0; flex-shrink: 0; }
+        .remote-select { width: 92px; flex-shrink: 0; }
+        .remote-select :global(select) { height: 44px; }
     }
+    /* a faded trailing edge says the row continues */
+    @media (max-width: 380px) { .repository-toolbar { mask-image: linear-gradient(to left, transparent, black 24px); } }
 </style>

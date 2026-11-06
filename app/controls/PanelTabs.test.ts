@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { hiddenToolbars } from "../workspace/toolbars";
+import ToolbarRegistryHarness from "./test/ToolbarRegistryHarness.svelte";
 import PanelTabs from "./PanelTabs.svelte";
 import PanelTabsHarness from "./test/PanelTabsHarness.svelte";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); hiddenToolbars.set(new Set()); });
 
 describe("panel header tabs", () => {
     let items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }];
@@ -55,18 +57,47 @@ describe("panel header tabs", () => {
         await fireEvent.keyDown(title, { key: "Delete" });
         expect(onClose).toHaveBeenCalledWith("diff");
     });
-    it("keeps active view tools on the same bar, outside tab semantics", () => {
+    it("places active view tools below the title, outside tab semantics", () => {
         let { getByRole } = render(PanelTabsHarness);
         let tabs = getByRole("tablist");
         let tools = getByRole("button", { name: "Wrap lines" });
-        expect(tabs.closest("[data-panel-bar]")?.contains(tools)).toBe(true);
+        expect(tabs.closest("[data-panel-bar]")?.contains(tools)).toBe(false);
+        expect(tabs.closest(".panel-view-top")?.contains(tools)).toBe(true);
         expect(tools.closest("[data-panel-toolbar]")).not.toBeNull();
         expect(tabs.contains(tools)).toBe(false);
     });
     it("keeps a single title and its tools outside tab semantics", () => {
         let { getByRole, queryByRole } = render(PanelTabsHarness, { items: items.slice(0, 1) });
         expect(queryByRole("tablist")).toBeNull();
-        expect(getByRole("heading", { name: "Diff" }).closest("[data-panel-bar]")?.contains(getByRole("button", { name: "Wrap lines" }))).toBe(true);
+        expect(getByRole("heading", { name: "Diff" }).closest("[data-panel-bar]")?.contains(getByRole("button", { name: "Wrap lines" }))).toBe(false);
     });
 
+    it("hides controls from keyboard navigation and restores the same toolbar", async () => {
+        let { getByRole, queryByRole } = render(PanelTabsHarness);
+        let toggle = getByRole("button", { name: "Hide Diff toolbar" });
+        expect(toggle.getAttribute("aria-expanded")).toBe("true");
+        let control = getByRole("button", { name: "Wrap lines" });
+        expect(control.closest("[data-panel-toolbar]")?.id).toBe(toggle.getAttribute("aria-controls"));
+        await fireEvent.click(toggle);
+        expect(queryByRole("button", { name: "Wrap lines" })).toBeNull();
+        await fireEvent.click(getByRole("button", { name: "Show Diff toolbar" }));
+        expect(getByRole("button", { name: "Wrap lines" })).toBe(control);
+    });
+    it("hosts reactive extension controls, isolates view visibility and removes stale contributions", async () => {
+        let { getByRole, queryByRole } = render(ToolbarRegistryHarness);
+        let action = getByRole("button", { name: "Count 0" });
+        expect(action.closest("[data-panel-toolbar]")).not.toBeNull();
+        await fireEvent.click(action);
+        expect(getByRole("button", { name: "Count 1" })).toBe(action);
+        await fireEvent.click(getByRole("button", { name: "Hide Plugin toolbar" }));
+        await fireEvent.click(getByRole("tab", { name: "Other" }));
+        expect(getByRole("button", { name: "Other action" })).toBeTruthy();
+        await fireEvent.click(getByRole("tab", { name: "Plugin" }));
+        expect(queryByRole("button", { name: "Count 1" })).toBeNull();
+        await fireEvent.click(getByRole("button", { name: "Show Plugin toolbar" }));
+        expect(getByRole("button", { name: "Count 1" })).toBeTruthy();
+        await fireEvent.click(getByRole("button", { name: "Disable extension" }));
+        expect(queryByRole("button", { name: "Hide Plugin toolbar" })).toBeNull();
+        expect(queryByRole("button", { name: "Count 1" })).toBeNull();
+    });
 });
