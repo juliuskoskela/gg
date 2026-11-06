@@ -31,7 +31,7 @@ describe("repository identity navigation", () => {
         let { findByRole, getByRole, getAllByRole, container } = await mount();
         let identity = await findByRole("button", { name: "Repository navigation: review@cortex" });
         expect(container.querySelectorAll(".place-button")).toHaveLength(1);
-        expect(container.querySelector(".alternate-workspace")?.textContent).toBe("review");
+        expect(container.querySelector(".workspace-name")?.textContent).toBe("review");
         await fireEvent.click(identity);
         expect(getByRole("dialog", { name: "Repository navigation" })).toBeTruthy();
         expect((getByRole("button", { name: "unavailable Path not recorded" }) as HTMLButtonElement).disabled).toBe(true);

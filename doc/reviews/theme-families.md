@@ -25,16 +25,28 @@ Keep IBM Plex Sans for UI and JetBrains Mono for code. Keep existing spacing, ra
 The first plan was checked against the brief: the color choices are tied to the requested references; the existing app layout is preserved. The light family differences are intentionally restrained so all three still feel like Paper.
 
 
+## Color identity and readability
+
+Workspace identity uses one JJ-inspired GG+ blue across all families. The source hue comes from `#309fdf` in [jj's logo](https://github.com/jj-vcs/jj/blob/main/docs/images/jj-logo.svg); this is a GG+ interpretation, not a claim that jj publishes a single official brand token. The shared `--brand` foreground is `#01557f` in Light and `#8dd1ff` in both dark depths. A pressed foreground (`#014e75` / `#aadcff`) supports the stronger overlay in the current-workspace picker. The hue stays blue as its luminance adapts to the surface.
+
+Apply this role to the workspace name before `@`, including `default`, the current workspace name in the picker, workspace badges, working-copy navigation icon, workspace graph stations and their revision prefixes. Conflict red takes priority on conflicted revision text; workspace identity is no longer borrowed from positive green or the family's violet. Workspace names, the `@` badge and concentric station shape preserve meaning without depending on color alone.
+
+Syntax and graph hues are graded in OKLCH for contrast, then stored in the existing hex notation. Strings, keywords, constants and functions have distinct, stronger hues; each family retains its character. Graph stations and revision prefixes use the same text-grade lane token directly. Reference labels use their role directly too. Avoid repeated gray/white mixing: it erased the hue even when the original palette passed contrast. Reference backgrounds stay at 4% tint and their borders remain subtle.
+
+Keep connectors neutral at 20% ink, rules at 7%, and borders at 16%. Greater syntax and station chroma must not make the surrounding grid heavier. Keep neutral selection and a single neutral focus stroke. Brand blue identifies workspace context; it does not recolor panel boundaries or focus rings.
+
 ## Verification
 
 The browser matrix covers all nine variants at 1440, 768, 390 and 320 px, persisted choices, cross-window synchronization, legacy light/dark preferences, and the production component gallery. Palette roles are measured after the browser resolves `light-dark()` and `color-mix()`.
 
-Coverage includes text, status and syntax on content, raised, input and popover surfaces; selection metadata; graph labels; primary-action fills in all states; and neutral focus against selection. Disabled text and decorative rules are excluded from text thresholds. Separators use 7% ink, panel borders 16%, and graph connectors 20%; these stay subordinate to text and nodes. Field focus remains one neutral stroke.
+The expanded contrast checks cover text, status, references and syntax against content, raised, input, popover, selected and hovered surfaces, including addition/deletion lines and word emphasis. The browser also measures rendered text in Settings, repository navigation (rest, hover and pressed), the real syntax highlighter's shadow DOM, revision prefixes and reference badges over composited translucent backgrounds. It checks selected/hovered bookmark, tag and workspace rows. Brand consistency is asserted across families and between the workspace name, graph station, prefix and badge; lane station and prefix colors must match.
+
+Measured text pairs meet 4.5:1; focus meets 3:1. The matrix contains 7,164 token comparisons and over 10,000 rendered text samples. Disabled text and decorative separators are excluded from text thresholds. These are checks of the documented surfaces and states, not a claim of complete application accessibility certification. Contrast results and screenshots are generated under `e2e/results/themes/`.
 
 | Family | Light minimum text contrast | Twilight minimum text contrast | Midnight minimum text contrast |
 | --- | ---: | ---: | ---: |
-| Cold | 4.69:1 | 4.63:1 | 5.52:1 |
-| Neutral | 4.78:1 | 4.61:1 | 5.33:1 |
-| Warm | 4.77:1 | 4.61:1 | 4.69:1 |
+| Cold | 4.71:1 | 4.65:1 | 5.52:1 |
+| Neutral | 4.73:1 | 4.65:1 | 5.33:1 |
+| Warm | 4.76:1 | 4.69:1 | 4.69:1 |
 
-Measured text pairs meet 4.5:1; the focus pair meets 3:1. Twilight metadata, graph label grading and the Warm solid hover were adjusted from the first pass to meet these targets. Contrast results and screenshots are generated under `e2e/results/themes/`.
+Values are the minimum across token comparisons and rendered text samples, including menus and hovered selection states. The tests also verify the unchanged appearance behavior and production component interactions. Build, Svelte checks, all 206 component tests, Clippy and formatting pass.

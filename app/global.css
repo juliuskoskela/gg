@@ -148,6 +148,9 @@
   --faint: var(--palette-faint);
   --text-disabled: color-mix(in srgb, var(--text) 40%, var(--surface));
   --accent: var(--palette-accent);
+  /* jj-inspired identity blue is independent of the selected color family. */
+  --brand: light-dark(#01557f, #8dd1ff);
+  --brand-on-pressed: light-dark(#014e75, #aadcff);
   --selection-bg: color-mix(in srgb, var(--text) 12%, var(--surface));
   --selection-hover: color-mix(in srgb, var(--text) 18%, var(--surface));
   --selection-text: var(--text-strong);
@@ -172,24 +175,23 @@
   --text-on-danger: var(--neutral-0);
   --warning: var(--palette-warning);
   /* graph labels use text-grade hues; red remains reserved for conflict and divergence. */
-  --lane-0: light-dark(color-mix(in srgb, var(--palette-type) 85%, black), color-mix(in srgb, var(--palette-type) 76%, white));
-  --lane-1: light-dark(color-mix(in srgb, var(--palette-violet) 85%, black), color-mix(in srgb, var(--palette-violet) 76%, white));
-  --lane-2: light-dark(color-mix(in srgb, var(--palette-function) 85%, black), color-mix(in srgb, var(--palette-function) 76%, white));
-  --lane-3: light-dark(color-mix(in srgb, var(--palette-warning) 85%, black), color-mix(in srgb, var(--palette-warning) 76%, white));
-  --lane-4: light-dark(#215767, #9acbd5);
-  --lane-5: light-dark(color-mix(in srgb, var(--palette-positive) 85%, black), color-mix(in srgb, var(--palette-positive) 76%, white));
-  --lane-6: light-dark(#4e487c, #bfc0e6);
-  --lane-7: light-dark(#654c23, #d7c398);
+  --lane-0: var(--palette-type);
+  --lane-1: var(--palette-violet);
+  --lane-2: var(--palette-function);
+  --lane-3: var(--palette-warning);
+  --lane-4: light-dark(#005361, #7edbe5);
+  --lane-5: var(--palette-positive);
+  --lane-6: light-dark(#4b4685, #c8b7ff);
+  --lane-7: light-dark(#694700, #e6c783);
   /* wires stay neutral so colour belongs to the stations; raise the tint to bring lane colour back into them. */
   --graph-wire-tint: 0%;
-  --graph-node-chroma: 72%;
   --graph-edge: color-mix(in srgb, var(--text) 20%, var(--surface));
   --graph-node: var(--muted);
   --graph-immutable: color-mix(in srgb, var(--positive) 65%, var(--muted));
   --graph-context: var(--text-strong);
   --ref-bookmark: var(--palette-type);
   --ref-remote: var(--muted);
-  --ref-workspace: var(--palette-violet);
+  --ref-workspace: var(--brand);
   --ref-tag: var(--palette-warning);
   --focus-ring: color-mix(in srgb, var(--text) 65%, var(--surface));
   --popover-surface: var(--palette-popover);

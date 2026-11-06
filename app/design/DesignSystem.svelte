@@ -21,6 +21,7 @@
     import TimelineSection from "../timeline/TimelineSection.svelte";
     import SelectWidget from "../controls/SelectWidget.svelte";
     import type { RevChange } from "../messages/RevChange";
+    import HistoryColors from "./HistoryColors.svelte";
     import RepositoryNavigation from "../shell/RepositoryNavigation.svelte";
 
     setContext("settings", { markUnpushedBookmarks: true });
@@ -35,7 +36,7 @@
     let sampleRemote = "origin";
     let samplePreset = "custom";
     let timelineExample: HTMLDivElement;
-    let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.ts", relative_path: "app/workspace.ts" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 4 }, to_file: { start: 1, len: 4 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n'] } }], stat: { added: 1, removed: 1 } }];
+    let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.ts", relative_path: "app/workspace.ts" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 6 }, to_file: { start: 1, len: 6 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n', ' // Keep the active panel visible.\n', ' function selectPanel(index: number = 0) { return panels[index]; }\n'] } }], stat: { added: 1, removed: 1 } }];
     let items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }];
     let workspace = { query_choices: { default: "all()", "My revisions": "mine()" } };
     let rows = [
@@ -78,6 +79,7 @@
                 {#if !items.length}<p class="operation-example">No views open. <button type="button" on:click={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]; active = "diff"; }}>Restore views</button></p>{/if}
             </div>
         </section>
+        <section id="history-colors" class="description-specimen"><h2>History colors</h2><p>Text-grade lane colors are shared by graph stations and revision prefixes. Workspaces use GG+ blue in every family.</p><HistoryColors /></section>
         <section id="description" class="description-specimen" aria-label="Description component preview">
             <h2>Description and metadata</h2><p>One document, aligned fields, and wrapping references. This specimen uses the production description components.</p>
             <div class="description-sample"><PanelTabs items={[{ id: "description", label: "Description" }]} active="description" prefix="specimen" onSelect={() => {}} /><div id="specimen-description" role="region" aria-labelledby="specimen-tab-description"><RevisionOverview revs={revisionFixture} readOnly /></div></div>
