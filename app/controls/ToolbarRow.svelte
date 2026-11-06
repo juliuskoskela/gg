@@ -27,10 +27,10 @@
         pointer-events: auto;
         --control-height: var(--panel-control-size);
         --control-padding-block: 3px;
-        --hover: color-mix(in srgb, var(--text) 8%, var(--panel-toolbar-bg));
-        --active: color-mix(in srgb, var(--text) 13%, var(--panel-toolbar-bg));
-        --active-hover: color-mix(in srgb, var(--text) 18%, var(--panel-toolbar-bg));
-        --control-pressed: color-mix(in srgb, var(--text) 22%, var(--panel-toolbar-bg));
+        --hover: color-mix(in srgb, var(--text) 6%, var(--panel-toolbar-bg));
+        --active: color-mix(in srgb, var(--text) 15%, var(--panel-toolbar-bg));
+        --active-hover: color-mix(in srgb, var(--text) 19%, var(--panel-toolbar-bg));
+        --control-pressed: color-mix(in srgb, var(--text) 23%, var(--panel-toolbar-bg));
         --border: color-mix(in srgb, var(--text) 14%, var(--panel-toolbar-bg));
         --input-surface: var(--panel-toolbar-bg);
         --panel-tools-wrap: nowrap;
