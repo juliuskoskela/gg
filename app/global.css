@@ -103,6 +103,7 @@
   --radius-surface: 8px;
   --radius-popover: 8px;
   --control-height: 32px;
+  --file-row-height: max(24px, calc(var(--type-ui) * 1.5 + 4px));
   --control-padding-inline: 8px;
   --control-gap: 6px;
   --pane-inset: 12px;
@@ -311,7 +312,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
 }
 
 @media (pointer: coarse), (max-width: 600px) {
-  :root { --panel-control-size: var(--touch-target); --panel-tabs-height: 56px; --panel-toolbar-height: 56px; }
+  :root { --file-row-height: max(44px, calc(var(--type-ui) * 1.5 + 8px)); --panel-control-size: var(--touch-target); --panel-tabs-height: 56px; --panel-toolbar-height: 56px; }
   textarea, select, input:not([type="checkbox"]):not([type="radio"]) { font-size: max(16px, 1rem); min-height: var(--touch-target); }
 }
 @media (forced-colors: active) {
