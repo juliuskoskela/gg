@@ -38,6 +38,8 @@
     let pendingAnchor: { gap: number; top: number; left: number; focus: boolean } | undefined;
     let toggling = false;
     let leadingKey = "";
+    let renderGeneration = 0;
+    let anchorFrame: number | undefined;
     let width = 0;
     $: resolvedStyle = $diffStyle === "auto" ? (width >= 720 ? "split" : "unified") : $diffStyle;
     let viewer: FileDiff<number> | File | undefined;
@@ -106,6 +108,7 @@
         return createDiffFoldRow({ gap, lines: gapSize(fileDiff, gap), expanded: true, onToggle: button => toggle(gap, button) });
     }
     function postRender(node: HTMLElement) {
+        if (!mounted || !host?.contains(node)) return;
         connectScrollColumns(node);
         let columns = Array.from(node.shadowRoot?.querySelectorAll<HTMLElement>("[data-code]:not([data-diffs-scrollbar-measure])") ?? []);
         let lines = viewer instanceof FoldingFileDiff && viewer.diff ? gapSize(viewer.diff, 0) : 0;
@@ -124,7 +127,7 @@
         restoreAnchor();
     }
     function restoreAnchor() {
-        if (!pendingAnchor) return;
+        if (!mounted || !host?.isConnected || !pendingAnchor) return;
         let buttons = Array.from(host.parentElement?.querySelectorAll<HTMLButtonElement>(`.diff-fold[data-fold-gap="${pendingAnchor.gap}"]`) ?? []);
         let left = pendingAnchor.left;
         let button = buttons.sort((a, b) => Math.abs(a.getBoundingClientRect().left - left) - Math.abs(b.getBoundingClientRect().left - left))[0];
@@ -143,6 +146,7 @@
     async function toggle(gap: number, button: HTMLButtonElement) {
         if (!(viewer instanceof FoldingFileDiff) || toggling) return;
         let current = viewer;
+        let generation = renderGeneration;
         error = "";
         toggling = true;
         pendingAnchor = { gap, top: button.getBoundingClientRect().top, left: button.getBoundingClientRect().left, focus: button.matches(":focus") };
@@ -151,7 +155,7 @@
             if (!unfolded.has(gap)) {
                 // annotations must reference complete line arrays, not the patch's packed line indices.
                 await current.prepareForEditing();
-                if (viewer !== current) return;
+                if (!mounted || generation !== renderGeneration || viewer !== current) return;
                 unfolded.add(gap);
                 current.setLineAnnotations(foldAnnotations(current.diff!));
                 current.expandHunk(gap, "both", Number.POSITIVE_INFINITY);
@@ -163,18 +167,30 @@
             }
             // ResizeManager and highlighting may each produce a second layout pass.
             let anchor = pendingAnchor;
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                if (pendingAnchor !== anchor) return;
-                restoreAnchor();
-                pendingAnchor = undefined;
-            }));
+            if (anchorFrame !== undefined) cancelAnimationFrame(anchorFrame);
+            anchorFrame = requestAnimationFrame(() => {
+                anchorFrame = requestAnimationFrame(() => {
+                    anchorFrame = undefined;
+                    if (!mounted || generation !== renderGeneration || pendingAnchor !== anchor) return;
+                    restoreAnchor();
+                    pendingAnchor = undefined;
+                });
+            });
         } catch (cause) {
+            if (!mounted || generation !== renderGeneration || viewer !== current) return;
             pendingAnchor = undefined;
             error = `Couldn’t load unmodified lines: ${cause instanceof Error ? cause.message : String(cause)}`;
         } finally {
             button.removeAttribute("aria-busy");
-            toggling = false;
+            if (generation === renderGeneration) toggling = false;
         }
+    }
+    function cancelPendingToggle() {
+        renderGeneration++;
+        pendingAnchor = undefined;
+        toggling = false;
+        if (anchorFrame !== undefined) cancelAnimationFrame(anchorFrame);
+        anchorFrame = undefined;
     }
     function connectScrollColumns(node: HTMLElement) {
         disconnectColumns();
@@ -195,6 +211,7 @@
         disconnectColumns = () => cleanup.forEach(remove => remove());
     }
     function render() {
+        cancelPendingToggle();
         disconnectColumns();
         renderedKey = `${readingKey}:${resolvedStyle}`;
         viewer?.cleanUp();
@@ -223,7 +240,16 @@
         } catch (cause) { error = `Couldn’t render this diff: ${cause instanceof Error ? cause.message : String(cause)}`; }
     }
     $: if (mounted && change && options && readingKey !== undefined) render();
-    onMount(() => { mounted = true; return () => { disconnectColumns(); viewer?.cleanUp(); }; });
+    onMount(() => {
+        mounted = true;
+        return () => {
+            mounted = false;
+            cancelPendingToggle();
+            disconnectColumns();
+            viewer?.cleanUp();
+            viewer = undefined;
+        };
+    });
 </script>
 
 {#if change.has_conflict}<p class="notice">Unresolved conflict — showing conflict markers.</p>{/if}
