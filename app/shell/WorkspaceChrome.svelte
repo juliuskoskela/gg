@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { tick } from "svelte";
+    import { onMount, tick } from "svelte";
     import { dock } from "../workspace/dock";
     import CommandPalette from "../commands/CommandPalette.svelte";
     import { workspaceController } from "../workspace/state";
@@ -32,7 +32,15 @@
         menuOpen = false;
     }
 
+    onMount(() => {
+        if (!standalone && new URLSearchParams(window.location.search).get("panel") === "settings") void openSettings();
+    });
+
     async function openSettings() {
+        if (standalone) {
+            window.location.assign("/?panel=settings");
+            return;
+        }
         menuOpen = false;
         dock.open("settings");
         await tick();
