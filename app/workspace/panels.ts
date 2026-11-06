@@ -3,6 +3,7 @@ import type { PanelId } from "./dock";
 
 export const panelLabel: Record<PanelId, string> = {
     timeline: "Timeline",
+    settings: "Settings",
     description: "Description",
     diff: "Diff",
     tree: "Files",

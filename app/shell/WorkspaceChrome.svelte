@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { tick } from "svelte";
+    import { dock } from "../workspace/dock";
     import CommandPalette from "../commands/CommandPalette.svelte";
     import { workspaceController } from "../workspace/state";
     import type { RepoConfig } from "../messages/RepoConfig";
@@ -30,6 +32,13 @@
         menuOpen = false;
     }
 
+    async function openSettings() {
+        menuOpen = false;
+        dock.open("settings");
+        await tick();
+        document.getElementById("panel-tab-settings")?.focus();
+    }
+
     async function refresh() {
         refreshing = true;
         refreshError = "";
@@ -51,19 +60,24 @@
     <header class="workspace-topbar">
         {#if !persistentNavigation}<button class="navigation-trigger" type="button" aria-label="Open repository navigation" aria-expanded={menuOpen} aria-controls="workspace-navigation" on:click={() => menuOpen = true}><Icon name="menu" /></button>{/if}
         <PlaceMenu {workspace} />
+        {#if !standalone}<div class="views-control"><ViewsMenu /></div>{/if}
         <div class="topbar-actions">
-            {#if !standalone}<ViewsMenu />{/if}
             <RepositoryToolbar {target} {refreshing} onRefresh={refresh} />
         </div>
     </header>
     {#if persistentNavigation}
         <aside class="workspace-navigation" id="workspace-navigation" aria-label="Repository navigation">
             <div class="navigation-scroll"><RepositoryNavigation {workspace} {currentQuery} collapsed={!$navigationExpanded} onSelect={selectView} onWorkingCopy={selectWorkingCopy} /></div>
-            <div class="navigation-footer"><PanelToggle label={$navigationExpanded ? "Collapse repository navigation" : "Expand repository navigation"} text={$navigationExpanded ? "Collapse" : ""} controls="workspace-navigation" expanded={$navigationExpanded} onToggle={() => navigationExpanded.update(value => !value)} /></div>
+            <div class="navigation-footer">
+                <button class="settings-trigger" type="button" aria-label="Settings" title="Settings" aria-controls="panel-settings" on:click={openSettings}><Icon name="settings" />{#if $navigationExpanded}<span>Settings</span>{/if}</button>
+                <PanelToggle label={$navigationExpanded ? "Collapse repository navigation" : "Expand repository navigation"} text={$navigationExpanded ? "Collapse" : ""} controls="workspace-navigation" expanded={$navigationExpanded} onToggle={() => navigationExpanded.update(value => !value)} /></div>
         </aside>
     {:else}
         <Drawer id="workspace-navigation" open={menuOpen} title="Repository navigation" onClose={() => menuOpen = false}>
-            <RepositoryNavigation {workspace} {currentQuery} onSelect={selectView} onWorkingCopy={() => { selectWorkingCopy(); menuOpen = false; }} />
+            <div class="drawer-navigation">
+                <RepositoryNavigation {workspace} {currentQuery} onSelect={selectView} onWorkingCopy={() => { selectWorkingCopy(); menuOpen = false; }} />
+                <button class="settings-trigger" type="button" aria-label="Settings" aria-controls="panel-settings" on:click={openSettings}><Icon name="settings" /><span>Settings</span></button>
+            </div>
         </Drawer>
     {/if}
     <main class="workspace-sheet" class:has-error={!!refreshError}>
@@ -78,13 +92,20 @@
     .workspace-frame.with-navigation.expanded-navigation { grid-template-columns: 224px minmax(0, 1fr); }
     .workspace-navigation { grid-row: 2; grid-column: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ground); border-inline-end: 1px solid var(--rule); }
     .navigation-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px; pointer-events: auto; }
-    .navigation-footer { padding: 8px; }
+    .navigation-footer { display: grid; gap: var(--space-1); padding: 8px; }
+    .settings-trigger { display: flex; align-items: center; gap: var(--control-gap); min-height: var(--control-height); padding: 5px var(--control-padding-inline); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: var(--type-ui); text-align: start; cursor: pointer; }
+    .drawer-navigation { display: flex; flex-direction: column; min-height: 100%; gap: 16px; }
+    .drawer-navigation > .settings-trigger { margin-block-start: auto; min-height: 44px; }
+    @media (hover: hover) { .settings-trigger:hover { background: var(--interaction-hover, var(--hover)); } }
+    .settings-trigger:active { background: var(--interaction-pressed, var(--control-pressed)); }
     .with-navigation:not(.expanded-navigation) .navigation-scroll, .with-navigation:not(.expanded-navigation) .navigation-footer { padding: 6px; }
     .navigation-footer :global(button) { width: 100%; justify-content: flex-start; }
     .with-navigation:not(.expanded-navigation) .navigation-footer :global(button) { justify-content: center; }
     .with-navigation .workspace-sheet { grid-row: 2; grid-column: 2; }
     .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: 3px var(--pane-inset); background: var(--ground); border-block-end: 1px solid var(--rule); min-width: 0; }
     .navigation-trigger { display: grid; place-items: center; width: 32px; min-height: 32px; flex-shrink: 0; padding: 6px; background: transparent; color: var(--text); border: 0; border-radius: var(--radius-control); cursor: pointer; }
+    .views-control { margin-inline-start: auto; }
+    .views-control + .topbar-actions { margin-inline-start: 0; }
     .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--panel-gap); margin-inline-start: auto; min-width: 0; max-width: 100%; }
     .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--surface); }
     .workspace-sheet.has-error { grid-template-rows: auto minmax(0, 1fr); }

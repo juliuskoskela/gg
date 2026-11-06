@@ -1,13 +1,13 @@
 import { writable, type Writable } from "svelte/store";
 
-export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools";
+export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings";
 export type Edge = "tab" | "tab-end" | "left" | "right" | "top" | "bottom";
 export type DockNode =
     | { type: "split"; direction: "row" | "column"; ratio: number; first: DockNode; second: DockNode }
     | { type: "tabs"; active: PanelId; panels: PanelId[] };
 export type DockState = { root: DockNode | null; compactActive: PanelId | null };
 
-const PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools"];
+let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings"];
 const STORAGE_KEY = "gg.dock.layout";
 
 const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
@@ -18,6 +18,7 @@ const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
     edit: { beside: "diff", edge: "tab" },
     operation: { beside: null, edge: "right" },
     "revision-tools": { beside: "description", edge: "right" },
+    settings: { beside: "timeline", edge: "tab" },
 };
 
 export function isPanelId(value: unknown): value is PanelId {
