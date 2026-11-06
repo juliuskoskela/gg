@@ -31,6 +31,8 @@
         ignoreToggled,
     } from "./stores.js";
     import ContextMenu from "./controls/ContextMenu.svelte";
+    import AnnotationComposer from "./annotations/AnnotationComposer.svelte";
+    import { composer, lineMenu, loadAnnotations } from "./annotations/store";
     import Pane from "./shell/Pane.svelte";
     import TitlebarInset from "./shell/TitlebarInset.svelte";
     import Zone from "./objects/Zone.svelte";
@@ -297,9 +299,17 @@
     function mutateRepository(event: RepoEvent) {
         new RepositoryMutator().handle(event);
     }
+
+    // notes can change outside the app, e.g. an agent replying from the command line
+    $: if ($repoConfigEvent.type === "Workspace") loadAnnotations();
+    function refreshAnnotations() {
+        if ($repoConfigEvent.type === "Workspace") loadAnnotations();
+    }
 </script>
 
 <OperationFeedback />
+
+<svelte:window on:focus={refreshAnnotations} />
 
 <Zone operand={{ type: "Repository" }} alwaysTarget let:target>
     <div id="shell" use:focusModality use:autoHideScrollbars class={$effectiveTheme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
@@ -348,6 +358,12 @@
         {/if}
 
 
+        {#if $composer}
+            <ModalOverlay>
+                <AnnotationComposer draft={$composer} onClose={() => composer.set(null)} />
+            </ModalOverlay>
+        {/if}
+
         {#if $currentInput}
             <ModalOverlay>
                 <InputDialog
@@ -378,6 +394,10 @@
                     </ErrorDialog>
                 {/if}
             </ModalOverlay>
+        {/if}
+
+        {#if $lineMenu}
+            <ContextMenu items={$lineMenu.commands} heading={$lineMenu.heading} x={$lineMenu.x} y={$lineMenu.y} onClose={() => lineMenu.set(null)} />
         {/if}
 
         {#if $currentContext && $hasMenu}

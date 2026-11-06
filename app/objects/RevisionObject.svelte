@@ -11,9 +11,12 @@
     import Zone from "./Zone.svelte";
     import RevisionMutator from "../mutators/RevisionMutator";
     import TagObject from "./TagObject.svelte";
+    import NoteMarker from "../annotations/NoteMarker.svelte";
+    import { openNotesByChange } from "../annotations/store";
     import WorkspaceObject from "./WorkspaceObject.svelte";
 
     export let header: RevHeader;
+    $: notes = $openNotesByChange.get(header.id.change.hex) ?? [];
     export let child: RevHeader | null = null;
     export let selected: boolean; // same as the imported event, but parent may want to force a value
     export let noBookmarks: boolean = false;
@@ -105,6 +108,7 @@
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
                     {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
+                    {#if notes.length}<NoteMarker {notes} />{/if}
                     {dragHint ??
                         dropHint ??
                         (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}

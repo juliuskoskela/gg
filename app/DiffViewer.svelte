@@ -15,7 +15,7 @@
 </script>
 
 <script lang="ts">
-    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData } from "@pierre/diffs";
+    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData, type SelectedLineRange } from "@pierre/diffs";
     import { onMount } from "svelte";
     import { createDiffFoldRow } from "./revision/DiffFoldRow";
     import { FoldingFileDiff } from "./revision/FoldingFileDiff";
@@ -31,6 +31,9 @@
     export let fullContext = false;
     // supplies both complete sides so collapsed blocks can be unfolded one at a time
     export let loadFullFiles: (() => Promise<{ before: string; after: string }>) | null = null;
+    // right-clicking a line, or inside a selected range, offers actions for those lines
+    export let onLineMenu: ((event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) => void) | null = null;
+    let selectedRange: SelectedLineRange | null = null;
     let renderedKey = "";
     let disconnectColumns = () => {};
     let host: HTMLDivElement;
@@ -61,6 +64,7 @@
         renderAnnotation: renderFold,
         lineDiffType: "word-alt" as const,
         enableLineSelection: true,
+        onLineSelected: (range: SelectedLineRange | null) => { selectedRange = range; },
         disableFileHeader: true,
         onPostRender: postRender,
         unsafeCSS: ":host { color-scheme: inherit !important; --diffs-font-family: var(--stack-code); --diffs-font-size: var(--type-code); --diffs-line-height: calc(var(--type-code) * var(--code-leading)); --diffs-bg-context-override: var(--surface); --diffs-bg-buffer-override: var(--diff-buffer); --diffs-bg-separator-override: var(--raised); --diffs-fg-number-override: var(--muted); --diffs-addition-color-override: var(--positive); --diffs-deletion-color-override: var(--negative); --diffs-selection-color-override: var(--selection-bg); --diffs-bg-addition-override: var(--diff-addition); --diffs-bg-addition-emphasis-override: var(--diff-addition-emphasis); --diffs-bg-deletion-override: var(--diff-deletion); --diffs-bg-deletion-emphasis-override: var(--diff-deletion-emphasis); } [data-code] { scrollbar-width: none; } [data-code]::-webkit-scrollbar { height: 0; }" + FOLD_CSS,
@@ -107,6 +111,23 @@
         if (gap === undefined) return undefined;
         return createDiffFoldRow({ gap, lines: gapSize(fileDiff, gap), expanded: true, onToggle: button => toggle(gap, button) });
     }
+    function lineMenu(event: MouseEvent) {
+        if (!onLineMenu) return;
+        let target = event.composedPath().find((node): node is HTMLElement => node instanceof HTMLElement && (node.hasAttribute("data-line") || node.hasAttribute("data-column-number")));
+        let line = Number(target?.getAttribute("data-line") ?? target?.getAttribute("data-column-number"));
+        if (!target || !Number.isInteger(line) || line < 1) return;
+        let column = target.closest("[data-deletions], [data-additions]");
+        let side: "additions" | "deletions" = (target.getAttribute("data-line-type") ?? "").includes("deletion") || (column?.hasAttribute("data-deletions") && !column.hasAttribute("data-additions")) ? "deletions" : "additions";
+        let start = line, end = line;
+        let range = selectedRange;
+        if (range && (range.side ?? "additions") === side && (range.endSide ?? range.side ?? "additions") === side) {
+            let low = Math.min(range.start, range.end), high = Math.max(range.start, range.end);
+            if (line >= low && line <= high) { start = low; end = high; }
+        }
+        event.preventDefault();
+        onLineMenu(event, { side, start, end });
+    }
+
     function postRender(node: HTMLElement) {
         if (!mounted || !host?.contains(node)) return;
         connectScrollColumns(node);
@@ -256,7 +277,8 @@
 {#if error}<p class="notice" role="status">{error}</p>{/if}
 <div dir="ltr" class="diff-viewer" bind:clientWidth={width} aria-label={`Diff for ${change.path.relative_path}`}>
     <div class="diff-leading-fold" bind:this={leadingFold}></div>
-    <div class="diff-content" bind:this={host}></div>
+    <!-- svelte-ignore a11y_no_static_element_interactions (the menu is also reachable from the Annotations view and the hunk menu) -->
+    <div class="diff-content" bind:this={host} on:contextmenu={lineMenu}></div>
     <DiffScrollbars columns={scrollColumns} />
 </div>
 

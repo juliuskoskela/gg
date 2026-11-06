@@ -13,6 +13,8 @@
     import DiffStat from "./DiffStat.svelte";
     import DiffTools from "./DiffTools.svelte";
     import Icon from "../controls/Icon.svelte";
+    import { linesAnchor, MAX_LINES, subjectOf } from "../annotations/anchors";
+    import { lineMenu, openComposer } from "../annotations/store";
     import { navigateOptions } from "../controls/optionNavigation";
 
     export let focused = false;
@@ -64,6 +66,19 @@
 
 
     function selectFile(change: RevChange) { onSelectFile(change); }
+    function annotateLines(event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) {
+        let file = currentChange, header = revs.headers.length === 1 ? revs.headers[0] : null;
+        let count = range.end - range.start + 1;
+        let label = count === 1 ? `Annotate line ${range.start}…` : `Annotate lines ${range.start}–${range.end}…`;
+        let reason = !header ? "Select one revision to annotate its lines" : count > MAX_LINES ? `Annotate at most ${MAX_LINES} lines` : null;
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: range.side === "deletions" ? "Before the change" : null, commands: [{
+            id: "annotate-lines", label, icon: "message-square", scope: "Annotation", reason,
+            execute: async () => {
+                if (!header || !file) return;
+                openComposer({ anchor: await linesAnchor(header, file, range.side, range.start, range.end, loadFullFiles), subject: subjectOf(header) });
+            },
+        }] });
+    }
     async function loadFullFiles() {
         let file = currentChange;
         if (!file) throw new Error("No file selected");
@@ -101,7 +116,7 @@
                             {:else}
                                 <div class="file-diff-summary"><span>No editable hunks</span><DiffStat {changes} /></div>
                             {/if}
-                            <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} />
+                            <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} onLineMenu={annotateLines} />
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>

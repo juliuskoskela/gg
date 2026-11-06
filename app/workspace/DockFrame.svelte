@@ -8,6 +8,7 @@
     import type { DockNode, Edge, PanelId } from "./dock";
     import { panelLabel } from "./panels";
     import PanelBody from "./PanelBody.svelte";
+    import { annotations } from "../annotations/store";
 
     export let node: DockNode;
     export let path: number[] = [];
@@ -24,6 +25,7 @@
     export let onSelectFile: (change: RevChange) => void;
 
     let resizing = false;
+    $: openNotes = $annotations.filter(thread => thread.status === "open").length;
     function moveSplitter(event: PointerEvent) {
         if (!resizing || node.type !== "split") return;
         let container = (event.currentTarget as HTMLElement).parentElement!;
@@ -64,7 +66,7 @@
 {:else}
     <div class="tabs" data-panel-group={node.active}>
         <PanelGroup>
-            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={node.active} draggable
+            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
                 onSelect={onFocus} {onClose} {onMove} />
             <div class="stack">
                 {#each node.panels as id (id)}

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { annotationCommands } from "../annotations/commands";
     import Icon from "../controls/Icon.svelte";
     import TextField from "../controls/TextField.svelte";
     import DestinationPicker from "./DestinationPicker.svelte";
@@ -24,6 +25,7 @@
         ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),
         ...contextCommands($commandOperand ?? $currentContext, $currentWorkspaceIdentity, $currentMutation, $mutationPending, $ignoreToggled),
+        ...annotationCommands($commandOperand ?? $currentContext ?? (activeHeaders.length === 1 ? { type: "Revision", header: activeHeaders[0] } : null)),
     ];
     $: filtered = commands.filter(c => `${c.label} ${c.scope}`.toLowerCase().includes(search.toLowerCase()));
     async function show() {

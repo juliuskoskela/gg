@@ -39,6 +39,18 @@ export async function query<T>(command: string, request: InvokeArgs | null, onWa
 }
 
 /**
+ * read or change local annotations, which live outside the repository
+ */
+export async function annotate<T>(command: string, request: InvokeArgs): Promise<ImmediateQuery<T>> {
+    try {
+        return { type: "data", value: await call<T>("annotate", command, request) };
+    } catch (error: any) {
+        console.error(error);
+        return { type: "error", message: error?.message ?? error.toString() };
+    }
+}
+
+/**
  * call an IPC which, if successful, has backend side-effects
  */
 export function trigger(command: string, request?: InvokeArgs, onError?: () => void): void {
@@ -174,7 +186,7 @@ function getClientId(): string {
 /**
  * route to Tauri or HTTP based on runtime environment
  */
-async function call<T>(mode: "query" | "mutate" | "trigger", command: string, args?: InvokeArgs): Promise<T> {
+async function call<T>(mode: "query" | "mutate" | "trigger" | "annotate", command: string, args?: InvokeArgs): Promise<T> {
     let done!: () => void;
     let tracking = new Promise<void>(r => done = r);
     inFlight.add(tracking);

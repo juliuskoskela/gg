@@ -1,3 +1,4 @@
+mod annotations;
 mod colocated;
 mod history;
 mod queries;

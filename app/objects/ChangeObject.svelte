@@ -13,6 +13,8 @@
     import { changeSelectEvent, repoConfigEvent } from "../stores";
     import { mutate } from "../ipc";
     import ActionLink from "../controls/ActionLink.svelte";
+    import NoteMarker from "../annotations/NoteMarker.svelte";
+    import { openNotesByChange } from "../annotations/store";
 
     export let headers: RevHeader[] | null;
     export let change: RevChange;
@@ -25,6 +27,8 @@
     export let onSelected: () => void = () => {};
 
     $: operand = headers ? { type: "Change", headers, path: change.path, hunk: null } as Operand : null;
+    // notes on the file or its lines, in the one revision shown
+    $: notes = headers?.length === 1 ? ($openNotesByChange.get(headers[0].id.change.hex) ?? []).filter(note => "path" in note.anchor && note.anchor.path === change.path.repo_path) : [];
 
     $: hasDiffTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool;
     $: hasMergeTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool;
@@ -72,6 +76,7 @@
         <div class="layout" class:tree class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
             <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
+            {#if notes.length}<NoteMarker {notes} />{/if}
             {#if change.has_conflict}
                 <span class="kind" role="img" aria-label="Unresolved conflict" title="Unresolved conflict"><Icon name="alert-triangle" state={context ? null : "remove"} /></span>
             {:else if change.kind === "Added" || change.kind === "Deleted"}
