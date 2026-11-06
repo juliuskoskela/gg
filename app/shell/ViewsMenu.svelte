@@ -49,9 +49,15 @@
     #views-menu { min-height: 32px; padding: 5px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; cursor: pointer; }
     .views-menu { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 4px); z-index: 70; min-width: 180px; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
     .views-menu button { min-height: 32px; padding: 6px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; text-align: start; cursor: pointer; }
-    .views-menu button[aria-checked="true"] { font-weight: 500; }
+    .views-menu button[aria-checked="true"] { font-weight: 500; background: var(--interaction-selected); }
     .views-menu button[role="menuitem"] { border-block-start: 1px solid var(--rule); border-radius: 0; }
-    @media (hover: hover) { #views-menu:hover, .views-menu button:hover { background: var(--hover); } }
+    @media (hover: hover) {
+        #views-menu:hover { background: var(--hover); }
+        .views-menu button:hover { background: var(--interaction-hover); }
+        .views-menu button[aria-checked="true"]:hover { background: var(--interaction-selected-hover); }
+    }
+    .views-menu button:active { background: var(--interaction-pressed); }
+    .views-menu button[aria-checked="true"]:active { background: var(--interaction-selected-pressed); }
     #views-menu:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { #views-menu, .views-menu button { min-height: 44px; } }
 </style>

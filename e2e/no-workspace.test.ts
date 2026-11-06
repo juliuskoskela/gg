@@ -35,7 +35,7 @@ describe("`gg web` in an empty directory", () => {
         extractTestRepo(ctx.tempDir);
         await path.fill(ctx.tempDir);
         await open.click();
-        await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).waitFor();
+        await ctx.page.getByRole("button", { name: "Timeline", exact: true }).waitFor();
         await expect.poll(() => ctx.page.locator(".graph").isVisible(), { timeout: 10000 }).toBe(true);
     });
 });

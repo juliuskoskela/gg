@@ -79,7 +79,7 @@ describe("redo after an external jj undo", () => {
     it.each([1024, 390, 320])("keeps primary repository actions visible at %ipx", async width => {
         await ctx.page.setViewportSize({ width, height: 960 });
         await ctx.page.goto(`${url}/?inspect=@`);
-        for (let name of (width > 600 ? ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "Refresh repository", "Commands"] : ["Undo the latest operation", "Commands", "More repository actions"])) {
+        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "Refresh repository", "Commands"]) {
             let action = ctx.page.getByRole("button", { name, exact: true });
             await expect.poll(() => action.isVisible()).toBe(true);
             let box = (await action.boundingBox())!;
@@ -88,12 +88,7 @@ describe("redo after an external jj undo", () => {
         }
         expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         if (width === 1024) expect((await ctx.page.locator(".workspace-topbar").boundingBox())?.height).toBe(40);
-        if (width <= 600) {
-            await ctx.page.getByRole("button", { name: "More repository actions" }).click();
-            for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Redo", "Refresh repository"]) {
-                expect(await ctx.page.getByRole("button", { name, exact: true }).isVisible()).toBe(true);
-            }
-        }
+        expect(await ctx.page.getByRole("button", { name: "More repository actions" }).count()).toBe(0);
         let remote = ctx.page.getByRole("combobox", { name: "Git remote" });
         expect(await remote.isVisible()).toBe(true);
         if (width <= 600) return;
