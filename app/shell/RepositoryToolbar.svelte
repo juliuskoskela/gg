@@ -68,7 +68,6 @@
 
 <div class="repository-toolbar" role="group" aria-label="Repository actions" inert={$hasModal}>
     <div class="sync-actions" role="group" aria-label="Remote synchronization">
-        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}><svelte:fragment let:option>{option.value || "No remote"}</svelte:fragment></SelectWidget></div>
         <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || busy} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
         <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || busy} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
     </div>
@@ -78,6 +77,7 @@
         <ActionWidget secondary tip="Refresh repository" disabled={refreshing || busy} onClick={onRefresh}><Icon name="refresh-cw" /></ActionWidget></span>
     </div>
     <button class="commands-button" type="button" aria-label="Commands" on:click={() => window.dispatchEvent(new Event("gg:open-commands"))}><Icon name="command" /><span class="action-label">Commands</span></button>
+    <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}><svelte:fragment let:option>{option.value || "No remote"}</svelte:fragment></SelectWidget></div>
 </div>
 
 {#if dropHint}
