@@ -8,6 +8,7 @@
     import TextField from "../../controls/TextField.svelte";
     import TextAreaField from "../../controls/TextAreaField.svelte";
     import SelectWidget from "../../controls/SelectWidget.svelte";
+    import ViewToolbar from "../../controls/ViewToolbar.svelte";
     import Icon from "../../controls/Icon.svelte";
     import ReviewThread from "./ReviewThread.svelte";
     import { captureReview } from "./capture";
@@ -98,6 +99,12 @@
         try { if (!incoming) return; if (incoming.size > MAX_BYTES) throw new Error("Review exceeds the 10 MB limit."); let imported = importReview(await incoming.text()); creating = false; notice = `Imported “${imported.title}”. Captured code is available without the original repository.`; }
         catch (cause) { fail(cause); } finally { input.value = ""; }
     }
+    async function setExpanded(value: boolean) {
+        expanded = value;
+        await tick();
+        let label = value ? "Restore review pane" : "Expand review";
+        (value ? root : document).querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.focus({ preventScroll: true });
+    }
     function trap(event: KeyboardEvent) {
         if (!expanded || event.key !== "Tab") return;
         let elements = [...root.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea, select, [tabindex="0"]')].filter(el => el.getClientRects().length && !el.closest("[hidden],[inert]"));
@@ -107,18 +114,20 @@
     async function share() { if (!review) return; error = ""; try { if (await exportReview(review)) notice = "Review exported. Share the JSON file; replies can be imported back into this review."; } catch (cause) { fail(cause); } }
 </script>
 
-<svelte:window on:keydown={event => { if (event.key === "Escape" && expanded) expanded = false; }} />
+<svelte:window on:keydown={event => { if (event.key === "Escape" && expanded) void setExpanded(false); }} />
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions (expanded review traps keyboard focus like a full-screen dialog) -->
 <div class="review-plugin" class:expanded class:narrow={width < 850} bind:clientWidth={width} bind:this={root} role={expanded ? "dialog" : "region"} aria-modal={expanded ? true : undefined} aria-label="Review mode" on:keydown={trap}>
     {#if !$reviewEnabled}<div class="welcome"><h2>Review extension is disabled</h2><p>Enable Review in Settings to continue. Your saved reviews are preserved.</p></div>
     {:else}
-        <div class="library-toolbar">
+        <ViewToolbar label="Review tools" local={expanded}>
             <div class="library-choice">{#if $reviews.length}<SelectWidget label="Review library" bind:value={$activeReview} options={$reviews.map(item => ({ value: item.id, label: item.title }))} on:change={() => creating = false} let:option>{option.label}</SelectWidget>{:else}<span class="extension-label"><Icon name="message-square" />Review</span>{/if}</div>
             <ActionWidget safe tip={width < 420 ? "New review" : ""} disabled={!!busy} onClick={() => { creating = true; title = detail?.headers[0]?.description.lines.join("").trim().slice(0, 240) || "Review changes"; }}>{#if width < 420}<Icon name="plus" />{:else}New review{/if}</ActionWidget>
-            <ActionWidget safe tip={expanded ? "Restore review pane" : "Expand review"} onClick={() => expanded = !expanded}><Icon name={expanded ? "minimize-2" : "maximize-2"} /></ActionWidget>
             <ActionWidget safe disabled={!!busy} onClick={() => importInput.click()}><Icon name="upload" />Import</ActionWidget>
-            <input class="file-input" type="file" accept="application/json,.json" aria-label="Import review JSON" bind:this={importInput} on:change={ingest} />
-        </div>
+            {#if review && !creating}<ActionWidget safe onClick={share}><Icon name="download" />Finish & export</ActionWidget>{/if}
+            <span class="toolbar-spacer"></span>
+            <ActionWidget safe tip={expanded ? "Restore review pane" : "Expand review"} onClick={() => void setExpanded(!expanded)}><Icon name={expanded ? "minimize-2" : "maximize-2"} /></ActionWidget>
+        </ViewToolbar>
+        <input class="file-input" type="file" accept="application/json,.json" aria-label="Import review JSON" bind:this={importInput} on:change={ingest} />
         {#if $storageWarning}<p class="feedback warning" role="alert">{$storageWarning}</p>{/if}
         {#if error}<p class="feedback warning" role="alert">{error}</p>{/if}
         <p class="sr-only" aria-live="polite">{notice}</p>
@@ -136,7 +145,7 @@
                 <p class="footnote">Local review extension · no account or server required</p>
             </div>
         {:else}
-            <header class="review-heading"><div><h2>{review.title}</h2><p>{review.repository} <span>·</span> {review.snapshot.members.length} {review.snapshot.members.length === 1 ? "revision" : "revisions"} <span>·</span> {review.completedAt ? "Exported" : "Draft"}</p></div><ActionWidget safe onClick={share}><Icon name="download" />Finish & export</ActionWidget></header>
+            <header class="review-heading"><div><h2>{review.title}</h2><p>{review.repository} <span>·</span> {review.snapshot.members.length} {review.snapshot.members.length === 1 ? "revision" : "revisions"} <span>·</span> {review.completedAt ? "Exported" : "Draft"}</p></div></header>
             <div class="review-progress"><div class="progress-copy"><span>{seen} / {review.snapshot.files.length} files seen by you</span><span>{open} open {open === 1 ? "discussion" : "discussions"}</span></div><progress max={Math.max(review.snapshot.files.length, 1)} value={seen} aria-label="Files seen by you"></progress></div>
             <div class="review-identity"><label>Your name<TextField label="Your name" bind:value={name} maxlength="120" placeholder="Enter your name to participate" on:change={() => act(identity)} /></label><details class="snapshot-summary"><summary>Captured selection <Icon name="chevron-down" /></summary><div class="snapshot-details"><p>{anchorLabel(review.subject, review)}</p><ol>{#each review.snapshot.members as revision}<li><strong>{revision.description || "No description"}</strong><span>Change <code>{revision.change}</code></span><span>Commit <code>{revision.commit}</code></span></li>{/each}</ol><p>Comments and seen marks refer to this captured version. Selecting another revision in the graph does not change it.</p></div></details></div>
             <div class="mode-switch" role="group" aria-label="Review surface"><button type="button" aria-pressed={tab === "diff"} on:click={() => tab = "diff"}>Diff <span>{review.snapshot.files.length}</span></button><button type="button" aria-pressed={tab === "discussion"} on:click={() => tab = "discussion"}>Discussion <span>{review.threads.length}</span></button></div>
@@ -177,8 +186,7 @@
     @import "../../controls/action.css";
     .review-plugin { container-type: inline-size; display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; color: var(--text); background: var(--surface); pointer-events: auto; font-size: var(--type-ui); }
     .review-plugin.expanded { position: fixed; inset: 0; z-index: 100; height: 100dvh; }
-    .library-toolbar { display: flex; gap: 4px; align-items: center; padding: 8px 12px; border-block-end: 1px solid var(--rule); }
-    .library-choice { flex: 1; min-width: 0; }
+    .library-choice { flex: 1 0 140px; max-width: 280px; min-width: 0; }
     .library-choice :global(select) { background: transparent; border-color: transparent; }
     .extension-label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
     .file-input { display: none; }

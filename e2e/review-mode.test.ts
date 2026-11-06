@@ -150,6 +150,33 @@ describe("review extension", () => {
         expect(await p.getByText("Keep this discussion when the plugin is disabled.", { exact: true }).count()).toBe(1);
         await p.close();
     });
+    it.each([1440, 390])("uses shared toolbar controls and restores keyboard focus after expansion at %ipx", async width => {
+        let p = await page(width); await start(p);
+        let toolbar = p.locator("[data-panel-toolbar]");
+        expect(await toolbar.count()).toBe(1);
+        for (let label of ["Import", "Finish & export", "Expand review"]) {
+            expect(await toolbar.getByRole("button", { name: label, exact: true }).count()).toBe(1);
+        }
+        let exported = await download(p);
+        await p.getByRole("button", { name: "Hide Review toolbar" }).click();
+        expect(await p.getByRole("button", { name: "Import", exact: true }).count()).toBe(0);
+        expect(await p.getByRole("combobox", { name: "Review file", exact: true }).isVisible()).toBe(true);
+        await p.getByRole("button", { name: "Show Review toolbar" }).click();
+        let chooser = p.waitForEvent("filechooser");
+        await p.getByRole("button", { name: "Import", exact: true }).click();
+        await (await chooser).setFiles({ name: "review.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(exported)) });
+        await expect.poll(() => p.locator('.review-plugin [aria-live="polite"]').textContent()).toContain("Imported");
+        await p.getByRole("button", { name: "Expand review", exact: true }).click();
+        let dialog = p.getByRole("dialog", { name: "Review mode", exact: true });
+        await expect.poll(() => p.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Restore review pane");
+        expect(await dialog.locator("[data-panel-toolbar]").count()).toBe(1);
+        expect(await toolbar.count()).toBe(1);
+        await p.keyboard.press("Escape");
+        await expect.poll(() => p.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Expand review");
+        expect(await p.getByRole("dialog", { name: "Review mode", exact: true }).count()).toBe(0);
+        expect(await toolbar.count()).toBe(1);
+        await p.close();
+    });
     it.each([1440, 768, 390, 320].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))("keeps review usable in $theme at $width px", async ({ width, theme }) => {
         let p = await page(width, theme); await start(p);
         await general(p, "change", "Preserve ordering across equal-priority tasks. <script>window.compromised=true</script>");
