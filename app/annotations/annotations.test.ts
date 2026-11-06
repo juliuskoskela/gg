@@ -5,7 +5,7 @@ import type { RevHeader } from "../messages/RevHeader";
 import type { RevChange } from "../messages/RevChange";
 import type { AnnotationList } from "../messages/AnnotationList";
 import type { AnnotationThread } from "../messages/AnnotationThread";
-import { anchorFor, anchorLabel, linesAnchor } from "./anchors";
+import { anchorLabel, linesAnchor, targetsFor } from "./anchors";
 import "../global.css";
 
 let id = { change: { type: "ChangeId" as const, hex: "wnpusytqzosxwnpusytqzosxwnpusytq", prefix: "w", rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId" as const, hex: "025843422c8f5374a4160fe79195b92d6ec3c6ee", prefix: "0", rest: "" } };
@@ -17,23 +17,26 @@ let change: RevChange = {
 
 function thread(overrides: Partial<AnnotationThread> = {}): AnnotationThread {
     return {
-        id: "3f2a91c0aaaa", anchor: { kind: "revision", change_id: id.change.hex, commit_id: id.commit.hex }, subject: "rename c.txt", workspace: "default",
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: "open", state: { type: "current" },
+        id: "3f2a91c0aaaa", targets: [{ anchor: { kind: "revision", change_id: id.change.hex, commit_id: id.commit.hex }, subject: "rename c.txt", state: { type: "current" } }], workspace: "default",
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: "open",
         posts: [{ id: "p1", author: { name: "Ada", kind: "human" }, created_at: new Date().toISOString(), body: "Why **this**?" }],
         ...overrides,
     };
 }
 
 describe("annotation anchors", () => {
-    it("points at revisions, bookmarks, files and hunks with full ids", () => {
-        expect(anchorFor({ type: "Revision", header })).toEqual({ anchor: { kind: "revision", change_id: id.change.hex, commit_id: id.commit.hex }, subject: "rename c.txt" });
-        let remote = anchorFor({ type: "Ref", header, ref: { type: "RemoteBookmark", bookmark_name: "main", remote_name: "origin", has_conflict: false, is_synced: true, is_tracked: true, is_absent: false } });
-        expect(remote?.anchor).toMatchObject({ kind: "bookmark", name: "main", remote: "origin" });
-        expect(anchorFor({ type: "Change", headers: [header], path: change.path, hunk: null })?.anchor).toMatchObject({ kind: "file", path: "src/a.ts" });
-        expect(anchorFor({ type: "Change", headers: [header, header], path: change.path, hunk: null })).toBeNull();
-        let hunk = anchorFor({ type: "Change", headers: [header], path: change.path, hunk: change.hunks[0] })?.anchor;
+    it("points at revisions, bookmarks, files and hunks with full ids, one target per selected revision", () => {
+        let other: RevHeader = { ...header, id: { ...id, change: { ...id.change, hex: "kkkkkkkk" } }, description: { lines: ["other"] } };
+        expect(targetsFor({ type: "Revision", header })).toEqual([{ anchor: { kind: "revision", change_id: id.change.hex, commit_id: id.commit.hex }, subject: "rename c.txt" }]);
+        expect(targetsFor({ type: "Revisions", headers: [header, other] }).map(target => target.subject)).toEqual(["rename c.txt", "other"]);
+        let remote = targetsFor({ type: "Ref", header, ref: { type: "RemoteBookmark", bookmark_name: "main", remote_name: "origin", has_conflict: false, is_synced: true, is_tracked: true, is_absent: false } });
+        expect(remote[0].anchor).toMatchObject({ kind: "bookmark", name: "main", remote: "origin" });
+        expect(targetsFor({ type: "Change", headers: [header], path: change.path, hunk: null })[0].anchor).toMatchObject({ kind: "file", path: "src/a.ts" });
+        expect(targetsFor({ type: "Change", headers: [header, other], path: change.path, hunk: null })).toHaveLength(2);
+        expect(targetsFor({ type: "Change", headers: [header, other], path: change.path, hunk: change.hunks[0] })).toEqual([]);
+        let hunk = targetsFor({ type: "Change", headers: [header], path: change.path, hunk: change.hunks[0] })[0].anchor;
         expect(hunk).toMatchObject({ kind: "lines", side: "new", start: 10, end: 12, quote: "keep\nnew\ntail" });
-        expect(anchorLabel(hunk!)).toBe("src/a.ts:10–12");
+        expect(anchorLabel(hunk)).toBe("a.ts:10–12");
     });
 
     it("quotes selected lines from the patch, or from the whole file outside it", async () => {
@@ -120,7 +123,7 @@ describe("annotations view", () => {
         let { startDraft, draft } = await import("./store");
         let { default: Panel } = await import("./AnnotationsPanel.svelte");
         let view = render(Panel, { props: { active: true } });
-        await startDraft({ anchor: { kind: "file", change_id: id.change.hex, commit_id: id.commit.hex, path: "src/a.ts" }, subject: "rename c.txt" });
+        await startDraft([{ anchor: { kind: "file", change_id: id.change.hex, commit_id: id.commit.hex, path: "src/a.ts" }, subject: "rename c.txt" }]);
         let editor = await waitFor(() => view.getByRole("textbox", { name: "Note" }));
         await fireEvent.input(editor, { target: { value: "Check **this** file" } });
         await fireEvent.click(view.getByRole("button", { name: "Close draft" }));
@@ -128,9 +131,32 @@ describe("annotations view", () => {
         await waitFor(() => expect(view.getByText("Check this file")).toBeTruthy());
         await fireEvent.click(view.getByText("Check this file"));
         await fireEvent.click(await waitFor(() => view.getByRole("button", { name: "Save note" })));
-        await waitFor(() => expect(calls.some(call => call.args?.request?.type === "Create" && call.args.request.body === "Check **this** file" && call.args.request.anchor.path === "src/a.ts")).toBe(true));
+        await waitFor(() => expect(calls.some(call => call.args?.request?.type === "Create" && call.args.request.body === "Check **this** file" && call.args.request.targets[0].anchor.path === "src/a.ts")).toBe(true));
         let { get } = await import("svelte/store");
         expect(get(draft)).toBeNull();
+    });
+
+    it("adds places to the open note and removes them again", async () => {
+        let { annotationCommands } = await import("./commands");
+        let { openAnnotation, loadAnnotations } = await import("./store");
+        await loadAnnotations();
+        openAnnotation.set("3f2a91c0aaaa");
+        let other: RevHeader = { ...header, id: { ...id, change: { ...id.change, hex: "kkkkkkkk" } } };
+        let commands = annotationCommands({ type: "Revisions", headers: [header, other] });
+        expect(commands.map(command => command.label)).toEqual(["Annotate 2 changes…", "Add to “Why this?”"]);
+        await commands[1].execute();
+        let added = calls.find(call => call.args?.request?.type === "AddTargets");
+        expect(added?.args.request.id).toBe("3f2a91c0aaaa");
+        expect(added?.args.request.targets.map((target: any) => target.anchor.change_id)).toEqual([id.change.hex, "kkkkkkkk"]);
+
+        list.threads[0].targets.push({ anchor: { kind: "revision", change_id: "kkkkkkkk", commit_id: id.commit.hex }, subject: "", state: { type: "missing" } });
+        let { default: Panel } = await import("./AnnotationsPanel.svelte");
+        let view = render(Panel, { props: { active: true } });
+        let chips = await waitFor(() => view.getByRole("list", { name: "Points at" }));
+        expect(chips.querySelectorAll("li")).toHaveLength(2);
+        expect(view.getByRole("img", { name: "This change no longer exists" })).toBeTruthy();
+        await fireEvent.click(view.getByRole("button", { name: "Stop pointing at kkkkkkkk" }));
+        await waitFor(() => expect(calls.some(call => call.args?.request?.type === "RemoveTarget" && call.args.request.anchor.change_id === "kkkkkkkk")).toBe(true));
     });
 
     it("explains how to start when there are no notes", async () => {
@@ -138,7 +164,7 @@ describe("annotations view", () => {
         let { default: Panel } = await import("./AnnotationsPanel.svelte");
         let view = render(Panel, { props: { active: true } });
         await waitFor(() => expect(view.getByText("No notes yet")).toBeTruthy());
-        expect(view.getByText(/Right-click a change/)).toBeTruthy();
+        expect(view.getByText(/Right-click changes/)).toBeTruthy();
     });
 });
 

@@ -188,6 +188,11 @@ fn print_row(thread: &AnnotationThread) {
         .unwrap_or("");
     let summary: String = first.chars().take(72).collect();
     let replies = thread.posts.len() - 1;
+    let place = describe_anchor(&thread.targets[0].anchor).replace('`', "")
+        + &match thread.targets.len() {
+            1 => String::new(),
+            n => format!(" and {} more", n - 1),
+        };
     println!(
         "{}  {}{}\n          {}{}",
         short_id(&thread.id),
@@ -197,7 +202,7 @@ fn print_row(thread: &AnnotationThread) {
         } else {
             ""
         },
-        describe_anchor(&thread.anchor).replace('`', ""),
+        place,
         match (replies, thread.status) {
             (0, AnnotationStatus::Open) => String::new(),
             (0, AnnotationStatus::Resolved) => " · resolved".to_owned(),

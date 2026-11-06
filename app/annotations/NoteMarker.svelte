@@ -4,7 +4,7 @@
     import type { AnnotationThread } from "../messages/AnnotationThread";
     import { dock } from "../workspace/dock";
     import { anchorLabel } from "./anchors";
-    import { openAnnotation } from "./store";
+    import { noteTitle, openAnnotation } from "./store";
 
     export let notes: AnnotationThread[];
 
@@ -13,10 +13,6 @@
     let timer: ReturnType<typeof setTimeout> | undefined;
     $: label = notes.length === 1 ? "1 note" : `${notes.length} notes`;
     let previews = typeof HTMLElement !== "undefined" && "showPopover" in HTMLElement.prototype;
-
-    function title(thread: AnnotationThread) {
-        return thread.posts[0]?.body.split("\n").find(line => line.trim())?.replace(/[*_`#>]/g, "").trim() ?? "";
-    }
 
     // the preview lives in the top layer, so virtualized rows and clipped panes can't cut it off
     function show() {
@@ -49,7 +45,7 @@
 </span>
 <div class="note-preview" popover="manual" bind:this={preview} aria-hidden="true">
     {#each notes.slice(0, 3) as note (note.id)}
-        <p><span class="where">{anchorLabel(note.anchor)}</span><span class="what">{title(note)}</span></p>
+        <p><span class="where">{anchorLabel(note.targets[0].anchor)}{#if note.targets.length > 1}<span class="more-places"> +{note.targets.length - 1}</span>{/if}</span><span class="what">{noteTitle(note)}</span></p>
     {/each}
     {#if notes.length > 3}<p class="more">{notes.length - 3} more</p>{/if}
 </div>

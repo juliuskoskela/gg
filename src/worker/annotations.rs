@@ -34,12 +34,14 @@ pub fn handle(ws: &WorkspaceSession, request: AnnotationRequest) -> Result<Annot
     let store = store(ws)?;
     match request {
         AnnotationRequest::List => {}
-        AnnotationRequest::Create {
-            anchor,
-            subject,
-            body,
-        } => {
-            store.create(anchor, &subject, ws.name().as_str(), author(ws), &body)?;
+        AnnotationRequest::Create { targets, body } => {
+            store.create(targets, ws.name().as_str(), author(ws), &body)?;
+        }
+        AnnotationRequest::AddTargets { id, targets } => {
+            store.add_targets(&id, author(ws), targets)?;
+        }
+        AnnotationRequest::RemoveTarget { id, anchor } => {
+            store.remove_target(&id, author(ws), anchor)?;
         }
         AnnotationRequest::Reply { id, body } => {
             store.reply(&id, author(ws), &body)?;
@@ -58,7 +60,9 @@ pub fn handle(ws: &WorkspaceSession, request: AnnotationRequest) -> Result<Annot
     }
     let mut threads = store.list()?;
     for thread in &mut threads {
-        thread.state = anchor_state(ws, &thread.anchor);
+        for target in &mut thread.targets {
+            target.state = anchor_state(ws, &target.anchor);
+        }
     }
     Ok(AnnotationList {
         location: store.location().display().to_string(),
@@ -72,7 +76,9 @@ pub fn export(ws: &WorkspaceSession, ids: Vec<String>) -> Result<String> {
     let mut threads: Vec<AnnotationThread> =
         ids.iter().map(|id| store.get(id)).collect::<Result<_>>()?;
     for thread in &mut threads {
-        thread.state = anchor_state(ws, &thread.anchor);
+        for target in &mut thread.targets {
+            target.state = anchor_state(ws, &target.anchor);
+        }
     }
     Ok(annotations::export_markdown(&threads))
 }

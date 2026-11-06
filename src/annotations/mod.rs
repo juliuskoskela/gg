@@ -29,10 +29,12 @@ use tempfile::NamedTempFile;
 
 use crate::messages::annotations::{
     ANNOTATION_FORMAT, ANNOTATION_VERSION, AnchorState, AnnotationAnchor, AnnotationAuthor,
-    AnnotationPost, AnnotationStatus, AnnotationThread, AuthorKind, LineSide,
+    AnnotationPost, AnnotationStatus, AnnotationTarget, AnnotationThread, AuthorKind, LineSide,
+    TargetInput,
 };
 
 const MAX_BODY: usize = 100_000;
+const MAX_TARGETS: usize = 500;
 const MAX_QUOTE: usize = 20_000;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -42,11 +44,31 @@ struct Header {
     id: String,
     created_at: DateTime<Utc>,
     author: AnnotationAuthor,
-    anchor: AnnotationAnchor,
     #[serde(default)]
+    targets: Vec<TargetInput>,
+    // version 1 pointed at a single place
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    anchor: Option<AnnotationAnchor>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     subject: String,
     #[serde(default)]
     workspace: String,
+}
+
+impl Header {
+    fn initial_targets(&self) -> Vec<TargetInput> {
+        let mut targets = self.targets.clone();
+        if let Some(anchor) = &self.anchor {
+            targets.insert(
+                0,
+                TargetInput {
+                    anchor: anchor.clone(),
+                    subject: self.subject.clone(),
+                },
+            );
+        }
+        targets
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -64,6 +86,8 @@ enum EventKind {
     Post { body: String },
     Edit { post: String, body: String },
     Status { status: AnnotationStatus },
+    AddTargets { targets: Vec<TargetInput> },
+    RemoveTarget { anchor: AnnotationAnchor },
 }
 
 #[derive(Serialize)]
@@ -219,13 +243,15 @@ impl AnnotationStore {
 
     pub fn create(
         &self,
-        anchor: AnnotationAnchor,
-        subject: &str,
+        targets: Vec<TargetInput>,
         workspace: &str,
         author: AnnotationAuthor,
         body: &str,
     ) -> Result<AnnotationThread> {
-        validate_anchor(&anchor)?;
+        let targets = validate_targets(targets, &[])?;
+        if targets.is_empty() {
+            bail!("A note needs something to point at.");
+        }
         let body = validate_body(body)?;
         let id = uuid::Uuid::new_v4().simple().to_string();
         let dir = self.annotations_dir().join(&id);
@@ -238,8 +264,9 @@ impl AnnotationStore {
             id: id.clone(),
             created_at: now,
             author: author.clone(),
-            anchor,
-            subject: subject.trim().chars().take(300).collect(),
+            targets,
+            anchor: None,
+            subject: String::new(),
             workspace: workspace.to_owned(),
         };
         write_atomic(
@@ -260,6 +287,47 @@ impl AnnotationStore {
         let id = self.resolve_id(id)?;
         let body = validate_body(body)?;
         self.append(&id, author, EventKind::Post { body })?;
+        self.get(&id)
+    }
+
+    pub fn add_targets(
+        &self,
+        id: &str,
+        author: AnnotationAuthor,
+        targets: Vec<TargetInput>,
+    ) -> Result<AnnotationThread> {
+        let id = self.resolve_id(id)?;
+        let existing: Vec<AnnotationAnchor> = self
+            .get(&id)?
+            .targets
+            .into_iter()
+            .map(|target| target.anchor)
+            .collect();
+        let targets = validate_targets(targets, &existing)?;
+        if !targets.is_empty() {
+            if existing.len() + targets.len() > MAX_TARGETS {
+                bail!("A note can point at most at {MAX_TARGETS} places.");
+            }
+            self.append(&id, author, EventKind::AddTargets { targets })?;
+        }
+        self.get(&id)
+    }
+
+    pub fn remove_target(
+        &self,
+        id: &str,
+        author: AnnotationAuthor,
+        anchor: AnnotationAnchor,
+    ) -> Result<AnnotationThread> {
+        let id = self.resolve_id(id)?;
+        let thread = self.get(&id)?;
+        if !thread.targets.iter().any(|target| target.anchor == anchor) {
+            bail!("The note doesn't point there.");
+        }
+        if thread.targets.len() == 1 {
+            bail!("A note needs something to point at. Delete the note instead.");
+        }
+        self.append(&id, author, EventKind::RemoveTarget { anchor })?;
         self.get(&id)
     }
 
@@ -365,6 +433,7 @@ impl AnnotationStore {
         }
         events.sort_by(|a, b| a.at.cmp(&b.at).then_with(|| a.id.cmp(&b.id)));
 
+        let mut targets = header.initial_targets();
         let mut posts: Vec<AnnotationPost> = Vec::new();
         let mut status = AnnotationStatus::Open;
         let mut updated_at = header.created_at;
@@ -388,22 +457,45 @@ impl AnnotationStore {
                     }
                 }
                 EventKind::Status { status: next } => status = next,
+                EventKind::AddTargets { targets: added } => {
+                    for target in added {
+                        if !targets
+                            .iter()
+                            .any(|existing| existing.anchor == target.anchor)
+                        {
+                            targets.push(target);
+                        }
+                    }
+                }
+                EventKind::RemoveTarget { anchor } => {
+                    if targets.len() > 1 {
+                        targets.retain(|target| target.anchor != anchor);
+                    }
+                }
             }
         }
         if posts.is_empty() {
             bail!("annotation has no note");
         }
 
+        if targets.is_empty() {
+            bail!("annotation points nowhere");
+        }
         Ok(AnnotationThread {
             id: header.id,
-            anchor: header.anchor,
-            subject: header.subject,
+            targets: targets
+                .into_iter()
+                .map(|target| AnnotationTarget {
+                    anchor: target.anchor,
+                    subject: target.subject,
+                    state: AnchorState::Unknown,
+                })
+                .collect(),
             workspace: header.workspace,
             created_at: header.created_at,
             updated_at,
             status,
             posts,
-            state: AnchorState::Unknown,
         })
     }
 }
@@ -432,6 +524,30 @@ fn validate_body(body: &str) -> Result<String> {
         bail!("Notes are limited to {} characters.", MAX_BODY);
     }
     Ok(body.to_owned())
+}
+
+/// drops duplicates, of each other and of what a note already points at
+fn validate_targets(
+    targets: Vec<TargetInput>,
+    existing: &[AnnotationAnchor],
+) -> Result<Vec<TargetInput>> {
+    if targets.len() > MAX_TARGETS {
+        bail!("A note can point at most at {MAX_TARGETS} places.");
+    }
+    let mut accepted: Vec<TargetInput> = Vec::new();
+    for target in targets {
+        validate_anchor(&target.anchor)?;
+        if existing.contains(&target.anchor)
+            || accepted.iter().any(|other| other.anchor == target.anchor)
+        {
+            continue;
+        }
+        accepted.push(TargetInput {
+            anchor: target.anchor,
+            subject: target.subject.trim().chars().take(300).collect(),
+        });
+    }
+    Ok(accepted)
 }
 
 fn validate_anchor(anchor: &AnnotationAnchor) -> Result<()> {
@@ -563,30 +679,41 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
                 ""
             }
         ));
-        out.push_str(&format!("On {}", describe_anchor(&thread.anchor)));
-        if !thread.subject.is_empty() {
-            out.push_str(&format!(", “{}”", thread.subject));
+        let several = thread.targets.len() > 1;
+        if several {
+            out.push_str("Points at:\n");
         }
-        out.push('\n');
-        match &thread.state {
-            AnchorState::Rewritten { commit_id, matches } => out.push_str(&format!(
-                "The change has been rewritten since; it is now commit `{}`{}.\n",
-                short_hash(commit_id),
-                match matches {
-                    Some(true) => " and the annotated lines are unchanged",
-                    Some(false) => " and the annotated lines have changed",
-                    None => "",
-                }
-            )),
-            AnchorState::Missing => {
-                out.push_str("The change no longer exists in this repository.\n")
+        for target in &thread.targets {
+            out.push_str(if several { "- " } else { "On " });
+            out.push_str(&describe_anchor(&target.anchor));
+            if !target.subject.is_empty() {
+                out.push_str(&format!(", “{}”", target.subject));
             }
-            _ => {}
-        }
-        if let AnnotationAnchor::Lines { quote, path, .. } = &thread.anchor {
-            let fence = fence(quote);
-            let language = path.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
-            out.push_str(&format!("\n{fence}{language}\n{quote}\n{fence}\n"));
+            out.push('\n');
+            let indent = if several { "  " } else { "" };
+            match &target.state {
+                AnchorState::Rewritten { commit_id, matches } => out.push_str(&format!(
+                    "{indent}The change has been rewritten since; it is now commit `{}`{}.\n",
+                    short_hash(commit_id),
+                    match matches {
+                        Some(true) => " and the annotated lines are unchanged",
+                        Some(false) => " and the annotated lines have changed",
+                        None => "",
+                    }
+                )),
+                AnchorState::Missing => out.push_str(&format!(
+                    "{indent}The change no longer exists in this repository.\n"
+                )),
+                _ => {}
+            }
+            if let AnnotationAnchor::Lines { quote, path, .. } = &target.anchor {
+                let fence = fence(quote);
+                let language = path.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
+                out.push_str(&format!("\n{fence}{language}\n{quote}\n{fence}\n"));
+                if several {
+                    out.push('\n');
+                }
+            }
         }
         for (index, post) in thread.posts.iter().enumerate() {
             if index == 0 {
@@ -625,6 +752,20 @@ mod tests {
         }
     }
 
+    fn target(anchor: AnnotationAnchor, subject: &str) -> Vec<TargetInput> {
+        vec![TargetInput {
+            anchor,
+            subject: subject.into(),
+        }]
+    }
+
+    fn revision(change: &str) -> AnnotationAnchor {
+        AnnotationAnchor::Revision {
+            change_id: change.into(),
+            commit_id: "0123abcd".into(),
+        }
+    }
+
     fn lines() -> AnnotationAnchor {
         AnnotationAnchor::Lines {
             change_id: "wnpusytqkxyzwnpusytqkxyzwnpusytq".into(),
@@ -641,7 +782,12 @@ mod tests {
     fn threads_assemble_from_events() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = AnnotationStore::at(dir.path().to_path_buf());
-        let thread = store.create(lines(), "rename c.txt", "default", human(), "Why `x`?\n")?;
+        let thread = store.create(
+            target(lines(), "rename c.txt"),
+            "default",
+            human(),
+            "Why `x`?\n",
+        )?;
         assert_eq!(thread.posts.len(), 1);
         assert_eq!(thread.posts[0].body, "Why `x`?");
 
@@ -667,8 +813,8 @@ mod tests {
     fn damaged_notes_are_skipped_and_ids_must_be_unambiguous() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = AnnotationStore::at(dir.path().to_path_buf());
-        let first = store.create(lines(), "", "default", human(), "one")?;
-        store.create(lines(), "", "default", human(), "two")?;
+        let first = store.create(target(lines(), ""), "default", human(), "one")?;
+        store.create(target(lines(), ""), "default", human(), "two")?;
         fs::create_dir_all(store.annotations_dir().join("broken"))?;
         fs::write(store.annotations_dir().join("broken/annotation.json"), "{")?;
         assert_eq!(store.list()?.len(), 2);
@@ -682,13 +828,89 @@ mod tests {
     fn rejects_empty_notes_and_escaping_paths() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = AnnotationStore::at(dir.path().to_path_buf());
-        assert!(store.create(lines(), "", "", human(), "  \n").is_err());
+        assert!(
+            store
+                .create(target(lines(), ""), "", human(), "  \n")
+                .is_err()
+        );
         let escaping = AnnotationAnchor::File {
             change_id: "abc".into(),
             commit_id: "def".into(),
             path: "../secret".into(),
         };
-        assert!(store.create(escaping, "", "", human(), "note").is_err());
+        assert!(
+            store
+                .create(target(escaping, ""), "", human(), "note")
+                .is_err()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn notes_point_at_several_places() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let store = AnnotationStore::at(dir.path().to_path_buf());
+        let mut targets = target(revision("kkkk"), "first");
+        targets.extend(target(revision("kkkk"), "duplicate"));
+        targets.extend(target(lines(), "rename c.txt"));
+        let thread = store.create(targets, "default", human(), "Compare these")?;
+        assert_eq!(thread.targets.len(), 2);
+
+        let thread = store.add_targets(
+            &thread.id,
+            agent(),
+            [target(revision("mmmm"), "third"), target(lines(), "again")].concat(),
+        )?;
+        assert_eq!(
+            thread
+                .targets
+                .iter()
+                .map(|t| t.subject.as_str())
+                .collect::<Vec<_>>(),
+            ["first", "rename c.txt", "third"]
+        );
+
+        let thread = store.remove_target(&thread.id, human(), revision("kkkk"))?;
+        assert_eq!(thread.targets.len(), 2);
+        assert!(
+            store
+                .remove_target(&thread.id, human(), revision("zzzz"))
+                .is_err()
+        );
+        store.remove_target(&thread.id, human(), lines())?;
+        // the last place can't be removed; the note would point nowhere
+        assert!(
+            store
+                .remove_target(&thread.id, human(), revision("mmmm"))
+                .is_err()
+        );
+
+        let markdown = export_markdown(&[store.get(&thread.id)?]);
+        assert!(markdown.contains("On change `mmmm`"));
+        Ok(())
+    }
+
+    #[test]
+    fn reads_single_place_notes_from_version_one() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let store = AnnotationStore::at(dir.path().to_path_buf());
+        let note = store.annotations_dir().join("0011aa");
+        fs::create_dir_all(note.join("events"))?;
+        fs::write(
+            note.join("annotation.json"),
+            r#"{"format":"gg.annotation","version":1,"id":"0011aa","created_at":"2026-11-06T10:00:00Z",
+                "author":{"name":"Ada","kind":"human"},"workspace":"default","subject":"old summary",
+                "anchor":{"kind":"revision","change_id":"kkkk","commit_id":"0123"}}"#,
+        )?;
+        fs::write(
+            note.join("events/1.json"),
+            r#"{"id":"e1","at":"2026-11-06T10:00:00Z","author":{"name":"Ada","kind":"human"},"type":"post","body":"Old note"}"#,
+        )?;
+        let thread = store.get("0011aa")?;
+        assert_eq!(thread.targets.len(), 1);
+        assert_eq!(thread.targets[0].subject, "old summary");
+        let thread = store.add_targets("0011aa", human(), target(revision("mmmm"), ""))?;
+        assert_eq!(thread.targets.len(), 2);
         Ok(())
     }
 
@@ -708,9 +930,9 @@ mod tests {
     fn export_keeps_code_exact_and_explains_replies() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let store = AnnotationStore::at(dir.path().to_path_buf());
-        let thread = store.create(lines(), "rename c.txt", "default", human(), "Why?")?;
+        let thread = store.create(target(lines(), "rename c.txt"), "default", human(), "Why?")?;
         let mut thread = store.reply(&thread.id, agent(), "Because.")?;
-        thread.state = AnchorState::Rewritten {
+        thread.targets[0].state = AnchorState::Rewritten {
             commit_id: "ffff".into(),
             matches: Some(true),
         };

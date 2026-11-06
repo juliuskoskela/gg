@@ -4,7 +4,7 @@ use jj_lib::object_id::ObjectId as _;
 use super::{get_by_chid, mkrepo, revs};
 use crate::{
     messages::{
-        annotations::{AnchorState, AnnotationAnchor, AnnotationRequest, LineSide},
+        annotations::{AnchorState, AnnotationAnchor, AnnotationRequest, LineSide, TargetInput},
         mutations::DescribeRevision,
     },
     worker::{Mutation as _, WorkerSession, annotations},
@@ -33,8 +33,10 @@ async fn anchors_report_rewrites_and_moved_lines() -> Result<()> {
         annotations::handle(
             &ws,
             AnnotationRequest::Create {
-                anchor: anchor(start, quote),
-                subject: "".into(),
+                targets: vec![TargetInput {
+                    anchor: anchor(start, quote),
+                    subject: "".into(),
+                }],
                 body: format!("note on {quote}"),
             },
         )?;
@@ -45,7 +47,11 @@ async fn anchors_report_rewrites_and_moved_lines() -> Result<()> {
         list.location
             .starts_with(&data.path().display().to_string())
     );
-    assert!(list.threads.iter().all(|t| t.state == AnchorState::Current));
+    assert!(
+        list.threads
+            .iter()
+            .all(|t| t.targets[0].state == AnchorState::Current)
+    );
     assert_eq!(list.threads[0].workspace, "default");
 
     DescribeRevision {
@@ -61,7 +67,7 @@ async fn anchors_report_rewrites_and_moved_lines() -> Result<()> {
         list.threads
             .iter()
             .find(|t| t.posts[0].body == body)
-            .map(|t| t.state.clone())
+            .map(|t| t.targets[0].state.clone())
             .unwrap()
     };
     assert!(matches!(

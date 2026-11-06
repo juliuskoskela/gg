@@ -14,7 +14,8 @@
     import DiffTools from "./DiffTools.svelte";
     import Icon from "../controls/Icon.svelte";
     import { linesAnchor, MAX_LINES, subjectOf } from "../annotations/anchors";
-    import { lineMenu, startDraft } from "../annotations/store";
+    import { lineMenu } from "../annotations/store";
+    import { targetCommands } from "../annotations/commands";
     import { navigateOptions } from "../controls/optionNavigation";
 
     export let focused = false;
@@ -71,13 +72,10 @@
         let count = range.end - range.start + 1;
         let label = count === 1 ? `Annotate line ${range.start}…` : `Annotate lines ${range.start}–${range.end}…`;
         let reason = !header ? "Select one revision to annotate its lines" : count > MAX_LINES ? `Annotate at most ${MAX_LINES} lines` : null;
-        lineMenu.set({ x: event.clientX, y: event.clientY, heading: range.side === "deletions" ? "Before the change" : null, commands: [{
-            id: "annotate-lines", label, icon: "message-square", scope: "Annotation", reason,
-            execute: async () => {
-                if (!header || !file) return;
-                startDraft({ anchor: await linesAnchor(header, file, range.side, range.start, range.end, loadFullFiles), subject: subjectOf(header) });
-            },
-        }] });
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: range.side === "deletions" ? "Before the change" : null, commands: targetCommands(async () => {
+            if (!header || !file) return [];
+            return [{ anchor: await linesAnchor(header, file, range.side, range.start, range.end, loadFullFiles), subject: subjectOf(header) }];
+        }, label, reason) });
     }
     async function loadFullFiles() {
         let file = currentChange;

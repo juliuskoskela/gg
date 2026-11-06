@@ -1,16 +1,17 @@
 # Annotations
 
-Annotations are local notes attached to repository content: a change, a bookmark, a file in a revision, or a range of lines in a diff. They exist to capture observations while reading code and hand them to someone else, usually an LLM, with enough location for the reader to find the code.
+Annotations are local notes attached to repository content: changes, bookmarks, files in a revision, or ranges of lines in a diff. One note can point at several of these places. They exist to capture observations while reading code and hand them to someone else, usually an LLM, with enough location for the reader to find the code.
 
 Every annotation is the root of a thread. Its first post is the note; later posts are replies from people or agents. Notes are never added to the repository.
 
 ## Using them
 
+- **Point at several places.** Select a range of revisions in the timeline (Shift+click or Shift+arrow) and choose *Annotate 2 changes…* to note them together. While a note or draft is open in the Annotations view, every annotate menu also offers *Add to …*, which points that note at the right-clicked place too. Each place shows as a chip on the note; hover a chip to remove it, as long as one remains.
 - **Annotate.** Right-click a change or bookmark in the timeline, a file in the file tree, a hunk's actions, a line in the diff, or the change and commit ids in Description, and choose *Annotate…*. Select several lines first to annotate the range. The command palette offers *Annotate change…* for the selected revision. Annotating never touches history, so it works on immutable revisions too.
 - **Write.** A new note opens as a draft in the Annotations view, not in a dialog, so you can keep browsing revisions, files and diffs while writing. The draft stays at the top of the list until it is saved or discarded, including across reloads. Starting another note while a draft has text asks first. Notes are markdown with a preview; Ctrl/⌘+Enter saves.
-- **Review.** *Views → Annotations* lists notes, newest activity first. Clicking a note opens its location, the annotated code for line notes and the thread beside the list; clicking it again, the close button or Escape closes it. Your own posts can be edited; notes can be replied to, resolved, reopened and deleted.
+- **Review.** *Views → Annotations* lists notes, newest activity first. Clicking a note opens the places it points at, the annotated code for line notes and the thread beside the list; clicking it again, the close button or Escape closes it. Your own posts can be edited; notes can be replied to, resolved, reopened and deleted.
 - **Copy.** Tick notes, or the check beside the count to select every listed note, and choose *Copy selected* to put markdown on the clipboard: each note's location (change and commit ids, path, lines, revision subject), the quoted code and the thread, plus one line explaining how to reply.
-- **Markers.** Changes and files with open notes show a note marker. Hovering previews the notes; clicking opens them.
+- **At a glance.** List rows show the first place a note points at, with a `+N` badge for the rest, a reply count, and a warning when something it points at has changed. Changes and files with open notes show a note marker in the timeline, the file tree and the diff footer; hovering previews the notes, clicking opens them.
 
 ## Agents and the command line
 
@@ -29,7 +30,7 @@ A note id may be shortened to any unambiguous prefix. Replies read standard inpu
 
 ## Anchors
 
-Anchors store full ids and repository-relative paths, so they stay meaningful outside GG.
+A note has one or more targets. Each target is an anchor plus the revision's summary line at the time. Anchors store full ids and repository-relative paths, so they stay meaningful outside GG.
 
 | Kind | Fields |
 | --- | --- |
@@ -53,15 +54,15 @@ Notes are stored outside the repository, in GG's data directory:
 ```text
 <data>/gg/repos/<repo key>/
   repo.json                          last known location, for people
-  annotations/<id>/annotation.json   format, anchor, author, subject
-  annotations/<id>/events/*.json     posts, edits and status changes
+  annotations/<id>/annotation.json   format, targets, author
+  annotations/<id>/events/*.json     posts, edits, status changes and added or removed targets
 ```
 
 `<data>` is `$XDG_DATA_HOME` (by default `~/.local/share`) on Linux and macOS, and `%APPDATA%` on Windows. `GG_DATA_DIR` overrides it.
 
 The repository key is jj's per-repository id from `.jj/repo/config-id`. All workspaces of a repository share it, and it survives moving the repository. Repositories without one fall back to a hash of their location. GG doesn't write into `.jj/`: jj has no extension point for third-party data there, and jj 0.46 moved its own per-repository config out of `.jj/` for security.
 
-Each event is a separate file, created atomically and never rewritten, so the app and the command line can write to the same thread at the same time. A damaged note is skipped rather than hiding the others.
+Format version 2 stores a list of targets; version 1 notes, which pointed at one place, are read as notes with one target. Each event is a separate file, created atomically and never rewritten, so the app and the command line can write to the same thread at the same time. A damaged note is skipped rather than hiding the others.
 
 ## Safety
 

@@ -51,7 +51,7 @@ describe("annotations", () => {
 
         let listed = JSON.parse(cli("list", "--json"));
         expect(listed).toHaveLength(1);
-        expect(listed[0].anchor).toMatchObject({ kind: "revision" });
+        expect(listed[0].targets[0].anchor).toMatchObject({ kind: "revision" });
         cli("reply", listed[0].id.slice(0, 8), "--agent", "claude", "The old path is removed in the same change.");
 
         // the open view picks up replies written elsewhere
@@ -71,6 +71,37 @@ describe("annotations", () => {
         await page.getByText("No open notes").waitFor();
         expect(cli("list")).toContain("No open notes");
         expect(cli("list", "--all")).toContain("resolved");
+    });
+
+    it("notes several selected changes at once and adds more places later, keeping range selection working", async () => {
+        let page = ctx.page;
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.evaluate(() => {
+            let group = (active: string, panels = [active]) => ({ type: "tabs", active, panels });
+            localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, compactActive: "annotations", root: { type: "split", direction: "row", ratio: .4, first: group("timeline"), second: group("annotations", ["description", "annotations"]) } }));
+        });
+        await page.reload();
+        let rows = page.locator(".graph .selection-item");
+        await rows.filter({ hasText: "small file child" }).click();
+        // the view refreshes every few seconds; range selection must survive it
+        await page.waitForTimeout(3500);
+        await rows.filter({ hasText: "small file parent" }).click({ modifiers: ["Shift"] });
+        await expect.poll(() => page.locator(".graph .selected").count()).toBe(2);
+
+        await rows.filter({ hasText: "small file parent" }).click({ button: "right" });
+        await page.getByRole("menuitem", { name: "Annotate 2 changes…" }).click();
+        await expect.poll(() => page.getByRole("list", { name: "Points at" }).locator("li").count()).toBe(2);
+        await page.getByRole("textbox", { name: "Note" }).fill("These two belong together");
+        await page.getByRole("button", { name: "Save note" }).click();
+        await page.getByRole("list", { name: "Notes" }).getByText("These two belong together").waitFor();
+
+        await rows.filter({ hasText: "hunk sibling" }).click({ button: "right" });
+        await page.getByRole("menuitem", { name: "Add to “These two belong together”" }).click();
+        await expect.poll(() => page.getByRole("list", { name: "Points at" }).locator("li").count()).toBe(3);
+        await page.screenshot({ path: "e2e/results/annotations/targets-1440.png" });
+        let note = JSON.parse(cli("list", "--json")).find((thread: any) => thread.posts[0].body === "These two belong together");
+        expect(note.targets.map((target: any) => target.subject)).toEqual(["small file child", "small file parent", "hunk sibling"]);
+        expect(cli("show", note.id)).toContain("Points at:");
     });
 
     it("keeps the annotated lines with a note made in the diff", async () => {
@@ -93,7 +124,7 @@ describe("annotations", () => {
         await page.getByRole("list", { name: "Notes" }).getByText("Start here").waitFor();
         await page.screenshot({ path: "e2e/results/annotations/lines-1440.png" });
         let note = JSON.parse(cli("list", "--json"))[0];
-        expect(note.anchor).toMatchObject({ kind: "lines", path: "hunk_test.txt", start: 1, end: 1, quote: "line1" });
+        expect(note.targets[0].anchor).toMatchObject({ kind: "lines", path: "hunk_test.txt", start: 1, end: 1, quote: "line1" });
         expect(cli("show", note.id)).toContain("```txt\nline1\n```");
     });
 });

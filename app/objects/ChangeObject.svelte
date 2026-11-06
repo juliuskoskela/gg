@@ -28,7 +28,7 @@
 
     $: operand = headers ? { type: "Change", headers, path: change.path, hunk: null } as Operand : null;
     // notes on the file or its lines, in the one revision shown
-    $: notes = headers?.length === 1 ? ($openNotesByChange.get(headers[0].id.change.hex) ?? []).filter(note => "path" in note.anchor && note.anchor.path === change.path.repo_path) : [];
+    $: notes = headers?.length === 1 ? ($openNotesByChange.get(headers[0].id.change.hex) ?? []).filter(note => note.targets.some(target => target.anchor.change_id === headers![0].id.change.hex && "path" in target.anchor && target.anchor.path === change.path.repo_path)) : [];
 
     $: hasDiffTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool;
     $: hasMergeTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool;

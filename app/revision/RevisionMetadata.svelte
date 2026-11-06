@@ -10,8 +10,9 @@
     import TagObject from "../objects/TagObject.svelte";
     import RevisionObject from "../objects/RevisionObject.svelte";
     import Zone from "../objects/Zone.svelte";
-    import { anchorFor } from "../annotations/anchors";
-    import { copyText, lineMenu, startDraft } from "../annotations/store";
+    import { targetsFor } from "../annotations/anchors";
+    import { targetCommands } from "../annotations/commands";
+    import { copyText, lineMenu } from "../annotations/store";
 
     export let revs: Extract<RevsResult, { type: "Detail" }>;
     $: singleton = revs.headers.length === 1;
@@ -25,12 +26,12 @@
 
     // ids are where people point when they talk about a revision, so they offer annotating and copying
     function idMenu(event: MouseEvent, kind: "change" | "commit") {
-        let draft = anchorFor({ type: "Revision", header: newest });
+        let targets = targetsFor({ type: "Revision", header: newest });
         let hex = kind === "change" ? newest.id.change.hex : newest.id.commit.hex;
         event.preventDefault();
         lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [
-            { id: "annotate", label: "Annotate change…", icon: "message-square", scope: "Annotation", reason: draft ? null : "Select one revision", execute: () => { if (draft) startDraft(draft); } },
-            { id: "copy-id", label: kind === "change" ? "Copy change ID" : "Copy commit ID", icon: "clipboard", scope: "Revision", reason: null, execute: () => { copyText(hex); } },
+            { id: "copy-id", label: kind === "change" ? "Copy change ID" : "Copy commit ID", icon: "clipboard", scope: "Revision", group: 0, reason: null, execute: () => { copyText(hex); } },
+            ...targetCommands(() => targets, "Annotate change…"),
         ] });
     }
 </script>

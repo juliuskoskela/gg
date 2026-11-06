@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub const ANNOTATION_FORMAT: &str = "gg.annotation";
-pub const ANNOTATION_VERSION: u32 = 1;
+pub const ANNOTATION_VERSION: u32 = 2;
 
 /// What an annotation points at. Ids are full hex strings and paths are
 /// repository-relative with forward slashes, so the anchor stays meaningful
@@ -149,14 +149,31 @@ pub struct AnnotationPost {
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct AnnotationThread {
     pub id: String,
-    pub anchor: AnnotationAnchor,
-    /// the anchor's commit summary when annotated, for context in exports
-    pub subject: String,
+    /// everything the note points at, in the order it was added
+    pub targets: Vec<AnnotationTarget>,
     pub workspace: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub status: AnnotationStatus,
     pub posts: Vec<AnnotationPost>,
+}
+
+/// A place a note points at, as given when annotating.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct TargetInput {
+    pub anchor: AnnotationAnchor,
+    /// the revision's summary line at the time, for context in exports
+    #[serde(default)]
+    pub subject: String,
+}
+
+/// A place a note points at, with how it relates to the repository now.
+#[derive(Serialize, Clone, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct AnnotationTarget {
+    pub anchor: AnnotationAnchor,
+    pub subject: String,
     pub state: AnchorState,
 }
 
@@ -178,9 +195,17 @@ pub struct AnnotationList {
 pub enum AnnotationRequest {
     List,
     Create {
-        anchor: AnnotationAnchor,
-        subject: String,
+        targets: Vec<TargetInput>,
         body: String,
+    },
+    /// points an existing note at more places
+    AddTargets {
+        id: String,
+        targets: Vec<TargetInput>,
+    },
+    RemoveTarget {
+        id: String,
+        anchor: AnnotationAnchor,
     },
     Reply {
         id: String,
