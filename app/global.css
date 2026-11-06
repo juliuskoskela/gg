@@ -149,6 +149,12 @@
   --selection-bg: light-dark(#e6e6e0, #323230);
   --selection-hover: light-dark(#dfdfd8, #383835);
   --selection-text: var(--text-strong);
+  /* ink overlays keep feedback relative to the surface beneath each control. */
+  --interaction-hover: color-mix(in srgb, var(--text) 10%, transparent);
+  --interaction-pressed: color-mix(in srgb, var(--text) 16%, transparent);
+  --interaction-selected: color-mix(in srgb, var(--text) 14%, transparent);
+  --interaction-selected-hover: color-mix(in srgb, var(--text) 22%, transparent);
+  --interaction-selected-pressed: color-mix(in srgb, var(--text) 26%, transparent);
   --control-pressed: color-mix(in srgb, var(--text) 6%, var(--active));
   --accent-subtle: light-dark(#ebeff2, #272f34);
   --accent-border: light-dark(#c8d4de, #3e515f);
@@ -243,7 +249,7 @@ input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
 select { cursor: pointer; }
 select:disabled { cursor: default; }
 select:open { border-color: var(--accent); background: var(--raised); }
-select:not(:disabled):active { border-color: var(--control-hover); background: var(--control-pressed); }
+select:not(:disabled):active { border-color: var(--control-hover); background: var(--interaction-pressed); }
 h1, h2, h3, p { margin: 0; }
 h2, h3 { font-size: var(--type-ui); font-weight: 500; color: var(--text-strong); }
 ul, ol { margin: 0; padding: 0; }
@@ -257,6 +263,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
 
 @media (hover: hover) {
   input:not(:disabled):not(:focus-visible):hover, textarea:not(:disabled):not(:focus-visible):hover, select:not(:disabled):not(:focus-visible):not(:open):hover { border-color: var(--control-hover); }
+  select:not(:disabled):not(:focus-visible):not(:open):not(:active):hover { background: var(--interaction-hover); }
 }
 @media (prefers-reduced-motion: no-preference) {
   [role="dialog"] button.primary:not(:disabled):active { scale: .985; }
@@ -280,13 +287,18 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   select > button { flex: 1; min-width: 0; min-height: 0; height: auto; display: block; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; text-align: start; box-shadow: none; overflow: hidden; }
   selectedcontent { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   select::picker(select) { margin-block-start: 4px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--popover-surface); color: var(--text); font: var(--type-ui)/1.54 var(--stack-ui); box-shadow: var(--shadow-overlay); max-width: calc(100vw - 32px); max-height: min(320px, 60dvh); overflow: auto; overscroll-behavior: contain; }
-  select option { min-height: 32px; padding: 6px 8px; border-radius: var(--radius-control); gap: 8px; outline: none; }
-  select option:checked { background: var(--selection-bg); color: var(--selection-text); font-weight: 500; }
+  select option { min-height: 32px; padding: 6px 8px; border-radius: var(--radius-control); gap: 8px; outline: none; background: transparent; color: var(--text); }
+  select option:checked { background: var(--interaction-selected); color: var(--selection-text); font-weight: 500; }
+  select option:disabled { color: var(--text-disabled); }
+  select option:not(:disabled):active { background: var(--interaction-pressed); }
+  select option:checked:not(:disabled):active { background: var(--interaction-selected-pressed); }
   select option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   select hr { margin: 4px; border: 0; border-block-start: 1px solid var(--rule); }
   @media (hover: hover) {
-    select option:hover { background: var(--hover); }
-    select option:checked:hover { background: var(--selection-hover); }
+    select option:not(:disabled):hover { background: var(--interaction-hover); }
+    select option:checked:not(:disabled):hover { background: var(--interaction-selected-hover); }
+    select option:not(:disabled):hover:active { background: var(--interaction-pressed); }
+    select option:checked:not(:disabled):hover:active { background: var(--interaction-selected-pressed); }
   }
   @media (pointer: coarse), (max-width: 600px) { select option { min-height: 44px; } }
 }

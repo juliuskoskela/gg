@@ -95,15 +95,14 @@
     }
     button > :global(svg) { --icon-size: 15px; color: var(--muted); }
     button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    /* macos highlights the pointed or focused item with a solid accent fill; pointer moves focus so there is one highlight */
-    button:focus { background: var(--accent-solid); color: var(--text-on-accent); }
+    /* pointer moves focus so keyboard and pointer share one highlight. */
+    button:focus { background: var(--interaction-hover); color: var(--text-strong); }
     button:focus > :global(svg) { color: currentColor; }
-    button:focus-visible { outline: none; }
-    button:active { background: var(--accent-solid-hover); }
+    button:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
+    button:active { background: var(--interaction-pressed); }
     .destructive { color: var(--negative); }
     .destructive > :global(svg) { color: currentColor; }
-    .destructive:focus { background: var(--danger-solid); color: var(--text-on-danger); }
-    .destructive:active { background: var(--danger-solid-pressed); }
+    .destructive:focus > :global(svg) { color: var(--negative); }
     .context-menu:focus { outline: none; }
     hr { margin: 5px 10px; border: 0; border-block-start: 1px solid var(--rule); }
     .menu-title { margin: 0; padding: 4px 10px 6px; color: var(--muted); font-size: var(--type-caption); font-weight: 500; }
