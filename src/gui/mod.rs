@@ -2,6 +2,7 @@ mod handler;
 mod menu;
 #[cfg(target_os = "macos")]
 mod recent_items;
+mod review;
 mod sink;
 #[cfg(all(test, not(feature = "ts-rs")))]
 mod tests;
@@ -310,6 +311,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            review::export_review,
             forward_accelerator,
             forward_clone_url,
             set_modifier_state,

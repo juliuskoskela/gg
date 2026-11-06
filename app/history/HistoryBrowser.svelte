@@ -1,5 +1,7 @@
 <script lang="ts">
     import "./history.css";
+    import ViewToolbar from "../controls/ViewToolbar.svelte";
+    import ActionWidget from "../controls/ActionWidget.svelte";
     import Icon from "../controls/Icon.svelte";
     export let label: string;
     export let caption: string;
@@ -22,8 +24,10 @@
     }
 </script>
 
+<ViewToolbar label={`${label} tools`}><ActionWidget safe tip={`Refresh ${label.toLowerCase()}`} disabled={loading} onClick={onRefresh}><Icon name="refresh-cw" />Refresh</ActionWidget></ViewToolbar>
+
 <section class="history-browser" aria-label={label}>
-    <header class="history-intro"><p>{caption}</p><button class="refresh" type="button" aria-label={`Refresh ${label.toLowerCase()}`} title="Refresh history" disabled={loading} on:click={onRefresh}><Icon name="refresh-cw" /></button></header>
+    <header class="history-intro"><p>{caption}</p></header>
     <div class="history-layout">
         <div class="history-index">
             <div class="history-rows" role="group" aria-label={`${label} entries`}>
@@ -50,7 +54,6 @@
     .history-intro p { flex: 1; margin: 0; color: var(--muted); font-size: var(--type-caption); line-height: 1.6; }
     button { color: var(--text); background: transparent; border: 0; border-radius: var(--radius-control); cursor: pointer; font-size: inherit; }
     button:disabled { cursor: default; color: var(--text-disabled); }
-    .refresh { display: grid; place-items: center; flex-shrink: 0; width: 32px; min-height: 32px; padding: 6px; color: var(--muted); }
     .history-layout { display: grid; grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); flex: 1; min-height: 0; }
     .history-index { pointer-events: auto; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; border-inline-end: 1px solid var(--rule); }
     .history-rows { display: grid; gap: 2px; }
@@ -71,5 +74,5 @@
     @container history (max-width: 650px) { .history-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(100px, 38%) minmax(0, 1fr); } .history-index { border-inline-end: 0; border-block-end: 1px solid var(--rule); } }
     @media (hover: hover) { button:not(:disabled):hover { background: var(--interaction-hover); } .history-row[aria-pressed="true"]:hover { background: var(--interaction-selected-hover); } }
     button:not(:disabled):active { background: var(--interaction-pressed); }
-    @media (pointer: coarse), (max-width: 600px) { .refresh { min-height: 44px; width: 44px; } .load-more, .history-state button { min-height: 44px; } }
+    @media (pointer: coarse), (max-width: 600px) { .load-more, .history-state button { min-height: 44px; } }
 </style>

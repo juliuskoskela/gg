@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { reviewEnabled, setReviewEnabled } from "../plugins/review/store";
     import { effectiveTheme, effectiveAppearance, setAppearance, useDefaultAppearance, themePreference } from "../display/theme";
     import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
     import { mutationPending } from "../operations";
@@ -48,6 +49,10 @@
                 <div class="setting-copy"><h3 id="immutability-label">Override immutability</h3><p>Allow edits to revisions marked immutable.</p></div>
                 <ToggleWidget tip="Override immutability" bind:checked={$ignoreToggled} disabled={busy} safe on="shield-off" off="shield" />
             </div>
+        </section>
+        <section aria-labelledby="extensions-heading">
+            <h2 id="extensions-heading">Extensions</h2>
+            <div class="setting-row"><div class="setting-copy"><h3>Review</h3><p>Portable discussions, captured patches and file review progress.</p></div><button type="button" aria-pressed={$reviewEnabled} on:click={() => setReviewEnabled(!$reviewEnabled)}>{$reviewEnabled ? "Enabled" : "Disabled"}</button></div>
         </section>
         <section aria-labelledby="operation-heading">
             <h2 id="operation-heading">Current operation</h2>

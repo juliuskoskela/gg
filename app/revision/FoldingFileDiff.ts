@@ -1,7 +1,7 @@
 import { FileDiff } from "@pierre/diffs";
 
 // Pierre exposes expansion publicly, but collapse still needs its protected renderer.
-export class FoldingFileDiff extends FileDiff<number> {
+export class FoldingFileDiff<LAnnotation = number> extends FileDiff<LAnnotation> {
     get diff() { return this.getWorkingDiff(); }
 
     collapse(gap: number) {

@@ -4,11 +4,12 @@
     import type { PanelId } from "../workspace/dock";
     import { contains, dock } from "../workspace/dock";
     import { viewChoices } from "../workspace/panels";
+    import { reviewEnabled } from "../plugins/review/store";
     import { repoStatusEvent } from "../stores";
 
     let root: HTMLDivElement;
     let menuOpen = false;
-    $: choices = viewChoices(!!$repoStatusEvent);
+    $: choices = viewChoices(!!$repoStatusEvent, $reviewEnabled);
 
     onMount(() => {
         let openMenu = () => { menuOpen = true; };

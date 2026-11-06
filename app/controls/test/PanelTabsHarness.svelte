@@ -5,5 +5,5 @@
 </script>
 
 <PanelTabs {items} active="diff" {draggable} onSelect={() => {}} onClose={() => {}}>
-    <svelte:fragment slot="tools"><button type="button">Wrap lines</button></svelte:fragment>
+    {#snippet tools()}<button type="button">Wrap lines</button>{/snippet}
 </PanelTabs>

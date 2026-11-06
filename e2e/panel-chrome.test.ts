@@ -13,7 +13,7 @@ describe("shared panel chrome", () => {
     });
     afterAll(async () => { if (ctx) await destroyContext(ctx); });
 
-    it.each([1440, 768, 390, 320].flatMap(width => ["light", "dark"].flatMap(theme => ["single", "stacked", "split"].map(arrangement => ({ width, theme, arrangement })))))("keeps view titles, tabs and tools on one row at $width px, $theme, $arrangement", async ({ width, theme, arrangement }) => {
+    it.each([1440, 768, 390, 320].flatMap(width => ["light", "dark"].flatMap(theme => ["single", "stacked", "split"].map(arrangement => ({ width, theme, arrangement })))))("keeps a quiet title line above unified controls at $width px, $theme, $arrangement", async ({ width, theme, arrangement }) => {
         await ctx.page.setViewportSize({ width, height: 960 });
         await ctx.page.goto(`${url}/?inspect=main`);
         await ctx.page.evaluate(({ theme, arrangement }) => {
@@ -46,13 +46,13 @@ describe("shared panel chrome", () => {
                 expect(top.tabCount).toBeGreaterThan(1);
                 expect(top.titleCount).toBe(0);
                 expect(top.tabsContainTools).toBe(false);
-                if (top.toolsTop !== undefined) expect(top.toolsTop).toBeLessThan(top.barBottom);
+                if (top.toolsTop !== undefined) expect(top.toolsTop).toBeGreaterThanOrEqual(top.barBottom);
             } else {
                 expect(top.titleCount).toBe(1);
-                if (top.toolsTop !== undefined) expect(top.toolsTop).toBeLessThan(top.barBottom);
+                if (top.toolsTop !== undefined) expect(top.toolsTop).toBeGreaterThanOrEqual(top.barBottom);
             }
             expect(top.barHeight).toBe(width > 600 ? 40 : 56);
-            if (top.toolsBottom !== undefined) expect(top.toolsBottom).toBeLessThanOrEqual(top.barBottom);
+            if (top.toolsBottom !== undefined) expect(top.toolsBottom).toBeGreaterThan(top.barBottom);
             for (let control of top.controls) {
                 if (control.close && width > 600) expect([0, 24]).toContain(Math.round(control.width));
                 else expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 44);
@@ -74,7 +74,7 @@ describe("shared panel chrome", () => {
         await expect.poll(() => wrap.getAttribute("aria-pressed")).not.toBe(pressed);
         expect(await ctx.page.locator(".dock-drag-ghost").count()).toBe(0);
     });
-    it.each([768, 390, 320])("scrolls overflowing tabs behind fixed tools and reveals keyboard focus at %ipx", async width => {
+    it.each([768, 390, 320])("scrolls overflowing tabs independently of view tools and reveals keyboard focus at %ipx", async width => {
         await ctx.page.setViewportSize({ width, height: 960 });
         await ctx.page.goto(`${url}/?inspect=main`);
         await ctx.page.evaluate(() => localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, root: { type: "tabs", panels: ["timeline", "description", "diff", "tree", "edit", "evolution", "history", "revision-tools", "operation", "settings"], active: "diff" }, compactActive: "diff" })));
@@ -83,7 +83,7 @@ describe("shared panel chrome", () => {
         let tools = ctx.page.getByRole("group", { name: "Diff tools", exact: true });
         await tools.waitFor();
         let viewport = await tabs.boundingBox(), fixed = await tools.boundingBox();
-        expect(viewport!.x + viewport!.width).toBeLessThanOrEqual(fixed!.x);
+        expect(fixed!.y).toBeGreaterThanOrEqual(viewport!.y + viewport!.height);
         expect(await tabs.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
         await tabs.evaluate(element => element.scrollLeft = 0);
         let origin = await tools.boundingBox();
@@ -96,10 +96,10 @@ describe("shared panel chrome", () => {
             let tab = (await active.boundingBox())!, strip = (await tabs.boundingBox())!;
             return tab.x >= strip.x - 1 && tab.x < strip.x + strip.width - 12;
         }).toBe(true);
-        // a narrow split pane keeps full-size tools on this row and scrolls the tools themselves.
-        let top = tabs.locator("..");
-        await top.evaluate(element => element.style.maxWidth = "180px");
-        expect((await top.boundingBox())!.height).toBe(width > 600 ? 40 : 56);
+        // narrow panes keep full-size controls and scroll the toolbar independently.
+        let top = tabs.locator("../..");
+        await top.evaluate(element => element.style.maxWidth = "140px");
+        expect((await top.locator("[data-panel-bar]").boundingBox())!.height).toBe(width > 600 ? 40 : 56);
         let toolViewport = top.locator("[data-panel-toolbar]");
         expect(await toolViewport.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
         for (let button of await tools.getByRole("button").all()) {
@@ -122,6 +122,33 @@ describe("shared panel chrome", () => {
         await ctx.page.keyboard.press("Enter");
         expect(await ctx.page.getByRole("tab", { name: "Settings", exact: true }).count()).toBe(0);
         expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
+    it("remembers a view’s collapsed toolbar across tab changes and responsive remounts", async () => {
+        await ctx.page.setViewportSize({ width: 1440, height: 960 });
+        await ctx.page.goto(`${url}/?inspect=main`);
+        await ctx.page.evaluate(() => localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, root: { type: "tabs", panels: ["timeline", "diff", "tree"], active: "diff" }, compactActive: "diff" })));
+        await ctx.page.reload();
+        let hide = ctx.page.getByRole("button", { name: "Hide Diff toolbar", exact: true });
+        await hide.click();
+        expect(await ctx.page.getByRole("button", { name: "Wrap lines", exact: true }).count()).toBe(0);
+        await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "Hide Timeline toolbar" }).waitFor();
+        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "Show Diff toolbar" }).waitFor();
+        await ctx.page.setViewportSize({ width: 390, height: 960 });
+        let show = ctx.page.getByRole("button", { name: "Show Diff toolbar" });
+        await show.waitFor();
+        await show.focus();
+        await show.press("Enter");
+        await ctx.page.getByRole("button", { name: "Wrap lines", exact: true }).waitFor();
+        expect(await ctx.page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Hide Diff toolbar");
+        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
+        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
+        await search.fill("c.txt");
+        await ctx.page.getByRole("button", { name: "Hide Files toolbar" }).click();
+        expect(await search.count()).toBe(0);
+        await ctx.page.getByRole("button", { name: "Show Files toolbar" }).click();
+        expect(await search.inputValue()).toBe("c.txt");
     });
     it("closes inactive and active tabs without starting a drag or changing the wrong selection", async () => {
         await ctx.page.setViewportSize({ width: 1440, height: 960 });

@@ -1,4 +1,8 @@
 <script lang="ts">
+    import { provideToolbarOwner } from "./toolbars";
+    import ViewToolbar from "../controls/ViewToolbar.svelte";
+    import TimelineDisplayOptions from "../timeline/TimelineDisplayOptions.svelte";
+    import DiffTools from "../revision/DiffTools.svelte";
     import { enabled as neovimEnabled } from "virtual:gg-neovim";
     import type { Query } from "../events";
     import type { RepoConfig } from "../messages/RepoConfig";
@@ -16,6 +20,7 @@
     import EvolutionPanel from "../history/EvolutionPanel.svelte";
     import OperationHistory from "../history/OperationHistory.svelte";
     import OperationView from "./OperationView.svelte";
+    import ReviewPanel from "../plugins/review/ReviewPanel.svelte";
     import SettingsPanel from "../shell/SettingsPanel.svelte";
 
     export let id: PanelId;
@@ -28,11 +33,18 @@
     export let reviewKey: string;
     export let onSelectFile: (change: RevChange) => void;
 
+    provideToolbarOwner(id);
+
     $: headers = detail?.headers ?? [];
     $: file = selectedPath || changes[0]?.path.repo_path || "";
 </script>
 
-{#if id === "evolution"}
+{#if id === "timeline"}<ViewToolbar label="Timeline tools"><TimelineDisplayOptions /></ViewToolbar>
+{:else if id === "diff" && detail && changes.length}<ViewToolbar label="Diff tools"><DiffTools {changes} /></ViewToolbar>{/if}
+
+{#if id === "review"}
+    <ReviewPanel {detail} repository={workspace.absolute_path} />
+{:else if id === "evolution"}
     <EvolutionPanel {headers} {active} />
 {:else if id === "history"}
     <OperationHistory {active} />

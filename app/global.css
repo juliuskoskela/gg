@@ -103,6 +103,7 @@
   --radius-surface: 8px;
   --radius-popover: 8px;
   --control-height: 32px;
+  --file-row-height: max(24px, calc(var(--type-ui) * 1.5 + 4px));
   --control-padding-inline: 8px;
   --control-gap: 6px;
   --pane-inset: 12px;
@@ -128,12 +129,14 @@
   --ground: var(--palette-ground);
   --surface: var(--palette-surface);
   --panel-header-bg: color-mix(in srgb, var(--surface) 72%, var(--ground));
+  --panel-toolbar-bg: var(--panel-header-bg);
   --panel-header-rule: color-mix(in srgb, var(--text) 5%, var(--panel-header-bg));
   --panel-header-control-border: color-mix(in srgb, var(--text) 10%, var(--panel-header-bg));
   --panel-tab-active: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg));
   --raised: var(--palette-raised);
   --hover: color-mix(in srgb, var(--text) 6%, var(--surface));
   --active: color-mix(in srgb, var(--text) 10%, var(--surface));
+  --active-hover: color-mix(in srgb, var(--text) 16%, var(--surface));
   --border: color-mix(in srgb, var(--text) 16%, var(--surface));
   --rule: color-mix(in srgb, var(--text) 7%, var(--surface));
   --control: var(--muted);
@@ -241,7 +244,7 @@ textarea, select, input {
   outline: none;
   border: 1px solid var(--input-border);
   border-radius: var(--radius-control);
-  padding: 5px var(--control-padding-inline); min-height: var(--control-height); font-size: var(--type-ui); line-height: 1.54;
+  padding: var(--control-padding-block, 5px) var(--control-padding-inline); min-height: var(--control-height); font-size: var(--type-ui); line-height: 1.54;
   min-width: 0;
   background: var(--input-surface);
   color: var(--text);
@@ -309,7 +312,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
 }
 
 @media (pointer: coarse), (max-width: 600px) {
-  :root { --panel-control-size: var(--touch-target); --panel-tabs-height: 56px; --panel-toolbar-height: 56px; }
+  :root { --file-row-height: max(44px, calc(var(--type-ui) * 1.5 + 8px)); --panel-control-size: var(--touch-target); --panel-tabs-height: 56px; --panel-toolbar-height: 56px; }
   textarea, select, input:not([type="checkbox"]):not([type="radio"]) { font-size: max(16px, 1rem); min-height: var(--touch-target); }
 }
 @media (forced-colors: active) {

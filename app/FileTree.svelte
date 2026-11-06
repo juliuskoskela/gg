@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-    const collapsedFolders = new Map<string, boolean>();
+    let collapsedFolders = new Map<string, boolean>();
 </script>
 
 <script lang="ts">
@@ -29,14 +29,13 @@
 
 <style>
     details, summary { pointer-events: auto; }
-    summary { display: flex; align-items: center; gap: 4px; min-height: 32px; font-size: var(--type-ui); padding: 6px 2px; cursor: pointer; color: var(--text); border-radius: var(--radius-control); list-style: none; }
+    summary { display: flex; align-items: center; gap: 6px; min-height: var(--file-row-height); font-size: var(--type-ui); padding: 2px 3px; cursor: pointer; color: var(--text); border-radius: var(--radius-control); list-style: none; }
     summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     summary::-webkit-details-marker { display: none; }
     details[open] > summary :global(svg) { transform: rotate(90deg); }
     :global([dir="rtl"]) summary :global(svg) { transform: rotate(180deg); }
     :global([dir="rtl"]) details[open] > summary :global(svg) { transform: rotate(90deg); }
     @media (hover: hover) { summary:hover { background: var(--hover); color: var(--text); } }
-    summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    @media (pointer: coarse), (max-width: 600px) { summary { min-height: 44px; padding-block: 12px; } }
+    summary:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .children { padding-inline-start: 12px; }
 </style>
