@@ -2,15 +2,22 @@
     import type { ChangeId } from "../messages/ChangeId";
     import type { CommitId } from "../messages/CommitId";
     import { currentTarget } from "../stores";
+    import { tooltip } from "./tooltip";
     export let id: ChangeId | CommitId;
     export let pronoun: boolean = false;
     export let selectable: boolean = false;
 
     $: suffix = id.rest.substring(0, 8 - id.prefix.length);
     $: category = id.type == "CommitId" ? "commit" : id.is_divergent ? "divergent" : id.offset ? "hidden" : "change";
+    $: details = id.type === "CommitId"
+        ? { label: "Commit ID", value: id.hex, description: "Identifies this exact snapshot, parents and metadata. Changes when rewritten." }
+        : { label: id.is_divergent ? "Divergent change ID" : "Change ID", value: id.hex,
+            description: id.is_divergent ? `Multiple visible commits share this change ID. Use a commit ID or change offset /${id.offset ?? 0} to select one version.`
+                : "Identifies the logical change across edits and rebases. Stays the same when rewritten." };
 </script>
 
-<span title={id.type === "ChangeId" && id.is_divergent ? "Divergent change" : undefined} class="id" class:pronoun={pronoun || $currentTarget?.type == "Repository"} class:selectable>
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (selectable identifiers expose the full ID on keyboard focus) -->
+<span use:tooltip={details} title="" tabindex={selectable ? 0 : undefined} class="id" class:pronoun={pronoun || $currentTarget?.type == "Repository"} class:selectable>
     <span class="prefix {category}">{id.prefix}</span>{suffix}{#if id.type == "ChangeId" && id.offset}<span
             class="suffix {category}">/{id.offset}</span
         >{/if}{#if id.type === "ChangeId" && id.is_divergent}<span class="divergence" aria-label="Divergent change">≠</span>{/if}
@@ -18,10 +25,9 @@
 
 <style>
     .id {
-        pointer-events: none;
+        pointer-events: auto;
         color: var(--muted);
-        font-family: var(--stack-code);
-        font-size: var(--type-caption);
+        font: var(--font-id);
     }
 
     .commit {
@@ -46,7 +52,6 @@
 
     .pronoun {
         color: inherit;
-        pointer-events: none;
     }
 
     .pronoun > .prefix,

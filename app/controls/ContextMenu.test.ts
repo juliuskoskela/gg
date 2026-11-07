@@ -44,7 +44,40 @@ describe("ContextMenu (revert)", () => {
     });
 
     afterEach(async () => {
+        vi.restoreAllMocks();
         await cleanupMocks();
+    });
+
+    it.each(["change", "commit"])("copies the full %s ID from an immutable revision without mutating history", async kind => {
+        let { default: ContextMenu } = await import("./ContextMenu.svelte");
+        let writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+        let header: RevHeader = { ...mockHeader, is_immutable: true, id: {
+            change: { ...mockHeader.id.change, hex: "ztxrwlzloqszlyqmvrklvozlrxkntvys", offset: 1, is_divergent: true },
+            commit: { ...mockHeader.id.commit, hex: "5961122209ed8939afc0093e34c9376bae8d43ef" },
+        } };
+        let onClose = vi.fn();
+        let view = render(ContextMenu, { props: { operand: { type: "Revision", header }, x: 20, y: 20, onClose, views: false } });
+        await page.getByRole("menuitem", { name: `Copy ${kind} ID`, exact: true }).click();
+        expect(writeText).toHaveBeenCalledWith(header.id[kind === "change" ? "change" : "commit"].hex);
+        expect(onClose).toHaveBeenCalledOnce();
+        expect(mutationCalls).toHaveLength(0);
+        view.unmount();
+    });
+
+    it("copies the full commit ID with the keyboard", async () => {
+        let { default: ContextMenu } = await import("./ContextMenu.svelte");
+        let writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+        render(ContextMenu, { props: { operand: { type: "Revision", header: mockHeader }, x: 20, y: 20, onClose: () => {}, views: false } });
+        await userEvent.keyboard("{Home}{ArrowDown}{Enter}");
+        expect(writeText).toHaveBeenCalledWith(mockHeader.id.commit.hex);
+        expect(mutationCalls).toHaveLength(0);
+    });
+
+    it("does not offer singular ID copy actions for a revision range", async () => {
+        let { default: ContextMenu } = await import("./ContextMenu.svelte");
+        let view = render(ContextMenu, { props: { operand: { type: "Revisions", headers: [mockHeader, { ...mockHeader, id: { ...mockHeader.id, commit: { ...mockHeader.id.commit, hex: "another" } } }] }, x: 20, y: 20, onClose: () => {}, views: false } });
+        expect(view.queryByRole("menuitem", { name: "Copy change ID" })).toBeNull();
+        expect(view.queryByRole("menuitem", { name: "Copy commit ID" })).toBeNull();
     });
 
     it("moves one visible highlight between pointer and keyboard without executing an action", async () => {

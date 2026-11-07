@@ -14,6 +14,7 @@ import RevisionMutator from "../mutators/RevisionMutator";
 import RefMutator from "../mutators/RefMutator";
 import { handleCommand } from "../mutators/commands";
 import { revisionCapabilities } from "../mutators/revisionActions";
+import { revisionIdCommands } from "./revisionIds";
 
 let protectionVersion = 0;
 let trackingProtection = false;
@@ -60,7 +61,7 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
         ["move", "Move revisions…", "move", 1], ["insert", "Insert revisions between…", "git-commit", 1], ["add_parent", "Add as merge parent…", "git-merge", 1], ["remove_parent", "Remove a parent…", "scissors", 1],
         ["abandon", "Abandon", "trash-2", 2],
     ];
-    return definitions.map(([id, label, icon, group]) => {
+    let commands = definitions.map(([id, label, icon, group]) => {
         let permitted = id === "add_parent" ? headers.length > 0 : id === "move" || id === "insert" ? headers.length > 0 && !immutable : id === "remove_parent" ? headers.length === 1 && headers[0].parent_ids.length > 1 && !immutable : capabilities[id];
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : !headers.length ? "Select a revision" :
             scattered ? "Select a continuous range with Shift+click for this action" :
@@ -79,6 +80,7 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
             new RevisionMutator(headers, get(ignoreToggled), valid).handle(id);
         } };
     });
+    return [...revisionIdCommands(headers), ...commands];
 }
 
 async function resolveDestination(title: string, valid: () => boolean): Promise<RevHeader | null> {
