@@ -31,6 +31,8 @@
     /** which identifiers to show; the timeline lets people choose, other lists keep the change id */
     export let showChange = true;
     export let showCommit = false;
+    export let showBookmarks = true;
+    export let showTags = true;
 
     $: referenceNames = header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name);
     $: accessibleLabel = [revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; ");
@@ -125,12 +127,12 @@
                 <span class="refs" role="group" aria-label="Bookmarks and workspaces">
                     {#each header.refs as ref}
                         {#if ref.type != "Tag"}
-                            {#if ref.type == "LocalBookmark" || !ref.is_synced || !ref.is_tracked}
+                            {#if showBookmarks && (ref.type == "LocalBookmark" || !ref.is_synced || !ref.is_tracked)}
                                 <div>
                                     <BookmarkObject {header} {ref} />
                                 </div>
                             {/if}
-                        {:else}
+                        {:else if showTags}
                             <div>
                                 <TagObject {header} {ref} />
                             </div>
