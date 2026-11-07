@@ -73,7 +73,7 @@ describe("whole-file diff context", () => {
         let timelineHeader = ctx.page.locator(".panel-view-top").filter({ has: ctx.page.locator("#panel-tab-timeline") });
         expect(await heading.getByRole("tab").count()).toBe(0);
         expect(await timelineHeader.getByRole("tab").count()).toBe(0);
-        expect(await timelineHeader.getByRole("button", { name: "Tall revisions", exact: true }).count()).toBe(1);
+        expect(await timelineHeader.getByRole("button", { name: "Timeline display", exact: true }).count()).toBe(1);
         let timelineFooter = (await ctx.page.locator(".timeline-footer").boundingBox())!;
         let diffFooter = (await ctx.page.locator(".diff-footer").boundingBox())!;
         expect(diffFooter.height).toBe(timelineFooter.height);

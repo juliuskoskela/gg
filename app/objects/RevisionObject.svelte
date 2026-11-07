@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { revisionAuthorHeight, revisionRowGap, revisionRowHeight } from "../graphLayout";
+    import { revisionAuthorHeight, revisionTitleHeight, revisionRowGap, revisionRowHeight } from "../graphLayout";
     import type { RevHeader } from "../messages/RevHeader";
     import type { Operand } from "../messages/Operand";
     import { ignoreToggled, currentTarget, revisionSelectEvent } from "../stores.js";
@@ -28,6 +28,11 @@
     export let onShiftClick: ((header: RevHeader) => void) | undefined = undefined;
     /** Ctrl/⌘+click: add or remove this revision from a scattered selection */
     export let onToggle: ((header: RevHeader) => void) | null = null;
+    /** which identifiers to show; the timeline lets people choose, other lists keep the change id */
+    export let showChange = true;
+    export let showCommit = false;
+    export let showBookmarks = true;
+    export let showTags = true;
 
     $: referenceNames = header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name);
     $: accessibleLabel = [revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; ");
@@ -72,11 +77,11 @@
     {#if child}
         <!-- Parents aren't a drop target -->
         <div class="layout compact" class:expanded>
-            <IdSpan
+            <span class="ids"><IdSpan
                 id={header.id.change}
                 pronoun={context ||
                     ($currentTarget?.type == "Merge" &&
-                        $currentTarget.header.parent_ids.findIndex((id) => id.hex == header.id.commit.hex) != -1)} />
+                        $currentTarget.header.parent_ids.findIndex((id) => id.hex == header.id.commit.hex) != -1)} /></span>
 
             <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
                 {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
@@ -107,8 +112,8 @@
         </div>
     {:else}
         <Zone {operand} let:target let:hint={dropHint}>
-            <div class="layout" class:target class:tall class:workspace={header.is_working_copy} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-title-height={`${22 * textScale}px`} style:--history-author-height={`${revisionAuthorHeight * textScale}px`} style:--history-row-gap={`${revisionRowGap * textScale}px`}>
-                <IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />
+            <div class="layout" class:target class:tall class:no-ids={!showChange && !showCommit} class:workspace={header.is_working_copy} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-title-height={`${revisionTitleHeight * textScale}px`} style:--history-author-height={`${revisionAuthorHeight * textScale}px`} style:--history-row-gap={`${revisionRowGap * textScale}px`}>
+                {#if showChange || showCommit}<span class="ids">{#if showChange}<IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />{/if}{#if showCommit}<span class="commit-id"><IdSpan id={header.id.commit} /></span>{/if}</span>{/if}
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
                     {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
@@ -122,12 +127,12 @@
                 <span class="refs" role="group" aria-label="Bookmarks and workspaces">
                     {#each header.refs as ref}
                         {#if ref.type != "Tag"}
-                            {#if ref.type == "LocalBookmark" || !ref.is_synced || !ref.is_tracked}
+                            {#if showBookmarks && (ref.type == "LocalBookmark" || !ref.is_synced || !ref.is_tracked)}
                                 <div>
                                     <BookmarkObject {header} {ref} />
                                 </div>
                             {/if}
-                        {:else}
+                        {:else if showTags}
                             <div>
                                 <TagObject {header} {ref} />
                             </div>
@@ -164,8 +169,14 @@
         padding-left: var(--leftpad);
     }
 
-    .layout.tall { grid-template-areas: "id desc refs" ". author ."; grid-template-rows: var(--history-title-height, 22px) var(--history-author-height); row-gap: var(--history-row-gap); }
-    .author { grid-area: author; color: var(--muted); font-size: var(--type-caption); font-weight: 400; pointer-events: none; }
+    /* the sparse view: a 20px title line and an 18px author line, on the type system's body and label roles */
+    .layout.tall { grid-template-areas: "id desc refs" ". author ."; grid-template-rows: var(--history-title-height, 20px) var(--history-author-height); row-gap: var(--history-row-gap); }
+    .author { grid-area: author; color: var(--muted); font: var(--font-label); pointer-events: none; }
+    /* with no ids the description starts where the ids would */
+    .layout.no-ids { grid-template-areas: "desc refs"; grid-template-columns: minmax(0, 1fr) fit-content(40%); }
+    .layout.tall.no-ids { grid-template-areas: "desc refs" "author ."; }
+    .ids { grid-area: id; display: inline-flex; align-items: baseline; gap: 8px; }
+    .commit-id :global(.id) { color: var(--muted); }
     .layout.target {
         outline: 2px solid var(--text);
         outline-offset: -2px;
@@ -215,16 +226,16 @@
         pointer-events: none;
     }
 
-    .layout > :global(.id) { grid-area: id; font-size: var(--type-caption); color: var(--muted); }
-    .layout > :global(.id .change), .layout > :global(.id .hidden) { color: var(--text); }
+    .ids > :global(.id) { font-size: var(--type-caption); color: var(--muted); }
+    .ids > :global(.id .change), .ids > :global(.id .hidden) { color: var(--text); }
     /* lane colors are graded for text, including hovered selections. */
     .layout { --id-tint: var(--lane, var(--text)); }
     .layout.workspace { --id-tint: var(--brand); }
     .layout.conflicted { --id-tint: var(--negative); }
-    .layout > :global(.id .prefix:is(.change, .hidden)) { color: var(--id-tint); }
+    .ids > :global(.id .prefix:is(.change, .hidden)) { color: var(--id-tint); }
     .desc { font-size: var(--type-ui); font-weight: 400; color: var(--text); }
     :global(.selection-item[aria-selected="true"]) .desc:not(.indescribable) { color: var(--text-strong); font-weight: 500; }
-    :global(.selection-item[aria-selected="true"]) .layout > :global(.id .change:not(.prefix)) { color: var(--text-strong); }
+    :global(.selection-item[aria-selected="true"]) .ids > :global(.id .change:not(.prefix)) { color: var(--text-strong); }
     @media (hover: hover) { :global(.selection-item:hover) .desc:not(.indescribable) { color: var(--text-strong); } }
     :global(.selection-item.conflict[role]) .desc.text { color: var(--negative); }
     .compact { height: auto; min-height: max(36px, 2.75em); grid-template-areas: "id desc refs"; grid-template-rows: 1fr; padding-right: 0; }
@@ -232,6 +243,7 @@
     .expanded .desc { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
     @container timeline (max-width: 400px) {
         .layout:not(.compact) { grid-template-columns: max-content minmax(0, 1fr) fit-content(25%); }
+        .layout.no-ids:not(.compact) { grid-template-columns: minmax(0, 1fr) fit-content(25%); }
         .layout:not(.compact) .refs { max-width: 64px; }
         .layout:not(.compact) .refs :global(.chip) { padding-inline: 4px; }
         .layout:not(.compact) .refs :global(.chip > span),

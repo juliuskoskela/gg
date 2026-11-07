@@ -227,6 +227,8 @@
   --ref-tag: var(--palette-warning);
   --focus-ring: color-mix(in srgb, var(--text) 65%, var(--surface));
   --popover-surface: var(--palette-popover);
+  /* dividers inside menus mix against the menu's own surface; --rule mixes against the page and vanishes here */
+  --popover-rule: color-mix(in srgb, var(--text) 14%, var(--popover-surface));
   --sheet-surface: var(--surface);
   --sheet-border: var(--border);
   --sheet-shadow-color: light-dark(#09090b14, #00000066);
@@ -333,7 +335,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   select option:not(:disabled):active { background: var(--interaction-pressed); }
   select option:checked:not(:disabled):active { background: var(--interaction-selected-pressed); }
   select option:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-  select hr { margin: 4px; border: 0; border-block-start: 1px solid var(--rule); }
+  select hr { margin: 4px; border: 0; border-block-start: 1px solid var(--popover-rule); }
   @media (hover: hover) {
     select option:not(:disabled):hover { background: var(--interaction-hover); }
     select option:checked:not(:disabled):hover { background: var(--interaction-selected-hover); }

@@ -120,7 +120,7 @@
     .destructive > :global(svg) { color: currentColor; }
     .destructive:focus > :global(svg) { color: var(--negative); }
     .context-menu:focus { outline: none; }
-    hr { margin: 5px 10px; border: 0; border-block-start: 1px solid var(--rule); }
+    hr { margin: 5px 10px; border: 0; border-block-start: 1px solid var(--popover-rule); }
     .menu-title { margin: 0; padding: 4px 10px 6px; color: var(--muted); font-size: var(--type-caption); font-weight: 500; }
     .menu-empty { margin: 0; padding: 6px 10px; color: var(--muted); }
     @media (pointer: coarse), (max-width: 600px) { button { min-height: 44px; } }
