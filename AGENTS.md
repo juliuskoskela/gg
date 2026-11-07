@@ -122,6 +122,10 @@ Use macros from `src/gui/handler.rs`:
 
 Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--font-emphasis`, `--font-body`, `--font-prose`, `--font-label`, `--font-id`) with `font:`; don't set `font-size`, `line-height` or `font-weight` by hand. Key/value data uses `MetadataList`/`MetadataRow`, history-like entries use `LogList`, in-content navigation uses `.text-link`, and toolbar search fields and summaries take `.toolbar-lead`. See `doc/reviews/typography.md`.
 
+### Colour
+
+Hues come from `--palette-*` tokens in `app/display/palettes.css`; components use the semantic roles in `app/global.css` and never hex values. Each colour vision block (protan, deutan, tritan, achromat) must define every hue token, and `app/display/vision/palettes.test.ts` checks them against colour vision simulations in every family and light level. See `doc/specs/color-vision.md`.
+
 ### Annotations
 
 Notes on changes, bookmarks, files and diff lines live in GG's data directory, keyed by jj's `.jj/repo/config-id`; never write into `.jj/` or the working copy. `src/annotations/` owns storage and the `gg annotations` CLI; the worker only adds anchor states. Storage is append-only, one file per event. Frontend code lives in `app/annotations/`. E2E tests get an isolated `GG_DATA_DIR` from the harness.
@@ -172,3 +176,4 @@ Use `let` instead of `const` for variable declarations.
 - `src/worker/mutations/` - All mutation implementations, by category
 - `src/config/gg.toml` - Default configuration with inline docs
 - `doc/specs/annotations.md` - Annotation anchors, storage and CLI
+- `doc/specs/color-vision.md` - Colour vision palettes, simulation models and requirements

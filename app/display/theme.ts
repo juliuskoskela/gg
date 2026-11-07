@@ -65,6 +65,17 @@ export function createColorPreference<T>(options: { read: () => unknown; save: (
 }
 export let themeFamily = createColorPreference({ read: () => localStorage.getItem(themeFamilyStorageKey), save: (value: ThemeFamily) => localStorage.setItem(themeFamilyStorageKey, value), parse: parseThemeFamily, fallback: "warm" as ThemeFamily });
 export let darkDepth = createColorPreference({ read: () => localStorage.getItem(darkDepthStorageKey), save: (value: DarkDepth) => localStorage.setItem(darkDepthStorageKey, value), parse: parseDarkDepth, fallback: "twilight" as DarkDepth });
+export type ColorVision = "typical" | "protan" | "deutan" | "tritan" | "achromat";
+export let colorVisions: { id: ColorVision; label: string; description: string }[] = [
+    { id: "typical", label: "Typical", description: "The family’s own colours" },
+    { id: "protan", label: "Protanopia", description: "Red-weak or red-blind" },
+    { id: "deutan", label: "Deuteranopia", description: "Green-weak or green-blind" },
+    { id: "tritan", label: "Tritanopia", description: "Blue-weak or blue-blind" },
+    { id: "achromat", label: "Monochromacy", description: "Colours told apart by lightness" },
+];
+export let colorVisionStorageKey = "gg.ui.theme.color-vision";
+export function parseColorVision(value: unknown): ColorVision | null { return colorVisions.some(vision => vision.id === value) ? value as ColorVision : null; }
+export let colorVision = createColorPreference({ read: () => localStorage.getItem(colorVisionStorageKey), save: (value: ColorVision) => localStorage.setItem(colorVisionStorageKey, value), parse: parseColorVision, fallback: "typical" as ColorVision });
 export let effectiveAppearance = derived([effectiveTheme, darkDepth], ([$theme, $depth]): Appearance => $theme === "light" ? "light" : $depth);
 export function setAppearance(value: Appearance) {
     if (value !== "light") darkDepth.set(value);
@@ -77,10 +88,12 @@ export function useDefaultAppearance() {
 if (typeof window !== "undefined") window.addEventListener("storage", event => {
     if (event.key === themeFamilyStorageKey || event.key === null) themeFamily.sync(event.key === null ? null : event.newValue);
     if (event.key === darkDepthStorageKey || event.key === null) darkDepth.sync(event.key === null ? null : event.newValue);
+    if (event.key === colorVisionStorageKey || event.key === null) colorVision.sync(event.key === null ? null : event.newValue);
 });
 
-if (typeof document !== "undefined") derived([themeFamily, darkDepth, effectiveTheme], ([$family, $depth, $mode]) => ({ family: $family, depth: $depth, mode: $mode })).subscribe(({ family, depth, mode }) => {
+if (typeof document !== "undefined") derived([themeFamily, darkDepth, effectiveTheme, colorVision], ([$family, $depth, $mode, $vision]) => ({ family: $family, depth: $depth, mode: $mode, vision: $vision })).subscribe(({ family, depth, mode, vision }) => {
     document.documentElement.dataset.themeFamily = family;
     document.documentElement.dataset.darkDepth = depth;
+    document.documentElement.dataset.colorVision = vision;
     document.documentElement.style.colorScheme = mode;
 });

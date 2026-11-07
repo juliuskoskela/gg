@@ -1,7 +1,7 @@
 <script lang="ts">
     import { focusModality } from "./display/focus";
     import TextField from "./controls/TextField.svelte";
-    import { effectiveTheme, themeFamily, darkDepth } from "./display/theme";
+    import { effectiveTheme, themeFamily, darkDepth, colorVision } from "./display/theme";
     import { selectionRecovery } from "./revision/recovery";
     import type { RevisionSelectionResult } from "./messages/RevisionSelectionResult";
     import { loadRevisionSummary, clearRevisionDiffCache, revisionIdentity } from "./revision/data";
@@ -311,7 +311,7 @@
 <svelte:window on:focus={refreshAnnotations} />
 
 <Zone operand={{ type: "Repository" }} alwaysTarget let:target>
-    <div id="shell" use:focusModality use:autoHideScrollbars class={$effectiveTheme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
+    <div id="shell" use:focusModality use:autoHideScrollbars class={$effectiveTheme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth} data-color-vision={$colorVision}>
         {#if $repoConfigEvent.type == "Initial"}
             <TitlebarInset>
                 <Pane>

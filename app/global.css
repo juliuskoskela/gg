@@ -203,8 +203,8 @@
   --text-disabled: color-mix(in srgb, var(--text) 40%, var(--surface));
   --accent: var(--palette-accent);
   /* jj-inspired identity blue is independent of the selected color family. */
-  --brand: light-dark(#01557f, #8dd1ff);
-  --brand-on-pressed: light-dark(#014e75, #aadcff);
+  --brand: var(--palette-brand);
+  --brand-on-pressed: var(--palette-brand-pressed);
   --selection-bg: color-mix(in srgb, var(--text) 12%, var(--surface));
   --selection-hover: color-mix(in srgb, var(--text) 18%, var(--surface));
   --selection-text: var(--text-strong);
@@ -223,9 +223,9 @@
   --text-on-accent: var(--neutral-0);
   --positive: var(--palette-positive);
   --negative: var(--palette-negative);
-  --danger-solid: light-dark(#c62828, #ac3538);
-  --danger-solid-hover: light-dark(#ad2020, #bd3d40);
-  --danger-solid-pressed: light-dark(#921b1b, #982d30);
+  --danger-solid: var(--palette-danger);
+  --danger-solid-hover: var(--palette-danger-hover);
+  --danger-solid-pressed: var(--palette-danger-pressed);
   --text-on-danger: var(--neutral-0);
   --warning: var(--palette-warning);
   /* graph labels use text-grade hues; red remains reserved for conflict and divergence. */
@@ -233,10 +233,10 @@
   --lane-1: var(--palette-violet);
   --lane-2: var(--palette-function);
   --lane-3: var(--palette-warning);
-  --lane-4: light-dark(#005361, #7edbe5);
+  --lane-4: var(--palette-lane-4);
   --lane-5: var(--palette-positive);
-  --lane-6: light-dark(#4b4685, #c8b7ff);
-  --lane-7: light-dark(#694700, #e6c783);
+  --lane-6: var(--palette-lane-6);
+  --lane-7: var(--palette-lane-7);
   /* wires stay neutral so colour belongs to the stations; raise the tint to bring lane colour back into them. */
   --graph-wire-tint: 0%;
   --graph-edge: color-mix(in srgb, var(--text) 20%, var(--surface));

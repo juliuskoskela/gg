@@ -20,6 +20,14 @@
   --palette-type: light-dark(var(--palette-type-light), var(--palette-type-dark));
   --palette-string: light-dark(var(--palette-string-light), var(--palette-string-dark));
   --palette-violet: light-dark(var(--palette-violet-light), var(--palette-violet-dark));
+  --palette-brand: light-dark(var(--palette-brand-light), var(--palette-brand-dark));
+  --palette-brand-pressed: light-dark(var(--palette-brand-pressed-light), var(--palette-brand-pressed-dark));
+  --palette-danger: light-dark(var(--palette-danger-light), var(--palette-danger-dark));
+  --palette-danger-hover: light-dark(var(--palette-danger-hover-light), var(--palette-danger-hover-dark));
+  --palette-danger-pressed: light-dark(var(--palette-danger-pressed-light), var(--palette-danger-pressed-dark));
+  --palette-lane-4: light-dark(var(--palette-lane-4-light), var(--palette-lane-4-dark));
+  --palette-lane-6: light-dark(var(--palette-lane-6-light), var(--palette-lane-6-dark));
+  --palette-lane-7: light-dark(var(--palette-lane-7-light), var(--palette-lane-7-dark));
 
   --palette-ground-light: #eee9e1;
   --palette-ground-dark: #1f1e1d;
@@ -61,6 +69,23 @@
   --palette-string-dark: #afd47b;
   --palette-violet-light: #674182;
   --palette-violet-dark: #d4b1ff;
+  /* identity and graph hues shared by every family */
+  --palette-brand-light: #01557f;
+  --palette-brand-dark: #8dd1ff;
+  --palette-brand-pressed-light: #014e75;
+  --palette-brand-pressed-dark: #aadcff;
+  --palette-danger-light: #c62828;
+  --palette-danger-dark: #ac3538;
+  --palette-danger-hover-light: #ad2020;
+  --palette-danger-hover-dark: #bd3d40;
+  --palette-danger-pressed-light: #921b1b;
+  --palette-danger-pressed-dark: #982d30;
+  --palette-lane-4-light: #005361;
+  --palette-lane-4-dark: #7edbe5;
+  --palette-lane-6-light: #4b4685;
+  --palette-lane-6-dark: #c8b7ff;
+  --palette-lane-7-light: #694700;
+  --palette-lane-7-dark: #e6c783;
 }
 :is(:root, #shell, [data-theme-preview])[data-theme-family="neutral"] {
   --palette-ground-light: #eeece8;
@@ -167,4 +192,171 @@
   --palette-raised-dark: #1c232d;
   --palette-input-dark: #1c232d;
   --palette-popover-dark: #222a35;
+}
+
+/* colour vision palettes replace every hue; backgrounds and text stay with the family.
+ * generated against app/display/vision/requirements.ts; see doc/specs/color-vision.md. */
+/* protanopia and protanomaly (red-weak) */
+:is(:root, #shell, [data-theme-preview])[data-color-vision="protan"] {
+  --palette-accent-light: #0a558a;
+  --palette-accent-dark: #82c8ff;
+  --palette-solid-light: #22639a;
+  --palette-solid-dark: #285f8f;
+  --palette-positive-light: #0353ab;
+  --palette-positive-dark: #7ab1d7;
+  --palette-negative-light: #6c1600;
+  --palette-negative-dark: #fe881d;
+  --palette-warning-light: #7f6112;
+  --palette-warning-dark: #efdf9b;
+  --palette-brand-light: #005783;
+  --palette-brand-dark: #8cd0fe;
+  --palette-brand-pressed-light: #004e76;
+  --palette-brand-pressed-dark: #98d5fe;
+  --palette-danger-light: #c62828;
+  --palette-danger-dark: #aa3837;
+  --palette-danger-hover-light: #b32424;
+  --palette-danger-hover-dark: #b24c4b;
+  --palette-danger-pressed-light: #a32121;
+  --palette-danger-pressed-dark: #8b2e2d;
+  --palette-constant-light: #885c31;
+  --palette-constant-dark: #ddab7d;
+  --palette-keyword-light: #6a342c;
+  --palette-keyword-dark: #b5e3ff;
+  --palette-function-light: #033c4a;
+  --palette-function-dark: #a2c4f6;
+  --palette-type-light: #004d21;
+  --palette-type-dark: #86b281;
+  --palette-string-light: #2a5501;
+  --palette-string-dark: #aad58b;
+  --palette-violet-light: #6c3e89;
+  --palette-violet-dark: #fecfdc;
+  --palette-lane-4-light: #005361;
+  --palette-lane-4-dark: #7ee0ec;
+  --palette-lane-6-light: #3b3870;
+  --palette-lane-6-dark: #7bcbd3;
+  --palette-lane-7-light: #5a2537;
+  --palette-lane-7-dark: #e8c87e;
+}
+/* deuteranopia and deuteranomaly (green-weak) */
+:is(:root, #shell, [data-theme-preview])[data-color-vision="deutan"] {
+  --palette-accent-light: #0a558a;
+  --palette-accent-dark: #82c8ff;
+  --palette-solid-light: #22639a;
+  --palette-solid-dark: #285f8f;
+  --palette-positive-light: #0153ac;
+  --palette-positive-dark: #35beff;
+  --palette-negative-light: #5c1d18;
+  --palette-negative-dark: #ffcfb9;
+  --palette-warning-light: #826105;
+  --palette-warning-dark: #d5af01;
+  --palette-brand-light: #004a71;
+  --palette-brand-dark: #9bd6ff;
+  --palette-brand-pressed-light: #004366;
+  --palette-brand-pressed-dark: #a5daff;
+  --palette-danger-light: #c62828;
+  --palette-danger-dark: #aa3837;
+  --palette-danger-hover-light: #b22424;
+  --palette-danger-hover-dark: #b34c4b;
+  --palette-danger-pressed-light: #a22121;
+  --palette-danger-pressed-dark: #8c2e2d;
+  --palette-constant-light: #043e45;
+  --palette-constant-dark: #ebb783;
+  --palette-keyword-light: #8c5157;
+  --palette-keyword-dark: #fed4bd;
+  --palette-function-light: #574400;
+  --palette-function-dark: #9dc291;
+  --palette-type-light: #00738b;
+  --palette-type-dark: #02bcbf;
+  --palette-string-light: #406927;
+  --palette-string-dark: #93ecf8;
+  --palette-violet-light: #603581;
+  --palette-violet-dark: #cab6ff;
+  --palette-lane-4-light: #005361;
+  --palette-lane-4-dark: #7ddbe6;
+  --palette-lane-6-light: #37356e;
+  --palette-lane-6-dark: #fecedc;
+  --palette-lane-7-light: #704c04;
+  --palette-lane-7-dark: #87d8d5;
+}
+/* tritanopia and tritanomaly (blue-weak) */
+:is(:root, #shell, [data-theme-preview])[data-color-vision="tritan"] {
+  --palette-accent-light: #0a558a;
+  --palette-accent-dark: #82c8ff;
+  --palette-solid-light: #22639a;
+  --palette-solid-dark: #285f8f;
+  --palette-positive-light: #356529;
+  --palette-positive-dark: #8bd485;
+  --palette-negative-light: #a51220;
+  --palette-negative-dark: #fe8b85;
+  --palette-warning-light: #463700;
+  --palette-warning-dark: #eee17f;
+  --palette-brand-light: #01557f;
+  --palette-brand-dark: #b4e5ff;
+  --palette-brand-pressed-light: #014d72;
+  --palette-brand-pressed-dark: #bbe7ff;
+  --palette-danger-light: #c62828;
+  --palette-danger-dark: #ac3538;
+  --palette-danger-hover-light: #b22424;
+  --palette-danger-hover-dark: #b4494c;
+  --palette-danger-pressed-light: #a22121;
+  --palette-danger-pressed-dark: #8d2c2e;
+  --palette-constant-light: #243f05;
+  --palette-constant-dark: #efaec0;
+  --palette-keyword-light: #20538f;
+  --palette-keyword-dark: #82c8ff;
+  --palette-function-light: #5c2a00;
+  --palette-function-dark: #b2e8a9;
+  --palette-type-light: #ab4d00;
+  --palette-type-dark: #33ccb8;
+  --palette-string-light: #386c19;
+  --palette-string-dark: #fed0dc;
+  --palette-violet-light: #804257;
+  --palette-violet-dark: #e5a5b8;
+  --palette-lane-4-light: #004855;
+  --palette-lane-4-dark: #f9bd96;
+  --palette-lane-6-light: #964b65;
+  --palette-lane-6-dark: #c8b7ff;
+  --palette-lane-7-light: #674600;
+  --palette-lane-7-dark: #e6c783;
+}
+/* monochromacy: colours differ in lightness */
+:is(:root, #shell, [data-theme-preview])[data-color-vision="achromat"] {
+  --palette-accent-light: #0a558a;
+  --palette-accent-dark: #82c8ff;
+  --palette-solid-light: #22639a;
+  --palette-solid-dark: #285f8f;
+  --palette-positive-light: #2c6924;
+  --palette-positive-dark: #e1fcd3;
+  --palette-negative-light: #430000;
+  --palette-negative-dark: #f08e8e;
+  --palette-warning-light: #4c3e01;
+  --palette-warning-dark: #fcc687;
+  --palette-brand-light: #01557f;
+  --palette-brand-dark: #8bd1ff;
+  --palette-brand-pressed-light: #014c72;
+  --palette-brand-pressed-dark: #96d6ff;
+  --palette-danger-light: #c62828;
+  --palette-danger-dark: #ac3538;
+  --palette-danger-hover-light: #b22424;
+  --palette-danger-hover-dark: #b5494c;
+  --palette-danger-pressed-light: #a22121;
+  --palette-danger-pressed-dark: #8d2b2e;
+  --palette-constant-light: #734504;
+  --palette-constant-dark: #ebb783;
+  --palette-keyword-light: #2a1401;
+  --palette-keyword-dark: #82c8ff;
+  --palette-function-light: #705603;
+  --palette-function-dark: #f2d479;
+  --palette-type-light: #005d57;
+  --palette-type-dark: #b8ccfe;
+  --palette-string-light: #315d0e;
+  --palette-string-dark: #aad58b;
+  --palette-violet-light: #843e57;
+  --palette-violet-dark: #cab6ff;
+  --palette-lane-4-light: #005361;
+  --palette-lane-4-dark: #7edbe5;
+  --palette-lane-6-light: #4b4685;
+  --palette-lane-6-dark: #f3b1c5;
+  --palette-lane-7-light: #694700;
+  --palette-lane-7-dark: #e6c783;
 }

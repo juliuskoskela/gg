@@ -1,14 +1,16 @@
 <script lang="ts">
-    import { effectiveTheme, effectiveAppearance, setAppearance, useDefaultAppearance, themePreference } from "../display/theme";
+    import { effectiveTheme, effectiveAppearance, setAppearance, useDefaultAppearance, themePreference, colorVision, colorVisions, type ColorVision } from "../display/theme";
     import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
     import { mutationPending } from "../operations";
     import { currentMutation, ignoreToggled, repoStatusEvent } from "../stores";
     import ToggleWidget from "../controls/ToggleWidget.svelte";
+    import SelectWidget from "../controls/SelectWidget.svelte";
     import ThemeFamilyPicker from "../display/ThemeFamilyPicker.svelte";
     import Icon from "../controls/Icon.svelte";
 
     $: busy = !!$currentMutation || $mutationPending;
     $: zoom = zoomCommands($appZoom, $nativeZoomEnabled);
+    $: vision = colorVisions.find(option => option.id === $colorVision) ?? colorVisions[0];
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (settings scroll independently of the dock) -->
@@ -26,6 +28,10 @@
                 </div>
             </div>
             <div class="appearance-default"><button type="button" on:click={useDefaultAppearance} disabled={$themePreference === null}>Use repository or system appearance</button>{#if $themePreference === null}<span>Automatic · {$effectiveTheme === "light" ? "Light" : $effectiveAppearance === "twilight" ? "Twilight" : "Midnight"}</span>{/if}</div>
+            <div class="setting-row vision-row">
+                <div class="setting-copy"><h3>Color vision</h3><p>{$colorVision === "typical" ? "Use the family’s own hues." : `${vision.description}. Hues are replaced with a palette checked against simulations of this vision, and diffs mark changed lines with + and −.`}</p></div>
+                <div class="vision-choice"><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(option => ({ value: option.id, label: option.label }))} on:change={event => colorVision.set((event.detail.target as HTMLSelectElement).value as ColorVision)} let:option>{option.label}</SelectWidget></div>
+            </div>
         </section>
         <section aria-labelledby="zoom-heading">
             <h2 id="zoom-heading">{$nativeZoomEnabled ? "App zoom" : "Browser zoom"}</h2>
@@ -66,6 +72,8 @@
     p { max-width: var(--prose-measure); margin: 2px 0 0; color: var(--muted); font: var(--font-label); overflow-wrap: anywhere; }
     .setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
     .appearance-row { margin-block-start: 20px; }
+    .vision-row { margin-block-start: var(--gap-section); }
+    .vision-choice { min-width: 180px; }
     .appearance-default { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; color: var(--muted); font: var(--font-label); }
     .appearance-default button { border-color: transparent; padding-inline: 0; color: var(--muted); font-size: var(--type-caption); text-align: start; white-space: normal; }
     .setting-copy { flex: 1 1 200px; }

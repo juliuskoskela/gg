@@ -1,6 +1,6 @@
 <script lang="ts">
     import { focusModality } from "../display/focus";
-    import { effectiveTheme, themePreference, themeFamily, themeFamilies, darkDepth } from "../display/theme";
+    import { effectiveTheme, themePreference, themeFamily, themeFamilies, darkDepth, colorVision, colorVisions } from "../display/theme";
     import { setContext } from "svelte";
     import RevisionTools from "../revision/RevisionTools.svelte";
     import RevisionOverview from "../revision/RevisionOverview.svelte";
@@ -49,9 +49,9 @@
     ];
 </script>
 
-<div id="shell" use:focusModality class={theme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth}>
+<div id="shell" use:focusModality class={theme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth} data-color-vision={$colorVision}>
     <main class="system-page">
-        <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><div class="gallery-theme-controls"><SelectWidget label="Color family" value={$themeFamily} options={themeFamilies.map(family => ({ value: family.id, label: family.label }))} on:change={event => themeFamily.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").ThemeFamily)} let:option>{option.label}</SelectWidget><SelectWidget label="Dark depth" value={$darkDepth} options={[{ value: "twilight", label: "Twilight" }, { value: "midnight", label: "Midnight" }]} on:change={event => darkDepth.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").DarkDepth)} let:option>{option.label}</SelectWidget><button type="button" on:click={() => themePreference.set(theme === "dark" ? "light" : "dark")}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></div></header>
+        <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><div class="gallery-theme-controls"><SelectWidget label="Color family" value={$themeFamily} options={themeFamilies.map(family => ({ value: family.id, label: family.label }))} on:change={event => themeFamily.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").ThemeFamily)} let:option>{option.label}</SelectWidget><SelectWidget label="Dark depth" value={$darkDepth} options={[{ value: "twilight", label: "Twilight" }, { value: "midnight", label: "Midnight" }]} on:change={event => darkDepth.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").DarkDepth)} let:option>{option.label}</SelectWidget><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(vision => ({ value: vision.id, label: vision.label }))} on:change={event => colorVision.set((event.detail.target as HTMLSelectElement).value as import("../display/theme").ColorVision)} let:option>{option.label}</SelectWidget><button type="button" on:click={() => themePreference.set(theme === "dark" ? "light" : "dark")}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></div></header>
         <section id="panel-spacing" class="spacing-specimen" aria-labelledby="spacing-heading">
             <h2 id="spacing-heading">Panel structure and spacing</h2>
             <p>Each tab pairs its label with its own close button. Tools align to the trailing edge. The Diff header below and Timeline specimen use the production components.</p>

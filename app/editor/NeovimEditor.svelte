@@ -104,7 +104,7 @@
             socket.onerror = () => { error = "Could not connect to the Neovim demo bridge."; };
             observer = new ResizeObserver(resize); observer.observe(host);
             themeObserver = new MutationObserver(() => { theme(); resize(); });
-            themeObserver.observe(document.getElementById("shell")!, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-theme-family", "data-dark-depth"] });
+            themeObserver.observe(document.getElementById("shell")!, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-theme-family", "data-dark-depth", "data-color-vision"] });
             window.addEventListener("resize", resize);
         };
         connect();

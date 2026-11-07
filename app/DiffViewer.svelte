@@ -25,7 +25,7 @@
     import type { RevChange } from "./messages/RevChange";
     import { changePatch } from "./diff";
     import { diffStyle, diffWrap, fileHorizontalPositions } from "./stores";
-    import { effectiveTheme } from "./display/theme";
+    import { colorVision, effectiveTheme } from "./display/theme";
 
     export let change: RevChange;
     export let readingKey = "";
@@ -65,6 +65,8 @@
         hunkSeparators: renderSeparator,
         renderAnnotation: renderFold,
         lineDiffType: "word-alt" as const,
+        // colour-vision palettes can't rely on tints alone; +/− markers carry the change for everyone
+        diffIndicators: $colorVision === "typical" ? "bars" as const : "classic" as const,
         enableLineSelection: true,
         onLineSelected: (range: SelectedLineRange | null) => { selectedRange = range; },
         disableFileHeader: true,

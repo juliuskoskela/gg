@@ -2,13 +2,13 @@ import { afterEach, expect, it } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import SettingsPanel from "./SettingsPanel.svelte";
-import { themePreference, themeFamily, darkDepth } from "../display/theme";
+import { themePreference, themeFamily, darkDepth, colorVision } from "../display/theme";
 import { appZoom, nativeZoomEnabled } from "../display/zoom";
 import { currentMutation, ignoreToggled, repoStatusEvent } from "../stores";
 
 afterEach(() => {
-    cleanup(); themeFamily.sync(null); darkDepth.sync(null); nativeZoomEnabled.set(false); themePreference.sync(null); ignoreToggled.set(false); currentMutation.set(null);
-    localStorage.removeItem("gg.ui.theme"); localStorage.removeItem("gg.ui.theme.family"); localStorage.removeItem("gg.ui.theme.dark-depth");
+    cleanup(); themeFamily.sync(null); darkDepth.sync(null); colorVision.sync(null); nativeZoomEnabled.set(false); themePreference.sync(null); ignoreToggled.set(false); currentMutation.set(null);
+    localStorage.removeItem("gg.ui.theme"); localStorage.removeItem("gg.ui.theme.family"); localStorage.removeItem("gg.ui.theme.dark-depth"); localStorage.removeItem("gg.ui.theme.color-vision");
 });
 
 it("saves explicit light and dark choices and explains browser zoom", async () => {
@@ -56,4 +56,20 @@ it("keeps the family and dark depth when changing appearance", async () => {
     await fireEvent.click(view.getByRole("button", { name: "Use repository or system appearance" }));
     expect(get(themePreference)).toBeNull();
     expect(localStorage.getItem("gg.ui.theme")).toBeNull();
+});
+
+it("chooses a colour vision palette independently of family and light level", async () => {
+    themeFamily.set("cold");
+    let view = render(SettingsPanel);
+    let select = view.getByRole("combobox", { name: "Color vision" }) as HTMLSelectElement;
+    expect(select.value).toBe("typical");
+    expect(view.getByText("Use the family’s own hues.")).toBeTruthy();
+    await fireEvent.change(select, { target: { value: "deutan" } });
+    expect(get(colorVision)).toBe("deutan");
+    expect(localStorage.getItem("gg.ui.theme.color-vision")).toBe("deutan");
+    expect(document.documentElement.dataset.colorVision).toBe("deutan");
+    expect(view.getByText(/Green-weak or green-blind/)).toBeTruthy();
+    expect(get(themeFamily)).toBe("cold");
+    colorVision.sync("not a vision");
+    expect(get(colorVision)).toBe("typical");
 });
