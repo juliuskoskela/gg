@@ -28,9 +28,9 @@ describe("history density", () => {
     it("keeps compact touch rows at least 44px and tall rows at 60px", () => {
         expect(historyRowSize("compact", false)).toBe(28);
         expect(historyRowSize("compact", true)).toBe(44);
-        expect(historyRowSize("tall", false)).toBe(60);
-        expect(historyRowSize("tall", true)).toBe(60);
-        expect(anchoredHistoryScroll(10.5 * 28, 28, 60)).toBe(10.5 * 60);
+        expect(historyRowSize("tall", false)).toBe(48);
+        expect(historyRowSize("tall", true)).toBe(48);
+        expect(anchoredHistoryScroll(10.5 * 28, 28, 48)).toBe(10.5 * 48);
     });
     it("keeps minimum bookmark clearance in condensed rows", async () => {
         let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
@@ -140,14 +140,23 @@ describe("history density", () => {
         expect(getByRole("option", { name: /^Fix parser;/ }).getAttribute("aria-label")).toContain("very-long-reference-name");
         target.remove();
     });
-    it("exposes a labelled density choice and saves it", async () => {
+    it("offers authors, change ids and commit ids in one display menu and saves them", async () => {
         let { default: TimelineDisplayOptions } = await import("./timeline/TimelineDisplayOptions.svelte");
+        let { timelineIds } = await import("./timeline/display");
         let { getByRole } = render(TimelineDisplayOptions);
-        let toggle = getByRole("button", { name: "Tall revisions" });
-        expect(toggle.getAttribute("aria-pressed")).toBe("false");
-        await fireEvent.click(toggle);
-        expect(toggle.getAttribute("aria-pressed")).toBe("true");
+        let trigger = getByRole("button", { name: "Timeline display" });
+        expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+        await fireEvent.click(trigger);
+        let authors = getByRole("menuitemcheckbox", { name: "Authors" });
+        expect(authors.getAttribute("aria-checked")).toBe("false");
+        expect(getByRole("menuitemcheckbox", { name: "Change IDs" }).getAttribute("aria-checked")).toBe("true");
+        expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("false");
+        await fireEvent.click(authors);
+        await fireEvent.click(getByRole("menuitemcheckbox", { name: "Commit IDs" }));
         expect(get(historyDensity)).toBe("tall");
         expect(localStorage.getItem(historyDensityKey)).toBe("tall");
+        expect(get(timelineIds)).toEqual({ change: true, commit: true });
+        expect(JSON.parse(localStorage.getItem("gg.timeline.ids")!)).toEqual({ change: true, commit: true });
+        expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("true");
     });
 });
