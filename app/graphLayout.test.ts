@@ -126,6 +126,23 @@ describe("history density", () => {
         await rerender({ header, selected: true, rowHeight: 60, tall: true });
         expect(getComputedStyle(container.querySelector(".desc")!).fontWeight).toBe("500");
     });
+    it("hides bookmarks and tags separately while keeping the working copy marker", async () => {
+        let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
+        let bookmark = { type: "LocalBookmark" as const, bookmark_name: "main", has_conflict: false, is_synced: false, tracking_remotes: [], available_remotes: 0, potential_remotes: 0 };
+        let tag = { type: "Tag" as const, tag_name: "v1.0.0" };
+        let props = { header: { ...header, refs: [bookmark, tag], working_copy_of: "default" }, selected: false, rowHeight: 28 };
+        let { container, rerender } = render(RevisionObject, { context: new Map([["settings", { markUnpushedBookmarks: false }]]), props });
+        let refs = () => container.querySelector(".refs")!.textContent ?? "";
+        expect(refs()).toContain("main");
+        expect(refs()).toContain("v1.0.0");
+        await rerender({ ...props, showBookmarks: false, showTags: true });
+        expect(refs()).not.toContain("main");
+        expect(refs()).toContain("v1.0.0");
+        await rerender({ ...props, showBookmarks: true, showTags: false });
+        expect(refs()).toContain("main");
+        expect(refs()).not.toContain("v1.0.0");
+        expect(refs()).toContain("default");
+    });
     it("preserves description space in narrow graphs while keeping references named", async () => {
         let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
         let target = document.createElement("div");
@@ -140,9 +157,18 @@ describe("history density", () => {
         expect(getByRole("option", { name: /^Fix parser;/ }).getAttribute("aria-label")).toContain("very-long-reference-name");
         target.remove();
     });
-    it("offers authors, change ids and commit ids in one display menu and saves them", async () => {
+    it("reads the earlier id-only setting and fills in the rest", async () => {
+        let { createTimelineDisplay } = await import("./timeline/display");
+        let saved = new Map([["gg.timeline.ids", JSON.stringify({ change: false, commit: true })]]);
+        let display = createTimelineDisplay({ getItem: key => saved.get(key) ?? null, setItem: (key, value) => { saved.set(key, value); } });
+        expect(get(display)).toEqual({ change: false, commit: true, bookmarks: true, tags: true });
+        display.toggle("bookmarks");
+        expect(JSON.parse(saved.get("gg.timeline.display")!)).toEqual({ change: false, commit: true, bookmarks: false, tags: true });
+    });
+
+    it("offers authors, ids, bookmarks and tags in one display menu and saves them", async () => {
         let { default: TimelineDisplayOptions } = await import("./timeline/TimelineDisplayOptions.svelte");
-        let { timelineIds } = await import("./timeline/display");
+        let { timelineDisplay } = await import("./timeline/display");
         let { getByRole } = render(TimelineDisplayOptions);
         let trigger = getByRole("button", { name: "Timeline display" });
         expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
@@ -151,12 +177,15 @@ describe("history density", () => {
         expect(authors.getAttribute("aria-checked")).toBe("false");
         expect(getByRole("menuitemcheckbox", { name: "Change IDs" }).getAttribute("aria-checked")).toBe("true");
         expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("false");
+        expect(getByRole("menuitemcheckbox", { name: "Bookmarks" }).getAttribute("aria-checked")).toBe("true");
+        expect(getByRole("menuitemcheckbox", { name: "Tags" }).getAttribute("aria-checked")).toBe("true");
         await fireEvent.click(authors);
+        await fireEvent.click(getByRole("menuitemcheckbox", { name: "Tags" }));
         await fireEvent.click(getByRole("menuitemcheckbox", { name: "Commit IDs" }));
         expect(get(historyDensity)).toBe("tall");
         expect(localStorage.getItem(historyDensityKey)).toBe("tall");
-        expect(get(timelineIds)).toEqual({ change: true, commit: true });
-        expect(JSON.parse(localStorage.getItem("gg.timeline.ids")!)).toEqual({ change: true, commit: true });
+        expect(get(timelineDisplay)).toEqual({ change: true, commit: true, bookmarks: true, tags: false });
+        expect(JSON.parse(localStorage.getItem("gg.timeline.display")!)).toEqual({ change: true, commit: true, bookmarks: true, tags: false });
         expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("true");
     });
 });

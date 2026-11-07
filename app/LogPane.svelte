@@ -14,7 +14,7 @@
     import TextField from "./controls/TextField.svelte";
     import TimelineDisplayOptions from "./timeline/TimelineDisplayOptions.svelte";
     import TimelineSection from "./timeline/TimelineSection.svelte";
-    import { timelineIds } from "./timeline/display";
+    import { timelineDisplay } from "./timeline/display";
     import ViewToolbar from "./controls/ViewToolbar.svelte";
     import RevisionObject from "./objects/RevisionObject.svelte";
     import ActionWidget from "./controls/ActionWidget.svelte";
@@ -535,8 +535,10 @@
                         onClick={handleClick}
                         onShiftClick={handleShiftClick}
                         onToggle={handleToggle}
-                        showChange={$timelineIds.change}
-                        showCommit={$timelineIds.commit} />
+                        showChange={$timelineDisplay.change}
+                        showCommit={$timelineDisplay.commit}
+                        showBookmarks={$timelineDisplay.bookmarks}
+                        showTags={$timelineDisplay.tags} />
                 {/if}
             </GraphLog>
             {:else}<div class="empty-graph"><Icon name="git-branch" /><h3>No revisions match</h3><p>Try another view or change the revset.</p></div>{/if}

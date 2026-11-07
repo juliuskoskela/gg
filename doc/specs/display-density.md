@@ -18,7 +18,7 @@ Descriptions have medium weight; change IDs and empty descriptions remain quiete
 
 ## Timeline display
 
-The Timeline toolbar's display menu (the eye) holds independent options: **Authors**, **Change IDs** and **Commit IDs**. Change IDs are on and commit IDs off by default. Commit IDs follow the change ID in muted code text. With both hidden, descriptions start beside the graph. `gg.timeline.ids` persists the ID choices; authors are the history density below. The options apply to the timeline graph only, so parent rows elsewhere keep their change IDs.
+The Timeline toolbar's display menu (the eye) holds independent options in three groups: **Authors**; **Change IDs** and **Commit IDs**; **Bookmarks** and **Tags**. Change IDs, bookmarks and tags are on and commit IDs off by default. Commit IDs follow the change ID in muted code text. With both IDs hidden, descriptions start beside the graph. Hiding bookmarks or tags removes only those chips; working-copy markers stay. `gg.timeline.display` persists these choices (an earlier `gg.timeline.ids` is read once and completed with defaults); authors are the history density below. The options apply to the timeline graph only, so parent rows elsewhere keep their change IDs and references.
 
 The menu is a menu of checkbox items: it opens below its button from the toolbar's trailing edge, takes focus when opened, moves with arrow keys, and closes with Escape or a click elsewhere. It is placed against the window, so a toolbar that scrolls sideways can't clip it.
 
