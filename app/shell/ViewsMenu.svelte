@@ -49,10 +49,10 @@
     #views-menu { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 6px 5px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; line-height: 20px; cursor: pointer; }
     .chevron { flex: none; margin-inline-start: 6px; color: var(--muted); }
     #views-menu[aria-expanded="true"] { background: var(--interaction-selected, var(--hover)); }
-    .views-menu { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 4px); z-index: 70; min-width: 180px; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
+    .views-menu { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 4px); z-index: 70; min-width: 180px; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); }
     .views-menu button { min-height: 32px; padding: 6px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: 13px; text-align: start; cursor: pointer; }
     .views-menu button[aria-checked="true"] { font-weight: 500; background: var(--interaction-selected); }
-    .views-menu button[role="menuitem"] { border-block-start: 1px solid var(--rule); border-radius: 0; }
+    .views-menu button[role="menuitem"] { border-block-start: 1px solid var(--popover-rule); border-radius: 0; }
     @media (hover: hover) {
         #views-menu:hover { background: var(--hover); }
         .views-menu button:hover { background: var(--interaction-hover); }

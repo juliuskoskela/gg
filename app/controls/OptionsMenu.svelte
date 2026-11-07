@@ -75,7 +75,7 @@
     /* opens below the button, aligned to its trailing edge where the toolbar keeps its tools */
     .menu { position: fixed; z-index: 70; display: grid; gap: 1px; min-width: 180px; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); }
     .menu button { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 10px 4px 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: var(--font-body); text-align: start; cursor: pointer; }
-    .menu hr { margin: 4px 8px; border: 0; border-block-start: 1px solid var(--rule); }
+    .menu hr { margin: 4px 8px; border: 0; border-block-start: 1px solid var(--popover-rule); }
     .check { display: inline-grid; place-items: center; width: 16px; color: var(--text-strong); --icon-size: 14px; }
     .menu:focus { outline: none; }
     .menu button:focus { outline: none; background: var(--interaction-hover); color: var(--text-strong); }
