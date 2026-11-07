@@ -19,7 +19,9 @@
     "@pierre/diffs": "^1.6.4",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-shell": "^2.3.5",
+    "dompurify": "^3.4.17",
     "feather-icons": "^4.29.1",
+    "marked": "^16.4.2",
     "modern-normalize": "^2.0.0"
   },
   "devDependencies": {

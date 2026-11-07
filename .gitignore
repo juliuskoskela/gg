@@ -48,4 +48,4 @@ mise.local.toml
 
 # browser test failure artifacts
 .vitest-attachments/
-app/__screenshots__/
+app/**/__screenshots__/

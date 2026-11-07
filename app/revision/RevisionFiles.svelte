@@ -47,7 +47,7 @@
 <svelte:window on:keydown={keydown} />
 <aside class="file-tree" class:overlay hidden={!visible} id="changed-files" aria-label="Changed files" bind:this={panel}>
     {#if showHeading}<PanelHeader><div class="file-tree-heading">Files <span>{changes.length}</span>{#if onClose}<div class="tree-toggle"><ToggleTray label="Changed files"><ToggleItem kind="disclosure" on text="Tree" label="File tree" tip="Hide file tree" controls="changed-files" onClick={onClose} /></ToggleTray></div>{/if}</div></PanelHeader>{/if}
-    <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div></ViewToolbar>
+    <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter toolbar-lead"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div></ViewToolbar>
     {#if changes.length > 200}<VirtualFileList changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">No matching files</p>{/if}{:else}
     <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" on:keydown={navigateOptions}><FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
 </aside>
@@ -59,10 +59,10 @@
     .file-filter :global(.file-search) { width: 100%; }
     .file-tree.overlay { position: absolute; inset-block: 0; inset-inline-end: 0; z-index: 3; width: min(280px, calc(100% - 44px)); border-inline-start: 1px solid var(--rule); box-shadow: var(--shadow-overlay); }
     /* same height as the description row so the tree toggle stays on one line as it moves */
-    .file-tree-heading { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 27px; color: var(--text); font-size: var(--type-ui); }
-    .file-tree-heading span { font-size: var(--type-caption); color: var(--muted); }
+    .file-tree-heading { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 27px; color: var(--text); font: var(--font-body); }
+    .file-tree-heading span { color: var(--muted); font: var(--font-label); }
     .tree-toggle { display: flex; margin-inline-start: auto; }
     .tree-scroll { padding: 0 var(--panel-inset) 8px; flex: 1; overflow: auto; overscroll-behavior: contain; min-height: 0; pointer-events: auto; }
-    .no-results { margin: 8px 4px; font-size: var(--type-ui); color: var(--muted); }
+    .no-results { margin: 8px 4px; color: var(--muted); font: var(--font-body); }
     @media (pointer: coarse), (max-width: 600px) { .file-tree :global(.file-search) { min-height: 44px; } }
 </style>

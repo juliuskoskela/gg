@@ -22,6 +22,8 @@
     }
 
     let columnWidth = 18;
+    // rows reach this far left of their node, so the selection never clips a station's halo
+    const rowBleed = 6;
     export let rowHeight = revisionRowHeight;
     export let authorSpace = 0;
     export let containerHeight: number;
@@ -90,13 +92,15 @@
 </script>
 
 <svg class="graph" style="width: 100%; height: {graphHeight}px;">
+  <g transform="translate({rowBleed} 0)">
     {#each visibleSlice as row, i (i)}
         <g transform="translate({(row?.location[0] ?? 0) * columnWidth} {(row?.location[1] ?? 0) * rowHeight})">
             <foreignObject
                 class:placeholder={row === null}
+                x={-rowBleed}
                 height={rowHeight}
                 width={containerWidth - (row?.location[0] ?? 0) * columnWidth}
-                style="--leftpad: {(row?.padding ?? 0) * columnWidth + columnWidth + 6}px; --lane: var(--lane-{(row?.location[0] ?? 0) % 8});">
+                style="--leftpad: {(row?.padding ?? 0) * columnWidth + columnWidth + 6 + rowBleed}px; --lane: var(--lane-{(row?.location[0] ?? 0) % 8});">
                 <slot {row} />
             </foreignObject>
         </g>
@@ -114,6 +118,7 @@
             </g>
         {/if}
     {/each}
+  </g>
 </svg>
 
 <style>

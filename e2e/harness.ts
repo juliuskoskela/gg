@@ -13,13 +13,16 @@ export interface TestContext {
     page: Page;
     ggProcess: ChildProcess | null;
     tempDir: string;
+    /** GG's data directory, outside the repository so notes never show up as files */
+    dataDir: string;
 }
 
 export async function createContext(): Promise<TestContext> {
     let browser = await chromium.launch({ headless: true, executablePath: process.env.GG_TEST_BROWSER || undefined });
     let page = await browser.newPage();
     let tempDir = await mkdtemp(join(tmpdir(), "gg-test-"));
-    return { browser, page, tempDir, ggProcess: null };
+    let dataDir = await mkdtemp(join(tmpdir(), "gg-data-"));
+    return { browser, page, tempDir, dataDir, ggProcess: null };
 }
 
 export async function destroyContext(ctx: TestContext): Promise<void> {
@@ -33,6 +36,7 @@ export async function destroyContext(ctx: TestContext): Promise<void> {
 
     try {
         await rm(ctx.tempDir, { recursive: true, force: true });
+        await rm(ctx.dataDir, { recursive: true, force: true });
     } catch {
         // ignore cleanup errors
     }
@@ -42,6 +46,7 @@ export function startGG(ctx: TestContext): Promise<string> {
     let ggProcess = spawn("cargo", ["run", "--", "web", ctx.tempDir, "--no-launch", "--foreground"], {
         cwd: PROJECT_ROOT,
         stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, GG_DATA_DIR: ctx.dataDir },
     });
 
     ctx.ggProcess = ggProcess;

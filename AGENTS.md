@@ -36,6 +36,7 @@ Each window has a dedicated worker thread owning a `Session` (jj-lib is not thre
 2. **Queries**: Request data without side effects
 3. **Mutations**: Structured repository modifications
 4. **Events**: Push updates to frontend (Tauri events in GUI; SSE from `/api/events` in web, where the store's `set()` is local-only)
+5. **Annotations**: Local notes outside the repository, via `annotate()` (`/api/annotate/{command}` in web); see `doc/specs/annotations.md`
 
 ## Type Generation
 
@@ -117,6 +118,14 @@ Use macros from `src/gui/handler.rs`:
 - `nonfatal!(result)` - log and return early
 - `optional!(result)` - silently ignore (for optional operations)
 
+### Typography
+
+Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--font-emphasis`, `--font-body`, `--font-prose`, `--font-label`, `--font-id`) with `font:`; don't set `font-size`, `line-height` or `font-weight` by hand. Key/value data uses `MetadataList`/`MetadataRow`, history-like entries use `LogList`, in-content navigation uses `.text-link`, and toolbar search fields and summaries take `.toolbar-lead`. See `doc/reviews/typography.md`.
+
+### Annotations
+
+Notes on changes, bookmarks, files and diff lines live in GG's data directory, keyed by jj's `.jj/repo/config-id`; never write into `.jj/` or the working copy. `src/annotations/` owns storage and the `gg annotations` CLI; the worker only adds anchor states. Storage is append-only, one file per event. Frontend code lives in `app/annotations/`. E2E tests get an isolated `GG_DATA_DIR` from the harness.
+
 ## Configuration
 
 Settings loaded via `jj config`. Key GG-specific settings in `src/config/gg.toml`:
@@ -162,3 +171,4 @@ Use `let` instead of `const` for variable declarations.
 - `app/ipc.ts` - IPC abstraction with runtime detection
 - `src/worker/mutations/` - All mutation implementations, by category
 - `src/config/gg.toml` - Default configuration with inline docs
+- `doc/specs/annotations.md` - Annotation anchors, storage and CLI

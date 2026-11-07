@@ -31,7 +31,8 @@
     $: mutator = new RevisionMutator(revs.headers, $ignoreToggled);
     $: key = revisionIdentity(revs, repositoryScope($repoConfigEvent));
     $: incomingDescription = newest.description.lines.join("\n");
-    $: title = singleton ? newest.description.lines[0] || (newest.is_working_copy ? "Working copy" : "No description set") : `${revs.headers.length} revisions`;
+    // an empty description that can be edited is an invitation, not a status
+    $: title = singleton ? newest.description.lines[0] || (canEdit ? "Add a description" : newest.is_working_copy ? "Working copy" : "No description set") : `${revs.headers.length} revisions`;
     $: descriptionBody = incomingDescription.split("\n").slice(1).join("\n").trim();
     $: {
         if (key !== previousKey) {
@@ -76,7 +77,7 @@
 
 <div class="overview-content">
     {#if !showEditor}
-        <div class="revision-heading"><h2 class:undescribed={singleton && !incomingDescription} tabindex="-1"><EditableText text={title} label="Edit revision description" editable={canEdit} onEdit={beginEditing} bind:element={descriptionLink} /></h2></div>
+        <div class="revision-heading"><h2 class:undescribed={singleton && !incomingDescription} tabindex="-1"><EditableText text={title} label="Edit revision description" editable={canEdit} affordance onEdit={beginEditing} bind:element={descriptionLink} /></h2></div>
     {/if}
     {#if singleton}
         {#if showEditor}
@@ -97,18 +98,19 @@
 </div>
 
 <style>
-    .overview-content { display: flex; flex-direction: column; align-items: stretch; gap: 20px; width: 100%; min-width: 0; padding: 16px; }
+    .overview-content { display: flex; flex-direction: column; align-items: stretch; gap: var(--gap-group); width: 100%; min-width: 0; padding: 14px var(--panel-inset) 16px; }
     .revision-heading { display: flex; align-items: start; gap: 12px; flex-shrink: 0; min-width: 0; }
-    h2 { flex: 1; min-width: 0; margin: 3px 0 0; max-width: 80ch; font-size: var(--type-title); font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; user-select: text; pointer-events: auto; }
-    h2.undescribed { color: var(--muted); font-weight: 400; }
+    h2 { flex: 1; min-width: 0; margin: 0; max-width: var(--prose-measure); color: var(--text-strong); font: var(--font-title); overflow-wrap: anywhere; user-select: text; pointer-events: auto; }
+    h2.undescribed { color: var(--muted); font-weight: var(--weight-regular); }
     .description-display, .description-list { min-width: 0; }
-    .description-body, .description-list p { margin: 0; max-width: 80ch; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--type-body); line-height: 1.65; user-select: text; pointer-events: auto; }
-    .description-list { display: grid; gap: 12px; }
+    .description-body, .description-list p { margin: 0; max-width: var(--prose-measure); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; font: var(--font-prose); user-select: text; pointer-events: auto; }
+    .description-list { display: grid; gap: var(--gap-row); }
+    .description-list p { font: var(--font-body); }
     .description-list .undescribed { color: var(--muted); }
-    .overview-content > :global(.revision-metadata) { padding-block-start: 20px; border-block-start: 1px solid var(--rule); }
+    .overview-content > :global(.revision-metadata) { margin-block-start: calc(var(--gap-section) - var(--gap-group)); padding-block-start: var(--gap-section); border-block-start: 1px solid var(--rule); }
     .description-editor { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .description-editor :global(.description-field) { min-height: 144px; }
     .description-commands { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-    .reset-author { display: inline-flex; align-items: center; gap: 6px; margin-inline-end: auto; font-size: var(--type-ui); color: var(--text); }
+    .reset-author { display: inline-flex; align-items: center; gap: 6px; margin-inline-end: auto; font: var(--font-body); color: var(--text); }
     @media (pointer: coarse), (max-width: 600px) { .reset-author { min-height: 44px; } }
 </style>

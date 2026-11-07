@@ -10,7 +10,7 @@ Core component for direct-manipulation objects. A drag&drop source.
     import type { Operand } from "../messages/Operand";
     import { setCommandOperand } from "../commands/context";
     import { executeOperandCommand } from "../commands/registry";
-    import { currentContext, currentSource, selectionHeaders, hasMenu, ignoreToggled } from "../stores";
+    import { currentContext, currentSource, selectionHeaders, pickedRevisions, hasMenu, ignoreToggled } from "../stores";
     import { createEventDispatcher } from "svelte";
     import { get } from "svelte/store";
     import BinaryMutator from "../mutators/BinaryMutator";
@@ -59,6 +59,8 @@ Core component for direct-manipulation objects. A drag&drop source.
 
     function getEffectiveOperand(): Operand | null {
         if (operand?.type == "Revision") {
+            let picks = get(pickedRevisions);
+            if (picks.some((h) => h.id.commit.hex === operand.header.id.commit.hex)) return { type: "Revisions", headers: picks };
             let headers = get(selectionHeaders);
             if (
                 headers &&

@@ -1,11 +1,12 @@
 <script lang="ts">
+    import { annotationCommands } from "../annotations/commands";
     import Icon from "../controls/Icon.svelte";
     import TextField from "../controls/TextField.svelte";
     import DestinationPicker from "./DestinationPicker.svelte";
     import { mutationPending } from "../operations";
     import { commandOperand, currentWorkspaceIdentity } from "./context";
     import { onMount, tick } from "svelte";
-    import { currentContext, currentMutation, hasModal, ignoreToggled, repoConfigEvent, repoStatusEvent, selectionHeaders } from "../stores";
+    import { currentContext, currentMutation, hasModal, ignoreToggled, repoConfigEvent, repoStatusEvent, selectionHeaders, pickedRevisions } from "../stores";
     import { contextCommands, repositoryCommands, revisionCommands, type Command } from "./registry";
     import { workspaceViews } from "../workspace/views";
     import type { RevHeader } from "../messages/RevHeader";
@@ -24,6 +25,7 @@
         ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),
         ...contextCommands($commandOperand ?? $currentContext, $currentWorkspaceIdentity, $currentMutation, $mutationPending, $ignoreToggled),
+        ...annotationCommands($commandOperand ?? $currentContext ?? ($pickedRevisions.length > 1 ? { type: "Revisions", headers: $pickedRevisions } : null) ?? (activeHeaders.length === 1 ? { type: "Revision", header: activeHeaders[0] } : activeHeaders.length > 1 ? { type: "Revisions", headers: activeHeaders } : null)),
     ];
     $: filtered = commands.filter(c => `${c.label} ${c.scope}`.toLowerCase().includes(search.toLowerCase()));
     async function show() {
@@ -81,14 +83,14 @@
     .palette { position: fixed; inset: min(12vh, 90px) 16px auto; width: min(560px, calc(100% - 32px)); max-width: none; max-height: min(70dvh, 640px); box-sizing: border-box; margin: 0 auto; padding: 0; background: var(--raised); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-surface); box-shadow: var(--shadow-overlay); pointer-events: auto; }
     .palette::backdrop { background: var(--scrim); }
     .content { display: flex; flex-direction: column; max-height: min(70dvh, 640px); padding: 12px; pointer-events: auto; }
-    .heading { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+    .heading { display: flex; align-items: center; justify-content: space-between; color: var(--text-strong); font: var(--font-heading); }
     .heading button { border: 0; background: transparent; color: inherit; font-size: 24px; min-width: 44px; min-height: 44px; }
     .content :global(.text-field) { width: 100%; box-sizing: border-box; min-height: 44px; }
     .results { overflow: auto; margin-top: 8px; pointer-events: auto; }
     .results button { width: 100%; min-height: 44px; padding: 8px; text-align: left; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; display: flex; justify-content: space-between; gap: 8px; }
     .results button:focus, .results button:hover { background: var(--hover); }
     .results button[aria-disabled="true"] { color: var(--text-disabled); }
-    small { display: block; font-size: 12px; color: var(--muted); }
+    small { display: block; color: var(--muted); font: var(--font-label); }
     p { padding: 8px; color: var(--muted); }
 </style>
 

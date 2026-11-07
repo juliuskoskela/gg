@@ -13,6 +13,9 @@
     import DiffStat from "./DiffStat.svelte";
     import DiffTools from "./DiffTools.svelte";
     import Icon from "../controls/Icon.svelte";
+    import { linesAnchor, MAX_LINES, subjectOf } from "../annotations/anchors";
+    import { lineMenu } from "../annotations/store";
+    import { targetCommands } from "../annotations/commands";
     import { navigateOptions } from "../controls/optionNavigation";
 
     export let focused = false;
@@ -64,6 +67,16 @@
 
 
     function selectFile(change: RevChange) { onSelectFile(change); }
+    function annotateLines(event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) {
+        let file = currentChange, header = revs.headers.length === 1 ? revs.headers[0] : null;
+        let count = range.end - range.start + 1;
+        let label = count === 1 ? `Annotate line ${range.start}…` : `Annotate lines ${range.start}–${range.end}…`;
+        let reason = !header ? "Select one revision to annotate its lines" : count > MAX_LINES ? `Annotate at most ${MAX_LINES} lines` : null;
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: range.side === "deletions" ? "Before the change" : null, commands: targetCommands(async () => {
+            if (!header || !file) return [];
+            return [{ anchor: await linesAnchor(header, file, range.side, range.start, range.end, loadFullFiles), subject: subjectOf(header) }];
+        }, label, reason) });
+    }
     async function loadFullFiles() {
         let file = currentChange;
         if (!file) throw new Error("No file selected");
@@ -101,7 +114,7 @@
                             {:else}
                                 <div class="file-diff-summary"><span>No editable hunks</span><DiffStat {changes} /></div>
                             {/if}
-                            <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} />
+                            <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} onLineMenu={annotateLines} />
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
@@ -117,7 +130,7 @@
 </div>
 
 <style>
-    .diff-message { padding: 16px; color: var(--muted); font-size: var(--type-ui); }
+    .diff-message { padding: 16px; color: var(--muted); font: var(--font-body); }
     .diff-message button { min-height: 44px; }
     .changes-module { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
     .changes-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-width: 0; min-height: 0; isolation: isolate; }
@@ -131,17 +144,17 @@
     .diff-toolbar button:disabled { color: var(--text-disabled); cursor: default; }
     .diff-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; pointer-events: auto; scroll-padding-block: 12px; }
     .hunk-actions { margin: 0 12px 4px; pointer-events: auto; }
-    .hunk-actions summary { display: flex; align-items: center; justify-content: space-between; gap: var(--panel-gap); width: 100%; padding-inline: var(--control-padding-inline); border-radius: var(--radius-control); font-size: var(--type-ui); color: var(--text); cursor: pointer; min-height: var(--control-height); list-style: none; }
+    .hunk-actions summary { display: flex; align-items: center; justify-content: space-between; gap: var(--panel-gap); width: 100%; padding-inline: var(--control-padding-inline); border-radius: var(--radius-control); font: var(--font-body); color: var(--text); cursor: pointer; min-height: var(--control-height); list-style: none; }
     .hunk-actions summary::-webkit-details-marker { display: none; }
     .hunk-actions[open] summary :global(svg) { transform: rotate(90deg); }
     .hunk-action-label { display: inline-flex; align-items: center; gap: var(--control-gap); }
-    .hunk-actions summary .hunk-action-label { font-size: var(--type-ui); color: var(--text); }
-    .file-diff-summary { display: flex; justify-content: space-between; align-items: center; gap: var(--panel-gap); padding: 6px var(--control-padding-inline); margin: 0 12px 4px; color: var(--muted); font-size: var(--type-caption); min-height: var(--control-height); }
-    .hunk-actions summary span { font-size: var(--type-caption); color: var(--muted); font-variant-numeric: tabular-nums; }
+    .hunk-actions summary .hunk-action-label { color: var(--text); font: var(--font-body); }
+    .file-diff-summary { display: flex; justify-content: space-between; align-items: center; gap: var(--panel-gap); padding: 6px var(--control-padding-inline); margin: 0 12px 4px; color: var(--muted); font: var(--font-label); min-height: var(--control-height); }
+    .hunk-actions summary span { color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; }
     .hunk-list { padding-block: 4px; }
     .empty-change { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
-    .empty-change h3 { margin: 0; font-size: var(--type-body); font-weight: 500; }
-    .empty-change p { max-width: 340px; margin: 0; font-size: var(--type-ui); line-height: 1.6; color: var(--muted); }
+    .empty-change h3 { margin: 0; color: var(--text-strong); font: var(--font-heading); }
+    .empty-change p { max-width: 340px; margin: 0; color: var(--muted); font: var(--font-body); }
     @media (hover: hover) { .diff-toolbar button:not(:disabled):hover, .hunk-actions summary:hover { background: var(--hover); color: var(--text); } }
     .diff-toolbar button:not(:disabled):active, .hunk-actions summary:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { .file-path :global(.layout) { min-height: 44px; } .diff-toolbar button { min-width: 44px; min-height: 44px; } .hunk-actions summary { min-height: 44px; } }

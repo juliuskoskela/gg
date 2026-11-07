@@ -14,6 +14,7 @@
 //! standard [`std::sync::mpsc`] channel. See [`web::create_app`](crate::web::create_app)
 //! for an example of wiring this up.
 
+mod annotations;
 mod git_util;
 mod gui_util;
 mod history;
