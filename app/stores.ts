@@ -33,6 +33,8 @@ export const lastFocus = writable<number>(Date.now());
 export const ignoreToggled = writable<boolean>(false);
 
 export const selectionHeaders = writable<RevHeader[]>([]);
+/** revisions picked one by one with Ctrl/⌘; while set, the selection above is only the focused revision */
+export const pickedRevisions = writable<RevHeader[]>([]);
 
 export let descriptionDrafts = writable<Record<string, string>>({});
 export let revisionReviewState = new Map<string, { path: string; scrollTop: number }>();

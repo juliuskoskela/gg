@@ -14,8 +14,8 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use clap::Parser;
 use gg_lib::config::{self, read_config};
-use gg_lib::web;
 use gg_lib::{RunOptions, askpass};
+use gg_lib::{annotations, web};
 use jj_lib::settings::UserSettings;
 
 #[derive(clap::Subcommand, Debug)]
@@ -41,6 +41,16 @@ enum Subcommand {
         /// Don't open a browser automatically (overrides gg.web.launch-browser config).
         #[arg(long, conflicts_with = "launch")]
         no_launch: bool,
+    },
+    /// Read and reply to notes made in GG.
+    #[command(alias = "notes")]
+    Annotations {
+        /// Use the repository containing this directory.
+        #[arg(short = 'R', long)]
+        repository: Option<PathBuf>,
+
+        #[command(subcommand)]
+        action: annotations::cli::Action,
     },
 }
 
@@ -76,7 +86,7 @@ impl Args {
         match &self.command {
             Some(Subcommand::Gui { .. }) => Some(LaunchMode::Gui),
             Some(Subcommand::Web { .. }) => Some(LaunchMode::Web),
-            None => None,
+            Some(Subcommand::Annotations { .. }) | None => None,
         }
     }
 
@@ -85,6 +95,7 @@ impl Args {
             Some(Subcommand::Gui { workspace }) | Some(Subcommand::Web { workspace, .. }) => {
                 workspace.clone()
             }
+            Some(Subcommand::Annotations { repository, .. }) => repository.clone(),
             None => self.workspace.clone(),
         }
     }
@@ -133,6 +144,13 @@ fn main() -> Result<()> {
     }
 
     let args = Args::parse();
+
+    // a plain command: no window, no background process
+    if let Some(Subcommand::Annotations { repository, action }) = args.command {
+        let repo_path = config::resolve_repo_path(repository.as_deref());
+        let (settings, _, _, _) = read_config(repo_path.as_deref())?;
+        return annotations::cli::run(repository.as_deref(), &settings, action);
+    }
 
     if !args.foreground && should_spawn() {
         spawn_app()

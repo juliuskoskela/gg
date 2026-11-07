@@ -6,13 +6,19 @@
     import { mutationPending } from "../operations";
     import { contextCommands, revisionCommands, type Command } from "../commands/registry";
     import Icon from "./Icon.svelte";
-    export let operand: Operand;
+    import { annotationCommands } from "../annotations/commands";
+    import { openViewCommands } from "../workspace/viewCommands";
+    export let operand: Operand | null = null;
+    /** a fixed list, for menus about things that aren't operands, such as diff lines */
+    export let items: Command[] | null = null;
+    export let heading: string | null = null;
     export let x: number;
     export let y: number;
     export let onClose: () => void;
     let menuElement: HTMLDivElement;
     let previous = document.activeElement as HTMLElement | null;
-    // like native menus, nothing is highlighted until the pointer or arrow keys pick an item
+    // like native menus, nothing is highlighted until the pointer moves or arrow keys pick an item;
+    // a menu that opens under a resting pointer mustn't select whatever lies beneath it
     onMount(() => menuElement?.focus());
     onDestroy(() => { if (document.activeElement === document.body || menuElement?.contains(document.activeElement)) previous?.focus({ preventScroll: true }); });
     function key(event: KeyboardEvent) {
@@ -45,11 +51,21 @@
         return [...groups.entries()].sort(([a], [b]) => a - b).map(([, commands]) => commands);
     }
 
-    $: commands = operand.type === "Revision" ? revisionCommands([operand.header], false, $ignoreToggled, $currentMutation, $mutationPending) : operand.type === "Revisions" ? revisionCommands(operand.headers, false, $ignoreToggled, $currentMutation, $mutationPending) : contextCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending);
-    $: grouped = sections(commands);
+    $: commands = items ?? [...actionCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending), ...annotationCommands(operand)];
+    function actionCommands(operand: Operand | null, ..._dependencies: unknown[]): Command[] {
+        if (!operand) return [];
+        return operand.type === "Revision" ? revisionCommands([operand.header], false, $ignoreToggled, $currentMutation, $mutationPending) : operand.type === "Revisions" ? revisionCommands(operand.headers, false, $ignoreToggled, $currentMutation, $mutationPending) : contextCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending);
+    }
+    // every menu ends with the views that can still be opened, so right-clicking is always a way to add one
+    export let views = true;
+    $: viewItems = views ? openViewCommands().filter(command => !command.reason) : [];
+    // destructive actions stay last, after the views
+    $: actionSections = sections(commands);
+    $: destructive = actionSections.filter(section => section.every(command => command.destructive));
+    $: grouped = [...actionSections.filter(section => !destructive.includes(section)), ...(viewItems.length ? [viewItems] : []), ...destructive];
     // a title only when it clarifies scope: several revisions at once
-    $: title = operand.type === "Revisions" && operand.headers.length > 1 ? `${operand.headers.length} revisions` : null;
-    $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? "No actions available") : null;
+    $: title = heading ?? (operand?.type === "Revisions" && operand.headers.length > 1 ? `${operand.headers.length} revisions` : null);
+    $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? (views ? "All views are open" : "No actions available")) : null;
     $: if (menuElement) {
         let rect = menuElement.getBoundingClientRect();
         menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
@@ -62,7 +78,7 @@
     {#each grouped as section, index}
         {#if index > 0}<hr />{/if}
         {#each section as command (command.id)}
-            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" on:mouseenter={event => event.currentTarget.focus({ preventScroll: true })} on:click={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
+            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" on:mousemove={event => { if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }} on:click={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
         {/each}
     {/each}
     {#if unavailable}<p class="menu-empty" role="presentation">{unavailable}</p>{/if}

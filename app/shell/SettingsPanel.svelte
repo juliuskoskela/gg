@@ -61,12 +61,12 @@
     .settings-content { max-width: 720px; padding: 8px 20px 24px; }
     section { padding-block: 20px; }
     section + section { border-block-start: 1px solid var(--rule); }
-    h2 { margin: 0 0 16px; font-size: var(--type-body); font-weight: 500; color: var(--text); }
-    h3 { margin: 0; font-size: var(--type-ui); font-weight: 500; }
-    p { margin: 5px 0 0; font-size: var(--type-ui); line-height: 1.55; color: var(--muted); overflow-wrap: anywhere; }
+    h2 { margin: 0 0 var(--gap-group); color: var(--text-strong); font: var(--font-heading); }
+    h3 { margin: 0; color: var(--text); font: var(--font-emphasis); }
+    p { max-width: var(--prose-measure); margin: 2px 0 0; color: var(--muted); font: var(--font-label); overflow-wrap: anywhere; }
     .setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
     .appearance-row { margin-block-start: 20px; }
-    .appearance-default { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; color: var(--muted); font-size: var(--type-caption); }
+    .appearance-default { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-start: 12px; color: var(--muted); font: var(--font-label); }
     .appearance-default button { border-color: transparent; padding-inline: 0; color: var(--muted); font-size: var(--type-caption); text-align: start; white-space: normal; }
     .setting-copy { flex: 1 1 200px; }
     .theme-choices, .zoom-controls { display: flex; align-items: center; gap: 4px; }

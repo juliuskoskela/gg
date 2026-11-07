@@ -27,19 +27,23 @@
         pointer-events: auto;
         --control-height: var(--panel-control-size);
         --control-padding-block: 3px;
-        --hover: color-mix(in srgb, var(--text) 8%, var(--panel-toolbar-bg));
-        --active: color-mix(in srgb, var(--text) 13%, var(--panel-toolbar-bg));
-        --active-hover: color-mix(in srgb, var(--text) 18%, var(--panel-toolbar-bg));
-        --control-pressed: color-mix(in srgb, var(--text) 22%, var(--panel-toolbar-bg));
+        --hover: color-mix(in srgb, var(--text) 6%, var(--panel-toolbar-bg));
+        --active: color-mix(in srgb, var(--text) 15%, var(--panel-toolbar-bg));
+        --active-hover: color-mix(in srgb, var(--text) 19%, var(--panel-toolbar-bg));
+        --control-pressed: color-mix(in srgb, var(--text) 23%, var(--panel-toolbar-bg));
         --border: color-mix(in srgb, var(--text) 14%, var(--panel-toolbar-bg));
         --input-surface: var(--panel-toolbar-bg);
         --panel-tools-wrap: nowrap;
-        --panel-tools-justify: flex-start;
-        --panel-tools-margin: 0;
+        --panel-tools-justify: flex-end;
+        --panel-tools-margin: auto;
     }
     .view-toolbar::-webkit-scrollbar { display: none; }
     .view-toolbar[hidden] { display: none; }
-    .view-toolbar > :global(*) { flex-shrink: 0; }
+    /* tools sit at the trailing edge; what scopes or summarises the view (search, counts, select-all, filters) opts into the leading edge.
+       a flexible spacer rather than flex-end keeps overflowing tools scrollable from their start */
+    .view-toolbar::before { content: ""; flex: 1 1 0; order: 0; min-width: 0; }
+    .view-toolbar > :global(*) { flex-shrink: 0; order: 1; }
+    .view-toolbar > :global(.toolbar-lead) { order: -1; }
     .view-toolbar > :global(.diff-tools) { width: auto; }
     .view-toolbar :global(button:focus-visible) { outline-offset: -2px; }
     .view-toolbar :global(.toolbar-spacer) { margin-inline-start: auto; }

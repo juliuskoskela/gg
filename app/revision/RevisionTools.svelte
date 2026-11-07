@@ -37,15 +37,15 @@
     .revision-tools { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; pointer-events: auto; background: var(--surface); padding: 8px 12px 16px; }
     section { min-width: 0; padding-block: 8px; }
     section + section { border-block-start: 1px solid var(--border); }
-    h3 { margin: 0; padding: 4px 8px 8px; color: var(--muted); font-size: var(--type-caption); font-weight: 500; line-height: 1.5; }
+    h3 { margin: 0; padding: 4px 8px 6px; color: var(--muted); font: var(--font-label); }
     .commands { display: grid; gap: 2px; }
     button { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--control-height); padding: 7px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); text-align: start; white-space: normal; }
     button :global(svg) { flex: 0 0 var(--icon-size); width: var(--icon-size); height: var(--icon-size); margin-block-start: 3px; }
-    .command-copy { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
-    small { color: var(--muted); font-size: var(--type-caption); }
+    .command-copy { display: grid; gap: 0; min-width: 0; overflow-wrap: anywhere; font: var(--font-body); }
+    small { color: var(--muted); font: var(--font-label); }
     button:disabled { opacity: 1; color: var(--text-disabled); cursor: default; }
     button.destructive:not(:disabled) { color: var(--negative); }
-    .selection-hint { margin: 0; padding: 8px; font-size: var(--type-ui); line-height: 1.5; color: var(--muted); }
+    .selection-hint { margin: 0; padding: 8px; color: var(--muted); font: var(--font-body); }
     @media (hover: hover) { button:not(:disabled):hover { background: var(--hover); } }
     button:not(:disabled):active { background: var(--control-pressed); }
     @media (pointer: coarse) { button { min-height: 44px; } }

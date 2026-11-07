@@ -22,7 +22,7 @@
     $: sourceKey = JSON.stringify([repositoryScope($repoConfigEvent), source?.commit.hex, source?.change.hex]);
     $: if (active && sourceKey !== loadedKey) { loadedKey = sourceKey; reset(); }
     $: entry = entries.find(entry => entry.revision.id.commit.hex === selected);
-    $: rows = entries.map(entry => ({ id: entry.revision.id.commit.hex, title: entry.revision.description.lines[0] || "No description set", subtitle: `${entry.revision.id.commit.hex.slice(0, 8)} · ${entry.revision.author.name}`, time: entry.operation?.finished_at ?? entry.revision.author.timestamp, badge: entry.revision.id.commit.hex === source?.commit.hex ? "Selected revision" : entry.revision.id.change.hex !== source?.change.hex ? "Contributed change" : undefined }));
+    $: rows = entries.map(entry => ({ id: entry.revision.id.commit.hex, title: entry.revision.description.lines[0] || "No description set", code: entry.revision.id.commit.hex.slice(0, 8), who: entry.revision.author.name, time: entry.operation?.finished_at ?? entry.revision.author.timestamp, badge: entry.revision.id.commit.hex === source?.commit.hex ? "Selected" : entry.revision.id.change.hex !== source?.change.hex ? "Contributed" : undefined, tone: entry.revision.id.commit.hex === source?.commit.hex ? "default" as const : "muted" as const }));
     onDestroy(() => request++);
     function reset(id = source, _status?: unknown, _repo?: unknown) {
         request++; entries = []; selected = ""; error = ""; more = false; loading = false;

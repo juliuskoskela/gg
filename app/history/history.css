@@ -1,16 +1,19 @@
 .history-browser .history-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; margin-block-end: 8px; }
-.history-browser .history-heading h2 { margin: 0; font-size: var(--type-title); font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
-.history-browser .history-copy { color: var(--muted); line-height: 1.6; margin: 0 0 16px; overflow-wrap: anywhere; }
-.history-browser .history-metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 16px; margin: 16px 0 20px; font-size: var(--type-caption); line-height: 1.6; }
-.history-browser .history-metadata dt { color: var(--muted); }
-.history-browser .history-metadata dd { margin: 0; overflow-wrap: anywhere; }
-.history-browser .history-section { padding-block: 16px; border-block-start: 1px solid var(--rule); }
-.history-browser .history-section h3 { font-size: var(--type-ui); font-weight: 500; margin: 0 0 12px; }
-.history-browser .history-section p { margin: 4px 0; line-height: 1.6; overflow-wrap: anywhere; }
+.history-browser .history-heading h2 { margin: 0; color: var(--text-strong); font: var(--font-title); overflow-wrap: anywhere; }
+.history-browser .history-copy { max-width: var(--prose-measure); margin: 0 0 var(--gap-group); color: var(--muted); font: var(--font-body); overflow-wrap: anywhere; }
+.history-browser .history-copy.description { color: var(--text); font: var(--font-prose); white-space: pre-wrap; }
+/* the same key/value rhythm as MetadataList */
+.history-browser .history-metadata { display: grid; grid-template-columns: minmax(3.5rem, max-content) minmax(0, 1fr); align-items: baseline; gap: var(--gap-row) 16px; margin: var(--gap-group) 0 var(--gap-section); }
+.history-browser .history-metadata dt { color: var(--muted); font: var(--font-label); }
+.history-browser .history-metadata dd { margin: 0; color: var(--text); font: var(--font-body); overflow-wrap: anywhere; }
+.history-browser .history-section { padding-block: var(--gap-section); border-block-start: 1px solid var(--rule); }
+.history-browser .history-section h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 var(--gap-group); color: var(--text-strong); font: var(--font-heading); }
+.history-browser .history-section h3 > span { color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; }
+.history-browser .history-section p { margin: var(--gap-row) 0; font: var(--font-body); overflow-wrap: anywhere; }
 .history-browser .history-button { min-height: 32px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; font-size: var(--type-ui); }
-.history-browser .history-link { min-height: 32px; max-width: 100%; padding: 4px 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; font-size: var(--type-caption); overflow-wrap: anywhere; text-align: start; }
-.history-browser .history-empty { color: var(--muted); line-height: 1.6; margin: 0; }
-.history-browser .history-code { font-family: var(--stack-code); font-size: var(--type-caption); font-variant-ligatures: none; }
+.history-browser .history-link { min-height: 28px; max-width: 100%; padding: 4px 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; font: var(--font-body); overflow-wrap: anywhere; text-align: start; }
+.history-browser .history-empty { margin: 0; color: var(--muted); font: var(--font-body); }
+.history-browser .history-code, .history-browser .history-metadata .history-code { font: var(--font-id); font-variant-ligatures: none; }
 @media (hover: hover) { .history-browser .history-button:not(:disabled):hover, .history-browser .history-link:hover { background: var(--interaction-hover); } }
 .history-browser .history-button:not(:disabled):active, .history-browser .history-link:active { background: var(--interaction-pressed); }
 .history-browser .history-button:disabled { color: var(--text-disabled); cursor: default; }

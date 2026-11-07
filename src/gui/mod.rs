@@ -330,6 +330,8 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_operation_preflight,
             query_evolution,
             query_operation_history,
+            annotations,
+            export_annotations,
             query_operation_detail,
             query_revision_diff,
             query_remotes,
@@ -665,6 +667,38 @@ fn query_evolution(
             id,
             offset: offset.unwrap_or(0),
         })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn annotations(
+    window: Window,
+    app_state: State<AppState>,
+    request: messages::annotations::AnnotationRequest,
+) -> Result<messages::annotations::AnnotationList, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::Annotations { tx, request })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn export_annotations(
+    window: Window,
+    app_state: State<AppState>,
+    ids: Vec<String>,
+) -> Result<String, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::ExportAnnotations { tx, ids })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?

@@ -41,7 +41,7 @@
         display: inline-flex; align-items: center; justify-content: center; gap: 5px;
         min-width: var(--toggle-height, 28px); min-height: var(--toggle-height, 28px); padding: 0 12px;
         border: 0; border-radius: 0;
-        background: transparent; color: var(--text);
+        background: transparent; color: var(--muted);
         font: 500 var(--type-caption)/1 var(--stack-ui); white-space: nowrap;
         cursor: pointer; --icon-size: 16px;
         transition: none;
@@ -53,24 +53,18 @@
     .toggle.on { background: var(--active); color: var(--text-strong); }
 
     @media (hover: hover) {
-        .toggle:not(:disabled):hover { background: var(--hover); color: var(--text-strong); }
+        .toggle:not(:disabled):hover { background: var(--hover); color: var(--text); }
         .toggle.on:not(:disabled):hover { background: var(--active-hover); }
     }
     .toggle:not(:disabled):active,
     .toggle.on:not(:disabled):active { background: var(--control-pressed); }
 
-    /* inset, since the tray clips anything drawn outside it */
-    .toggle:focus-visible { outline: none; }
-    .toggle:focus-visible::before {
-        content: ""; position: absolute; inset: 3px; pointer-events: none;
-        border: var(--focus-width) solid var(--focus-ring); border-radius: var(--radius-control);
-    }
+    .toggle:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     .toggle:disabled { color: var(--text-disabled); cursor: default; }
 
     @media (forced-colors: active) {
         .toggle.on { background: Highlight; color: HighlightText; forced-color-adjust: none; }
-        .toggle:focus-visible::before { border-color: CanvasText; }
-        .toggle.on:focus-visible::before { border-color: HighlightText; }
+        .toggle:focus-visible { outline-color: CanvasText; }
         .toggle:disabled { color: GrayText; }
     }
 </style>

@@ -21,9 +21,9 @@
 {/if}
 
 <style>
-    .selection-recovery { padding: 16px; display: grid; gap: 8px; font-size: var(--type-ui); pointer-events: auto; }
-    p { line-height: 1.5; color: var(--muted); }
+    .selection-recovery { padding: 16px; display: grid; gap: var(--gap-row); font: var(--font-body); pointer-events: auto; }
+    p { margin: 0; color: var(--muted); }
     button { text-align: start; padding: 10px; min-height: 44px; color: var(--text); background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-control); cursor: pointer; }
     span, small { display: block; overflow-wrap: anywhere; }
-    small { color: var(--muted); font-size: var(--type-caption); margin-block-start: 4px; }
+    small { margin-block-start: 4px; color: var(--muted); font: var(--font-label); }
 </style>

@@ -1,0 +1,108 @@
+<script lang="ts" context="module">
+    export type LogEntry = {
+        id: string;
+        title: string;
+        /** a short hash or id, shown in the code face */
+        code?: string;
+        who?: string;
+        time?: string;
+        badge?: string;
+        tone?: "default" | "muted" | "warning";
+    };
+</script>
+
+<script lang="ts">
+    import type { Snippet } from "svelte";
+    import { tick } from "svelte";
+
+    // one dense line per entry, like the timeline: id, title, badge, who, when
+    export let rows: LogEntry[];
+    export let label: string;
+    export let selected = "";
+    export let onSelect: (id: string) => void;
+    export let columns: { code?: boolean; who?: boolean; time?: boolean } = {};
+    /** extra controls at the end of a row */
+    export let trailing: Snippet<[LogEntry]> | undefined = undefined;
+    /** when set, F2 or double-click renames an entry in place */
+    export let onRename: ((id: string, title: string) => void) | undefined = undefined;
+
+    let renaming: { id: string; title: string } | null = null;
+    let input: HTMLInputElement | undefined;
+    $: show = { code: true, who: true, time: true, ...columns };
+
+    let clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+    let day = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+    let dated = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" });
+    function when(timestamp: string) {
+        let date = new Date(timestamp), now = new Date();
+        if (date.toDateString() === now.toDateString()) return clock.format(date);
+        return date.getFullYear() === now.getFullYear() ? day.format(date) : dated.format(date);
+    }
+
+    async function rename(row: LogEntry) {
+        if (!onRename) return;
+        renaming = { id: row.id, title: row.title };
+        await tick();
+        input?.select();
+    }
+
+    function finish(commit: boolean) {
+        if (commit && renaming && renaming.title.trim()) onRename?.(renaming.id, renaming.title.trim());
+        renaming = null;
+    }
+
+    function navigate(event: KeyboardEvent, row: LogEntry) {
+        if (event.key === "F2" && onRename) { event.preventDefault(); rename(row); return; }
+        if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+        let buttons = [...(event.currentTarget as HTMLElement).closest(".log-list")!.querySelectorAll<HTMLButtonElement>("button[data-log-row]")];
+        let index = buttons.indexOf(event.currentTarget as HTMLButtonElement);
+        event.preventDefault();
+        let next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : Math.max(0, Math.min(buttons.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
+        buttons[next]?.focus(); buttons[next]?.click();
+    }
+</script>
+
+<ul class="log-list" aria-label={label}>
+    {#each rows as row (row.id)}
+        <li class="log-row" class:selected={selected === row.id}>
+            {#if renaming?.id === row.id}
+                <input class="rename" bind:this={input} bind:value={renaming.title} aria-label="Rename {row.title}"
+                    on:keydown={event => { if (event.key === "Enter") finish(true); else if (event.key === "Escape") { event.stopPropagation(); finish(false); } }} on:blur={() => finish(true)} />
+            {:else}
+                <button type="button" data-log-row aria-pressed={selected === row.id} title={row.time ? new Date(row.time).toLocaleString() : undefined}
+                    on:click={() => onSelect(row.id)} on:dblclick={() => rename(row)} on:keydown={event => navigate(event, row)}>
+                    {#if show.code && row.code}<code class="code">{row.code}</code>{/if}
+                    <span class="title">{row.title}</span>
+                    {#if row.badge}<span class="badge {row.tone ?? 'default'}">{row.badge}</span>{/if}
+                    {#if show.who && row.who}<span class="who">{row.who}</span>{/if}
+                    {#if show.time && row.time}<time datetime={row.time}>{when(row.time)}</time>{/if}
+                </button>
+            {/if}
+            {#if trailing}<span class="trailing">{@render trailing(row)}</span>{/if}
+        </li>
+    {/each}
+</ul>
+
+<style>
+    .log-list { container: log-list / inline-size; display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+    .log-row { display: flex; align-items: center; min-width: 0; border-radius: var(--radius-control); }
+    .log-row.selected { background: var(--selection-bg); }
+    @media (hover: hover) { .log-row:not(.selected):hover { background: var(--interaction-hover); } }
+    button { display: flex; flex: 1; align-items: baseline; gap: 10px; min-width: 0; min-height: 28px; padding: 4px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: var(--font-body); text-align: start; cursor: pointer; }
+    button:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
+    .code { flex: none; color: var(--muted); font: var(--font-id); font-variant-ligatures: none; }
+    .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .selected .title { color: var(--text-strong); font-weight: var(--weight-medium); }
+    .selected .code { color: var(--text); }
+    /* badges read like the annotations' counts: small ink pills, quiet unless they warn */
+    .badge { flex: none; align-self: center; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); font: var(--weight-medium) 11px/16px var(--stack-ui); white-space: nowrap; }
+    .badge.muted { background: transparent; color: var(--muted); }
+    .badge.warning { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+    .who { flex: 0 1 auto; min-width: 0; max-width: 30%; overflow: hidden; color: var(--muted); font: var(--font-label); text-overflow: ellipsis; white-space: nowrap; }
+    time { flex: none; color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .trailing { display: inline-flex; flex: none; padding-inline-end: 4px; }
+    .rename { flex: 1; min-width: 0; min-height: 28px; margin: 0; padding: 3px 8px; font: var(--font-body); }
+    @container log-list (max-width: 360px) { .who { display: none; } }
+    @container log-list (max-width: 240px) { time { display: none; } }
+    @media (pointer: coarse), (max-width: 600px) { button { min-height: 44px; } }
+</style>

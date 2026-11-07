@@ -1,3 +1,4 @@
+import { get } from "svelte/store";
 import { mutate } from "../ipc";
 import { sameChange } from "../ids";
 import type { Operand } from "../messages/Operand";
@@ -10,6 +11,8 @@ import type { AdoptRevision } from "../messages/AdoptRevision";
 import type { ChangeId } from "../messages/ChangeId";
 import type { CommitId } from "../messages/CommitId";
 import RevisionMutator from "./RevisionMutator";
+import type { RevHeader } from "../messages/RevHeader";
+import { pickedRevisions } from "../stores";
 import RefMutator from "./RefMutator";
 import type { StoreRef } from "../messages/StoreRef";
 import type { CopyHunk } from "../messages/CopyHunk";
@@ -29,6 +32,10 @@ export default class BinaryMutator {
     }
 
     canDrag(): Eligibility {
+        // revisions picked one by one have no from::to range to move
+        if (this.#from.type == "Revisions" && isScatteredPick(this.#from.headers)) {
+            return { type: "maybe", hint: "(scattered selection — drag a continuous range, or right-click to annotate)" };
+        }
         // can't change finalised commits without a gesture
         if (this.#from.type == "Revision" && this.#from.header.is_immutable) {
             if (this.#ignoreImmutable) {
@@ -367,4 +374,9 @@ export default class BinaryMutator {
         console.log("error: unknown validated mutation");
         return false;
     }
+}
+
+function isScatteredPick(headers: RevHeader[]): boolean {
+    let picks = get(pickedRevisions);
+    return headers.length > 1 && picks.length === headers.length && headers.every(header => picks.some(pick => pick.id.commit.hex === header.id.commit.hex));
 }

@@ -59,11 +59,11 @@
 
 <style>
     #dialog-chrome { grid-area: 2/2/2/2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 80px); overflow-y: auto; overscroll-behavior: contain; background: var(--raised); border-radius: var(--radius-surface); border: 1px solid var(--border); box-shadow: var(--shadow-overlay); padding: 24px; gap: 20px; pointer-events: auto; }
-    #dialog-header { font-size: var(--type-ui); font-weight: 500; }
-    #dialog-content { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; font-size: var(--type-ui); min-width: 0; }
-    #dialog-content > :global(p) { grid-column: 1 / -1; line-height: 1.6; overflow-wrap: anywhere; }
+    #dialog-header { margin: 0; color: var(--text-strong); font: var(--font-heading); }
+    #dialog-content { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; font: var(--font-body); min-width: 0; }
+    #dialog-content > :global(p) { grid-column: 1 / -1; margin: 0; max-width: var(--prose-measure); overflow-wrap: anywhere; }
     #dialog-content :global(input), #dialog-content :global(select) { width: 100%; min-width: 0; min-height: var(--control-height); font-family: var(--stack-ui); font-size: var(--type-ui); }
-    #dialog-content :global(code) { font-size: 12px; overflow-wrap: anywhere; }
+    #dialog-content :global(code) { font: var(--font-id); overflow-wrap: anywhere; }
     #dialog-commands { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
     .error { color: var(--negative); }
     @media (max-width: 600px) { #dialog-chrome { padding: 20px; } #dialog-content { grid-template-columns: minmax(0, 1fr); } }

@@ -49,29 +49,29 @@
 </div>
 
 <style>
-    .revision-preview { padding: 0 16px 12px; min-width: 0; font-size: var(--type-ui); pointer-events: auto; }
-    .identity, .authorship, .references { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; color: var(--muted); line-height: 1.6; }
+    .revision-preview { padding: 0 16px 12px; min-width: 0; font: var(--font-body); pointer-events: auto; }
+    .identity, .authorship, .references { display: flex; align-items: center; flex-wrap: wrap; gap: var(--gap-row) 12px; color: var(--muted); font: var(--font-label); }
     .identity { color: var(--text); }
     .authorship { margin-block: 4px 10px; }
     .references span { display: inline-flex; align-items: center; gap: 4px; overflow-wrap: anywhere; }
     .conflict { color: var(--warning); }
     .description summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
-    .description p { font-size: var(--type-body); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; margin-block-end: 12px; user-select: text; }
+    .description p { max-width: var(--prose-measure); margin-block-end: var(--gap-group); font: var(--font-prose); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
     .summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px 4px; }
-    .summary h3, .diff-preview h3 { font-size: var(--type-ui); font-weight: 500; }
+    .summary h3, .diff-preview h3 { color: var(--text-strong); font: var(--font-heading); }
     .summary span { font-variant-numeric: tabular-nums; }
     .preview-files { list-style: none; }
     .preview-files button { display: flex; align-items: center; gap: 8px; min-height: 44px; width: 100%; padding: 8px 0; border: 0; background: transparent; color: var(--text); text-align: start; cursor: pointer; }
     .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .filename, .directory { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .directory { font-size: var(--type-caption); color: var(--muted); }
-    .file-status { font-size: var(--type-caption); color: var(--muted); }
+    .directory { color: var(--muted); font: var(--font-label); }
+    .file-status { color: var(--muted); font: var(--font-label); }
     .all-files { min-height: 44px; border: 0; background: transparent; color: var(--accent); padding: 8px 0; cursor: pointer; }
     .empty { padding-block: 12px; color: var(--muted); }
     .diff-preview { border-block-start: 1px solid var(--rule); margin-block-start: 8px; padding-block-start: 12px; min-width: 0; }
     .diff-preview h3 { display: flex; gap: 8px; }
-    .diff-preview h3 span { color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    pre { margin: 8px 0 0; overflow: auto; pointer-events: auto; font-size: var(--type-code); line-height: 1.6; user-select: text; }
+    .diff-preview h3 span { color: var(--muted); font-weight: var(--weight-regular); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    pre { margin: 8px 0 0; overflow: auto; pointer-events: auto; font: var(--type-code)/var(--code-leading) var(--stack-code); user-select: text; }
     .added { color: var(--positive); } .removed { color: var(--negative); }
     @media (hover: hover) { .preview-files button:hover, .all-files:hover { background: var(--hover); } }
 </style>

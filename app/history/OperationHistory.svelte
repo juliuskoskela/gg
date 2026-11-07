@@ -31,7 +31,7 @@
     $: if (active && repository !== loadedRepository) { loadedRepository = repository; reset(); }
     $: if ($repoStatusEvent !== lastStatus) { if (lastStatus !== undefined && head) updated = true; lastStatus = $repoStatusEvent; }
     $: loadDetail(selected);
-    $: rows = entries.map(entry => ({ id: entry.id, title: compactDescription(entry.description) || "Repository initialized", subtitle: `${entry.id.slice(0, 8)} · ${entry.workspace || entry.username || "Repository"}`, time: entry.finished_at, badge: entry.id === head ? (updated ? "At refresh" : "Latest") : entry.parent_ids.length > 1 ? "Concurrent merge" : entry.is_snapshot ? "Snapshot" : undefined }));
+    $: rows = entries.map(entry => ({ id: entry.id, title: compactDescription(entry.description) || "Repository initialized", code: entry.id.slice(0, 8), who: entry.workspace || entry.username || "Repository", time: entry.finished_at, badge: entry.id === head ? (updated ? "At refresh" : "Latest") : entry.parent_ids.length > 1 ? "Concurrent merge" : entry.is_snapshot ? "Snapshot" : undefined, tone: entry.id === head ? "default" as const : entry.parent_ids.length > 1 ? "warning" as const : "muted" as const }));
     onDestroy(() => { request++; detailRequest++; });
     function reset(_repo?: unknown, _status?: unknown) {
         updated = false; request++; detailRequest++; entries = []; selected = ""; head = ""; more = false; loading = false; error = ""; detail = null; version = null;
