@@ -2,6 +2,27 @@
 @import "./scrollbars.css";
 @import "./display/palettes.css";
 
+.gg-tooltip {
+  position: fixed;
+  inset: auto;
+  z-index: 1100;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 16px));
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--popover-surface);
+  color: var(--text);
+  box-shadow: var(--shadow-overlay);
+  font: var(--font-body);
+  text-align: start;
+}
+.gg-tooltip p { margin: 0; }
+.gg-tooltip .gg-tooltip-label { font: var(--font-heading); }
+.gg-tooltip code { display: block; margin-block: var(--space-2); font: var(--font-id); overflow-wrap: anywhere; white-space: normal; }
+
 @font-face {
   font-family: "IBM Plex Sans";
   src: url("./assets/fonts/ibm-plex-sans-400.woff2") format("woff2");
