@@ -10,6 +10,9 @@
     import TagObject from "../objects/TagObject.svelte";
     import RevisionObject from "../objects/RevisionObject.svelte";
     import Zone from "../objects/Zone.svelte";
+    import { targetsFor } from "../annotations/anchors";
+    import { targetCommands } from "../annotations/commands";
+    import { copyText, lineMenu } from "../annotations/store";
 
     export let revs: Extract<RevsResult, { type: "Detail" }>;
     $: singleton = revs.headers.length === 1;
@@ -20,6 +23,17 @@
     $: references = revs.headers.flatMap(header => header.refs.map(ref => ({ header, ref })));
     $: bookmarks = references.filter(item => item.ref.type !== "Tag");
     $: tags = references.filter(item => item.ref.type === "Tag");
+
+    // ids are where people point when they talk about a revision, so they offer annotating and copying
+    function idMenu(event: MouseEvent, kind: "change" | "commit") {
+        let targets = targetsFor({ type: "Revision", header: newest });
+        let hex = kind === "change" ? newest.id.change.hex : newest.id.commit.hex;
+        event.preventDefault();
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [
+            { id: "copy-id", label: kind === "change" ? "Copy change ID" : "Copy commit ID", icon: "clipboard", scope: "Revision", group: 0, reason: null, execute: () => { copyText(hex); } },
+            ...targetCommands(() => targets, "Annotate change…"),
+        ] });
+    }
 </script>
 
 <div class="revision-metadata">
@@ -28,8 +42,8 @@
         <MetadataRow label={authors.length === 1 ? "Author" : "Authors"}><div class="values authors">{#each authors as author}<AuthorSpan {author} />{/each}</div></MetadataRow>
         <MetadataRow label="Authored"><TimestampSpan timestamp={newest.author.timestamp} /></MetadataRow>
         {#if singleton}
-            <MetadataRow label="Change"><span class="revision-id" title={newest.id.change.hex}><IdSpan selectable id={newest.id.change} /></span></MetadataRow>
-            <MetadataRow label="Commit"><span class="commit-identity" title={newest.id.commit.hex}><IdSpan selectable id={newest.id.commit} /></span></MetadataRow>
+            <MetadataRow label="Change"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="revision-id" title={newest.id.change.hex} on:contextmenu={event => idMenu(event, "change")}><IdSpan selectable id={newest.id.change} /></span></MetadataRow>
+            <MetadataRow label="Commit"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="commit-identity" title={newest.id.commit.hex} on:contextmenu={event => idMenu(event, "commit")}><IdSpan selectable id={newest.id.commit} /></span></MetadataRow>
         {/if}
         {#if bookmarks.length}<MetadataRow label="Bookmarks"><div class="references" aria-label="Revision bookmarks">{#each bookmarks as { header, ref }}{#if ref.type === "LocalBookmark" || ref.type === "RemoteBookmark"}<div class="reference"><BookmarkObject {header} {ref} /><span class="reference-status">{bookmarkStatus(ref)}</span></div>{/if}{/each}</div></MetadataRow>{/if}
         {#if tags.length}<MetadataRow label="Tags"><div class="references" aria-label="Revision tags">{#each tags as { header, ref }}{#if ref.type === "Tag"}<TagObject {header} {ref} />{/if}{/each}</div></MetadataRow>{/if}
@@ -38,17 +52,19 @@
 </div>
 
 <style>
-    .revision-metadata { container: metadata / inline-size; min-width: 0; }
+    .revision-metadata { min-width: 0; }
     .values { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
     .authors :global(.author) { white-space: normal; color: var(--text); }
-    .revision-metadata :global(.timestamp) { color: var(--text); font-size: var(--type-ui); white-space: normal; }
+    .revision-metadata :global(.timestamp) { color: var(--text); font: var(--font-body); white-space: normal; }
     .warning { color: var(--negative); }
-    .references { display: flex; flex-wrap: wrap; align-items: start; gap: 10px 16px; min-width: 0; }
-    .reference { display: flex; flex-direction: column; align-items: start; gap: 3px; min-width: 0; max-width: 100%; }
+    .references { display: flex; flex-wrap: wrap; align-items: start; gap: var(--gap-row) var(--gap-group); min-width: 0; }
+    .reference { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-width: 100%; }
+    /* a reference is as wide as its name, with its status beside it */
+    .reference > :global(*) { flex: 0 1 auto; width: auto; max-width: 100%; }
     .references :global(.chip) { max-width: 100%; height: auto; min-height: 24px; white-space: normal; overflow-wrap: anywhere; }
     .references :global(.chip svg) { flex-shrink: 0; }
     .references :global(.chip span) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-    .reference-status { color: var(--muted); font-size: var(--type-caption); line-height: 1.5; overflow-wrap: anywhere; }
+    .reference-status { color: var(--muted); font: var(--font-label); overflow-wrap: anywhere; }
     .parents { min-width: 0; margin: -4px -6px; }
     .parents :global(.layout) { min-height: 28px; padding: 4px 6px; }
     .parents.target { outline: var(--focus-width) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-control); }

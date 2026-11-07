@@ -482,7 +482,8 @@ describe("compact workspace inspector", () => {
             let id = element.querySelector(".id")!.getBoundingClientRect();
             let description = element.querySelector(".desc")!.getBoundingClientRect();
             let transform = element.closest("g")!.getAttribute("transform");
-            let station = [...element.closest("svg")!.querySelectorAll<SVGGElement>(":scope > g")].find(group => group.getAttribute("transform") === transform && group.querySelector(".station"));
+            // rows and stations share a row transform inside the graph's bleed offset
+            let station = [...element.closest("svg")!.querySelectorAll<SVGGElement>("g[transform]")].find(group => group !== element.closest("g") && group.getAttribute("transform") === transform && group.querySelector(".station"));
             if (!station) throw new Error("Revision has no graph station at its row position");
             let node = station.querySelector(".station")!.getBoundingClientRect();
             return { height: bounds.height, row: center(bounds), id: center(id), description: center(description), node: center(node) };
@@ -510,7 +511,7 @@ describe("compact workspace inspector", () => {
             let description = element.querySelector(".desc")!.getBoundingClientRect();
             let author = element.querySelector(".author")!;
             let transform = element.closest("g")!.getAttribute("transform");
-            let station = [...element.closest("svg")!.querySelectorAll<SVGGElement>(":scope > g")].find(group => group.getAttribute("transform") === transform && group.querySelector(".station"))!;
+            let station = [...element.closest("svg")!.querySelectorAll<SVGGElement>("g[transform]")].find(group => group !== element.closest("g") && group.getAttribute("transform") === transform && group.querySelector(".station"))!;
             let node = station.querySelector(".station")!.getBoundingClientRect();
             return { height: element.getBoundingClientRect().height, id: id.y + id.height / 2, description: description.y + description.height / 2, node: node.y + node.height / 2, authorTop: author.getBoundingClientRect().top, descriptionBottom: description.bottom, authorWeight: getComputedStyle(author).fontWeight, author: author.textContent };
         });

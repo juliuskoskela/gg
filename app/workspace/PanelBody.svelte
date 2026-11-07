@@ -18,6 +18,7 @@
     import type { PanelId } from "./dock";
     import EvolutionPanel from "../history/EvolutionPanel.svelte";
     import OperationHistory from "../history/OperationHistory.svelte";
+    import AnnotationsPanel from "../annotations/AnnotationsPanel.svelte";
     import OperationView from "./OperationView.svelte";
     import SettingsPanel from "../shell/SettingsPanel.svelte";
 
@@ -43,6 +44,8 @@
     <EvolutionPanel {headers} {active} />
 {:else if id === "history"}
     <OperationHistory {active} />
+{:else if id === "annotations"}
+    <AnnotationsPanel {active} />
 {:else if id === "settings"}
     <SettingsPanel />
 {:else if id === "timeline"}

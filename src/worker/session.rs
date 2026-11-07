@@ -91,6 +91,14 @@ pub enum SessionEvent {
         id: messages::RevId,
         offset: usize,
     },
+    Annotations {
+        tx: Sender<Result<messages::annotations::AnnotationList>>,
+        request: messages::annotations::AnnotationRequest,
+    },
+    ExportAnnotations {
+        tx: Sender<Result<String>>,
+        ids: Vec<String>,
+    },
     QueryOperationHistory {
         tx: Sender<Result<messages::queries::OperationPage>>,
         head: Option<String>,
@@ -337,6 +345,12 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryEvolution { tx, id, offset } => {
                     tx.send(super::history::evolution_page(&self, id, offset).await)?
                 }
+                SessionEvent::Annotations { tx, request } => {
+                    tx.send(super::annotations::handle(&self, request))?
+                }
+                SessionEvent::ExportAnnotations { tx, ids } => {
+                    tx.send(super::annotations::export(&self, ids))?
+                }
                 SessionEvent::QueryOperationHistory { tx, head, offset } => {
                     tx.send(super::history::operation_page(&self, head, offset).await)?
                 }
@@ -566,6 +580,12 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryEvolution { tx, id, offset }) => {
                     tx.send(super::history::evolution_page(self.ws, id, offset).await)?
+                }
+                Ok(SessionEvent::Annotations { tx, request }) => {
+                    tx.send(super::annotations::handle(self.ws, request))?
+                }
+                Ok(SessionEvent::ExportAnnotations { tx, ids }) => {
+                    tx.send(super::annotations::export(self.ws, ids))?
                 }
                 Ok(SessionEvent::QueryOperationHistory { tx, head, offset }) => {
                     tx.send(super::history::operation_page(self.ws, head, offset).await)?

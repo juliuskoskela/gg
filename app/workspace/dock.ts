@@ -1,13 +1,13 @@
 import { writable, type Writable } from "svelte/store";
 
-export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history";
+export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history" | "annotations";
 export type Edge = "tab" | "tab-end" | "left" | "right" | "top" | "bottom";
 export type DockNode =
     | { type: "split"; direction: "row" | "column"; ratio: number; first: DockNode; second: DockNode }
     | { type: "tabs"; active: PanelId; panels: PanelId[] };
 export type DockState = { root: DockNode | null; compactActive: PanelId | null };
 
-let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings", "evolution", "history"];
+let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings", "evolution", "history", "annotations"];
 const STORAGE_KEY = "gg.dock.layout";
 
 const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
@@ -20,6 +20,7 @@ const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
     "revision-tools": { beside: "description", edge: "right" },
     evolution: { beside: "diff", edge: "tab" },
     history: { beside: "timeline", edge: "tab" },
+    annotations: { beside: "description", edge: "tab" },
     settings: { beside: "timeline", edge: "tab" },
 };
 

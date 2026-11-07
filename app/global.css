@@ -122,6 +122,33 @@
   --type-title: 1rem;
   --type-code: .75rem;
   --code-leading: 1.6667;
+  /* type roles: the only place size, leading and weight are decided together.
+     the timeline is the reference: 13px text on 20px lines, 12px secondary text, ids in the code face. */
+  --leading-label: 1.125rem;
+  --leading-ui: 1.25rem;
+  --leading-prose: 1.375rem;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  /* what a view is about: a revision's summary, a note */
+  --font-title: var(--weight-strong) .9375rem/var(--leading-prose) var(--stack-ui);
+  /* a section inside a view */
+  --font-heading: var(--weight-strong) var(--type-ui)/var(--leading-ui) var(--stack-ui);
+  /* names, and the chosen item in a list */
+  --font-emphasis: var(--weight-medium) var(--type-ui)/var(--leading-ui) var(--stack-ui);
+  /* values, list items and controls */
+  --font-body: var(--weight-regular) var(--type-ui)/var(--leading-ui) var(--stack-ui);
+  /* paragraphs people wrote: descriptions and notes */
+  --font-prose: var(--weight-regular) var(--type-body)/var(--leading-prose) var(--stack-ui);
+  /* keys, captions and metadata; pair with --muted */
+  --font-label: var(--weight-regular) var(--type-caption)/var(--leading-label) var(--stack-ui);
+  /* change and commit ids, hashes and paths */
+  --font-id: var(--weight-regular) var(--type-code)/var(--leading-label) var(--stack-code);
+  /* rhythm: rows of one list, related groups, and sections (which also get a rule) */
+  --gap-row: 4px;
+  --gap-group: 12px;
+  --gap-section: 20px;
+  --prose-measure: 72ch;
 }
 #shell {
   color-scheme: light dark;
@@ -240,6 +267,11 @@ button, input, select, textarea { font: inherit; }
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button, a, input, select, textarea, summary { transition: background-color var(--motion-feedback) ease-out, border-color var(--motion-feedback) ease-out, color var(--motion-feedback) ease-out; }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+/* an in-content action that goes somewhere: body text with a quiet underline, never a filled button */
+.text-link { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0; border: 0; background: transparent; color: var(--text); font: var(--font-body); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text) 30%, transparent); text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer; --icon-size: 14px; }
+.text-link > svg { color: var(--muted); }
+@media (hover: hover) { .text-link:hover { background: transparent; color: var(--text-strong); text-decoration-color: currentColor; } }
+@media (pointer: coarse), (max-width: 600px) { .text-link { min-height: 44px; } }
 textarea, select, input {
   outline: none;
   border: 1px solid var(--input-border);

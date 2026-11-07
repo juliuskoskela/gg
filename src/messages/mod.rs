@@ -6,6 +6,7 @@
 //! `cargo gen` (alias for `cargo test -F ts-rs`) exports matching TypeScript
 //! definitions into `app/messages/`.
 
+pub mod annotations;
 pub mod mutations;
 pub mod queries;
 

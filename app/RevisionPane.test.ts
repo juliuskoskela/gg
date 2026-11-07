@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import type { RevsResult } from "./messages/RevsResult";
 import { setupMocks, cleanupMocks } from "./mocks";
+import "./global.css";
 
 function createMockRevs(
     commitHex = "deadbeef1234",
@@ -105,7 +106,9 @@ describe("RevisionPane", () => {
         await rerender({ revs: createMockRevs("other", "other", "Another title") });
         expect(container.querySelector(".overview h2")?.textContent).toBe("Another title");
         await rerender({ revs: createMockRevs("empty", "empty", "") });
-        expect(container.querySelector(".overview h2")?.textContent).toBe("No description set");
+        // an editable empty description invites writing one, with the edit affordance visible
+        expect(container.querySelector(".overview h2")?.textContent).toBe("Add a description");
+        expect(container.querySelector(".overview h2 .edit-glyph")).not.toBeNull();
     });
 
     it("renders bookmarks, tags and parents in shared metadata rows", async () => {
@@ -131,8 +134,9 @@ describe("RevisionPane", () => {
             expect(label.getBoundingClientRect().right).toBeLessThan(value.getBoundingClientRect().left);
             expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth);
         }
-        let columns = getComputedStyle(container.querySelector(".metadata-row")!).gridTemplateColumns;
-        expect(parseFloat(columns)).toBeCloseTo(26 * (window.matchMedia("(max-width: 600px)").matches ? 68 / 14 : 80 / 13), 1);
+        // keys share one column sized to the longest key, so every value starts at the same edge
+        let starts = new Set([...container.querySelectorAll(".metadata-row dd")].map(value => Math.round(value.getBoundingClientRect().left)));
+        expect(starts.size).toBe(1);
     });
 
     it("keeps a draft scoped to its exact commit and restores it on return", async () => {

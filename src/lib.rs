@@ -10,6 +10,7 @@
     note = "gg_lib will be removed in a future release; if you depend on it, please post a comment at https://github.com/gulbanana/gg/discussions/152"
 )]
 
+pub mod annotations;
 pub mod askpass;
 pub mod config;
 pub mod messages;

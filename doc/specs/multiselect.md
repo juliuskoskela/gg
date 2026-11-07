@@ -42,12 +42,19 @@ This constraint exists because:
 | Action | Behavior |
 |--------|----------|
 | Click revision | Select single revision (clears range) |
-| Ctrl+Click | Not currently supported (reserved for future disjoint selection) |
+| Ctrl+Click (⌘+Click on macOS) | Add or remove a revision from a scattered selection, starting from the current selection |
 | Shift+Click | Extend selection from anchor to clicked revision (limited by linearity) |
 | Arrow Up/Down | Move selection (collapses range to single) |
 | Shift+Arrow Up/Down | Extend/contract `to` endpoint by one |
 | Page Up/Down | Move selection by page (collapses range) |
 | Home/End | Move to first/last revision (collapses range) |
+| Ctrl+Arrow Up/Down | Move to the next revision without clearing a scattered selection |
+| Ctrl+Space | Add or remove the current revision from a scattered selection |
+| Escape | Clear a scattered selection |
+
+### Scattered Selection
+
+Ctrl+click picks revisions that need not be adjacent, for gathering them rather than operating on them as a range. The Description and Diff panels follow the revision clicked last, because scattered revisions have no combined diff. The Timeline toolbar shows how many are selected, with *Clear*. Right-clicking a picked revision offers what works on any set, such as *Annotate N changes…*; repository actions need a `from::to` range, so they are unavailable, and dragging a scattered selection explains this instead of moving anything. A plain click, Shift+click or plain arrow key returns to range selection.
 
 ### Linearity Limiting
 

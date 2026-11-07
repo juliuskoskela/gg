@@ -11,9 +11,12 @@
     import Zone from "./Zone.svelte";
     import RevisionMutator from "../mutators/RevisionMutator";
     import TagObject from "./TagObject.svelte";
+    import NoteMarker from "../annotations/NoteMarker.svelte";
+    import { openNotesByChange } from "../annotations/store";
     import WorkspaceObject from "./WorkspaceObject.svelte";
 
     export let header: RevHeader;
+    $: notes = $openNotesByChange.get(header.id.change.hex) ?? [];
     export let child: RevHeader | null = null;
     export let selected: boolean; // same as the imported event, but parent may want to force a value
     export let noBookmarks: boolean = false;
@@ -23,6 +26,8 @@
     export let textScale = 1;
     export let onClick: ((header: RevHeader) => void) | undefined = undefined;
     export let onShiftClick: ((header: RevHeader) => void) | undefined = undefined;
+    /** Ctrl/⌘+click: add or remove this revision from a scattered selection */
+    export let onToggle: ((header: RevHeader) => void) | null = null;
 
     $: referenceNames = header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name);
     $: accessibleLabel = [revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; ");
@@ -32,7 +37,9 @@
      * Select this revision by default, or callback to a list that needs more complex behaviour.
      */
     function onSelect(event: CustomEvent<MouseEvent>) {
-        if (event.detail.shiftKey) {
+        if ((event.detail.ctrlKey || event.detail.metaKey) && onToggle) {
+            onToggle(header);
+        } else if (event.detail.shiftKey) {
             if (onShiftClick) {
                 onShiftClick(header);
             } else {
@@ -105,6 +112,7 @@
 
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
                     {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
+                    {#if notes.length}<NoteMarker {notes} />{/if}
                     {dragHint ??
                         dropHint ??
                         (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}

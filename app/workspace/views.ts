@@ -26,6 +26,7 @@ export let workspaceViews: WorkspaceView[] = [
     { id: "changes", label: "Changes", commandLabel: "Inspect full revision", destination: "inspect", available: context => !!context.hasSelection, scope: "revision", placement: "inspector", mobile: "sheet" },
     { id: "operation", label: "Current operation", scope: "repository", placement: "picker", desktop: "tab", mobile: "full", available: context => !!context.status, component: OperationView },
     { id: "evolution", label: "Change evolution", panel: "evolution", scope: "revision", placement: "inspector", mobile: "sheet", available: context => !!context.hasSelection },
+    { id: "annotations", label: "Annotations", panel: "annotations", scope: "repository", placement: "inspector", mobile: "full" },
     { id: "operation-history", label: "Repository history", panel: "history", scope: "repository", placement: "graph", mobile: "full" },
 ];
 

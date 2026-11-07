@@ -8,7 +8,7 @@ import type { Operand } from "../messages/Operand";
 import type { RevHeader } from "../messages/RevHeader";
 import type { RevsResult } from "../messages/RevsResult";
 import type { RepoConfig } from "../messages/RepoConfig";
-import { changeSelectEvent, currentMutation, ignoreToggled, repoConfigEvent, repoStatusEvent, revisionSelectEvent } from "../stores";
+import { changeSelectEvent, currentMutation, ignoreToggled, pickedRevisions, repoConfigEvent, repoStatusEvent, revisionSelectEvent } from "../stores";
 import BinaryMutator from "../mutators/BinaryMutator";
 import RevisionMutator from "../mutators/RevisionMutator";
 import RefMutator from "../mutators/RefMutator";
@@ -50,6 +50,9 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
     let ignore = get(ignoreToggled);
     let capabilities = revisionCapabilities(headers, ignore);
     let immutable = !ignore && headers.some(h => h.is_immutable);
+    // repository actions work on a continuous range; a scattered pick has no from::to
+    let picks = get(pickedRevisions);
+    let scattered = headers.length > 1 && picks.length === headers.length && headers.every(h => picks.some(p => p.id.commit.hex === h.id.commit.hex));
     let definitions: [keyof typeof capabilities | "move" | "insert" | "add_parent" | "remove_parent", string, string, number][] = [
         ["new_child", "New child", "plus", 0], ["edit", "Edit as working copy", "edit-3", 0],
         ["new_parent", "New inserted parent", "plus-circle", 0], ["duplicate", "Duplicate", "copy", 0], ["bookmark", "Create bookmark…", "bookmark", 0],
@@ -60,6 +63,7 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
     return definitions.map(([id, label, icon, group]) => {
         let permitted = id === "add_parent" ? headers.length > 0 : id === "move" || id === "insert" ? headers.length > 0 && !immutable : id === "remove_parent" ? headers.length === 1 && headers[0].parent_ids.length > 1 && !immutable : capabilities[id];
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : !headers.length ? "Select a revision" :
+            scattered ? "Select a continuous range with Shift+click for this action" :
             checkSelection && !selectionCurrent(headers) ? "Selection has changed" : !permitted ?
             (immutable && ["move", "insert", "add_parent", "remove_parent", "new_parent", "edit", "abandon", "squash", "restore"].includes(id) ? "Immutable revisions are protected" : "This action requires a different selection or one parent") : null;
         return { id, label, icon, scope: "Revision", group, destructive: id === "abandon", reason, execute: () => {

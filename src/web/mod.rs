@@ -11,6 +11,7 @@
 //! - Server-Sent Events at `/api/events` for push updates (config changes,
 //!   progress, etc.)
 
+mod annotations;
 mod queries;
 mod sink;
 mod state;
@@ -193,6 +194,7 @@ pub fn create_app(
         .fallback(get(serve_fallback))
         // API endpoints
         .nest("/api/query", queries::router())
+        .nest("/api/annotate", annotations::router())
         .nest("/api/trigger", triggers::router())
         .route("/api/mutate/{command}", post(handle_mutate))
         .route("/api/events", get(stream_events))
