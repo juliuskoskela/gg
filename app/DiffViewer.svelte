@@ -7,7 +7,9 @@
     let FOLD_CSS = `
         [data-separator=custom] { height: 32px; margin: 0; }
         [data-gutter] [data-separator=custom] { display: block; position: relative; z-index: 2; }
-        [data-gutter] [data-separator=custom] slot { display: block; position: absolute; inset-inline-start: var(--diffs-column-number-width, 0px); width: var(--diffs-column-content-width, 100%); }
+        /* the fold control is interface, not source: it sizes to its label and never wraps with the code.
+           wrapped diffs drop the column variables, so there it starts after the gutter */
+        [data-gutter] [data-separator=custom] slot { display: block; position: absolute; inset-inline-start: var(--diffs-column-number-width, 100%); width: max-content; }
         [data-content] [data-separator=custom] slot { display: none; }
         [data-line-annotation] { --diffs-annotation-bg: var(--surface); }
         @media (pointer: coarse), (max-width: 600px) { [data-separator=custom] { height: 48px; } }
@@ -287,9 +289,9 @@
     .diff-viewer :global(diffs-container) { pointer-events: auto; }
     .notice { padding: 12px; color: var(--muted); font-size: 13px; }
     .diff-viewer :global(.diff-fold) {
-        display: flex; align-items: center; gap: 6px; width: calc(100% - 16px); min-height: 28px; padding: 4px 8px; margin: 2px 8px;
+        display: flex; align-items: center; gap: 6px; width: max-content; max-width: calc(100% - 16px); min-height: 28px; padding: 4px 10px 4px 8px; margin: 2px 8px;
         border: 0; border-radius: 4px; background: var(--raised); color: var(--muted);
-        font: var(--type-caption) var(--stack-ui); line-height: 20px; text-align: start; cursor: pointer; white-space: normal;
+        font: var(--font-label); text-align: start; cursor: pointer; white-space: nowrap;
     }
     .diff-viewer :global(.diff-fold svg) { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     @media (hover: hover) { .diff-viewer :global(.diff-fold:not(:disabled):hover) { background: var(--interaction-hover, var(--hover)); color: var(--text); } }
