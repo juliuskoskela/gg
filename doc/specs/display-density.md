@@ -16,9 +16,15 @@ Implementation: `app/display/zoom.ts`, `DisplayZoom.svelte`, the shared command 
 
 Descriptions have medium weight; change IDs and empty descriptions remain quieter. The ID column fits its actual contents, including hidden-incarnation suffixes and divergence indicators, followed by an 8px gap. It does not reserve unused space for a fixed-width ID column.
 
+## Timeline display
+
+The Timeline toolbar's display menu (the eye) holds independent options in three groups: **Authors**; **Change IDs** and **Commit IDs**; **Bookmarks** and **Tags**. Change IDs, bookmarks and tags are on and commit IDs off by default. Commit IDs follow the change ID in muted code text. With both IDs hidden, descriptions start beside the graph. Hiding bookmarks or tags removes only those chips; working-copy markers stay. `gg.timeline.display` persists these choices (an earlier `gg.timeline.ids` is read once and completed with defaults); authors are the history density below. The options apply to the timeline graph only, so parent rows elsewhere keep their change IDs and references.
+
+The menu is a menu of checkbox items: it opens below its button from the toolbar's trailing edge, takes focus when opened, moves with arrow keys, and closes with Escape or a click elsewhere. It is placed against the window, so a toolbar that scrolls sideways can't clip it.
+
 ## History density
 
-The Timeline density icon switches between Compact (28px on fine pointers; at least 44px on coarse pointers) and Tall (60px). Tall places a regular-weight, muted author below the description, with change ID and title aligned on the first line. `gg.history-density` persists the choice. Switching scales the graph scroll offset by the row-height ratio to preserve the top revision and fractional offset. Virtualization, selection paging, node centers, connecting edges and drag/drop regions all receive the same row height.
+The display menu's Authors option switches between Compact (28px on fine pointers; at least 44px on coarse pointers) and Tall (48px). Tall follows the type system: a 20px title line on the body role, a 2px gap and an 18px muted author line on the label role, with 4px above and below, and the node centred on the title line. `gg.history-density` persists the choice. Switching scales the graph scroll offset by the row-height ratio to preserve the top revision and fractional offset. Virtualization, selection paging, node centers, connecting edges and drag/drop regions all receive the same row height.
 
 Compact rows retain at least 3px above and below 22px reference chips, 6px between chips, and 8px between description text and references.
 

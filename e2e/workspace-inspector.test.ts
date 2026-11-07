@@ -471,11 +471,14 @@ describe("compact workspace inspector", () => {
 
     it("switches persisted history density while keeping graph geometry and reading position", async () => {
         await ctx.page.goto(backend);
-        let density = ctx.page.getByRole("button", { name: "Tall revisions" });
+        // authors are one option in the timeline's display menu
+        let display = ctx.page.getByRole("button", { name: "Timeline display" });
+        let authors = ctx.page.getByRole("menuitemcheckbox", { name: "Authors" });
+        let authorsShown = async () => { if (!await authors.isVisible()) await display.click(); let checked = await authors.getAttribute("aria-checked"); await ctx.page.keyboard.press("Escape"); return checked; };
         let row = ctx.page.locator(".graph .selection-item").first();
         await row.waitFor();
         expect(await ctx.page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
-        expect(await density.getAttribute("aria-pressed")).toBe("false");
+        expect(await authorsShown()).toBe("false");
         let metrics = await row.evaluate(element => {
             let center = (rect: DOMRect) => rect.y + rect.height / 2;
             let bounds = element.getBoundingClientRect();
@@ -503,8 +506,9 @@ describe("compact workspace inspector", () => {
                 .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0]?.getAttribute("aria-label");
         });
         let anchor = await topLabel();
-        await density.click();
-        await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(600);
+        await display.click();
+        await authors.click();
+        await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(480);
         expect(await topLabel()).toBe(anchor);
         let tallMetrics = await row.evaluate(element => {
             let id = element.querySelector(".id")!.getBoundingClientRect();
@@ -515,7 +519,7 @@ describe("compact workspace inspector", () => {
             let node = station.querySelector(".station")!.getBoundingClientRect();
             return { height: element.getBoundingClientRect().height, id: id.y + id.height / 2, description: description.y + description.height / 2, node: node.y + node.height / 2, authorTop: author.getBoundingClientRect().top, descriptionBottom: description.bottom, authorWeight: getComputedStyle(author).fontWeight, author: author.textContent };
         });
-        expect(tallMetrics.height).toBe(60);
+        expect(tallMetrics.height).toBe(48);
         expect(Math.abs(tallMetrics.id - tallMetrics.description)).toBeLessThanOrEqual(2);
         expect(Math.abs(tallMetrics.node - tallMetrics.description)).toBeLessThanOrEqual(2);
         expect(tallMetrics.authorTop).toBeGreaterThanOrEqual(tallMetrics.descriptionBottom);
@@ -523,8 +527,8 @@ describe("compact workspace inspector", () => {
         expect(tallMetrics.author).toBeTruthy();
         await ctx.page.reload();
         await row.waitFor();
-        expect(await density.getAttribute("aria-pressed")).toBe("true");
-        expect((await row.boundingBox())!.height).toBe(60);
+        expect(await authorsShown()).toBe("true");
+        expect((await row.boundingBox())!.height).toBe(48);
     });
 
     it("keeps compact history touch rows at 44px", async () => {
@@ -536,8 +540,9 @@ describe("compact workspace inspector", () => {
             await row.waitFor();
             expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
             expect((await row.boundingBox())!.height).toBe(44);
-            await page.getByRole("button", { name: "Tall revisions" }).click();
-            await expect.poll(async () => (await row.boundingBox())?.height).toBe(60);
+            await page.getByRole("button", { name: "Timeline display" }).click();
+            await page.getByRole("menuitemcheckbox", { name: "Authors" }).click();
+            await expect.poll(async () => (await row.boundingBox())?.height).toBe(48);
             expect(await row.locator(".author").textContent()).toBeTruthy();
         } finally {
             await touch.close();
