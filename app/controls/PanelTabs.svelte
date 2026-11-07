@@ -126,7 +126,7 @@
 
 <style>
     /* title and toolbar are one header block, so the only rule is the one closing it off from content */
-    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--panel-header-rule); }
+    .panel-view-top { flex: none; min-width: 0; margin-block-end: var(--panel-content-gap); container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--panel-header-rule); }
     /* labels align with the toolbar and content inset; their hover pills overhang into the gutter */
     .panel-tabs-bar, .panel-titlebar { min-width: 0; padding: var(--panel-bar-padding) var(--panel-inset) var(--panel-bar-padding) calc(var(--panel-inset) - 8px); }
     .panel-view-top :global(.view-toolbar) { border-block-end: 0; padding-block-start: 0; min-height: 0; }

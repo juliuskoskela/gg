@@ -130,6 +130,7 @@
   --pane-inset: 12px;
   --panel-inset: 12px;
   --panel-bar-padding: 5px;
+  --panel-content-gap: var(--space-2);
   --panel-gap: 8px;
   --tool-group-gap: 12px;
   --panel-control-size: 28px;
