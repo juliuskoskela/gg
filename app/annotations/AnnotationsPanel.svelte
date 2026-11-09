@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onDestroy } from "svelte";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
@@ -17,44 +19,57 @@
     import { anchorDescription, anchorIcon, anchorLabel } from "./anchors";
     import { annotationError, annotationList, copyAnnotations, discardDraft, draft, draftFocus, DRAFT, justAdded, loadAnnotations, noteTitle, openAnnotation, plainLine, removeTarget, saveDraft, sendAnnotations } from "./store";
 
-    export let active: boolean;
+    interface Props {
+        active: boolean;
+    }
+
+    let { active }: Props = $props();
 
     type Target = { anchor: AnnotationAnchor; subject: string; state?: AnchorState };
 
-    let showResolved = false;
-    let selected = new Set<string>();
-    let reply = "";
-    let editing: { post: string; body: string } | null = null;
-    let editingFor: string | undefined;
-    let busy = false;
-    let copied = "";
+    let showResolved = $state(false);
+    let selected = $state(new Set<string>());
+    let reply = $state("");
+    let editing: { post: string; body: string } | null = $state(null);
+    let editingFor: string | undefined = $state();
+    let busy = $state(false);
+    let copied = $state("");
     let copiedTimer: ReturnType<typeof setTimeout> | undefined;
-    let addedTimer: ReturnType<typeof setTimeout> | undefined;
-    let now = Date.now();
+    let now = $state(Date.now());
 
-    $: threads = $annotationList?.threads ?? [];
-    $: me = $annotationList?.me;
-    $: visible = threads.filter(thread => showResolved || thread.status === "open");
-    $: openCount = threads.filter(thread => thread.status === "open").length;
-    $: showingDraft = $openAnnotation === DRAFT && !!$draft;
-    $: current = showingDraft ? null : threads.find(thread => thread.id === $openAnnotation) ?? null;
-    $: detailOpen = showingDraft || !!current;
+    let threads = $derived($annotationList?.threads ?? []);
+    let me = $derived($annotationList?.me);
+    let visible = $derived(threads.filter(thread => showResolved || thread.status === "open"));
+    let openCount = $derived(threads.filter(thread => thread.status === "open").length);
+    let showingDraft = $derived($openAnnotation === DRAFT && !!$draft);
+    let current = $derived(showingDraft ? null : threads.find(thread => thread.id === $openAnnotation) ?? null);
+    let detailOpen = $derived(showingDraft || !!current);
     // selection only names notes that still exist and are listed
-    $: selected = new Set([...selected].filter(id => visible.some(thread => thread.id === id)));
-    $: allSelected = visible.length > 0 && selected.size === visible.length;
+    $effect.pre(() => {
+        let listed = visible;
+        untrack(() => selected = new Set([...selected].filter(id => listed.some(thread => thread.id === id))));
+    });
+    let allSelected = $derived(visible.length > 0 && selected.size === visible.length);
     // an edit or reply belongs to the note it was started on
-    $: if (current?.id !== editingFor) { editing = null; reply = ""; editingFor = current?.id; }
-    $: highlight = $justAdded && $justAdded.note === (showingDraft ? DRAFT : current?.id) ? $justAdded.anchors : [];
-    $: if ($justAdded) { clearTimeout(addedTimer); addedTimer = setTimeout(() => justAdded.set(null), 1600); }
+    $effect.pre(() => {
+        let id = current?.id;
+        untrack(() => { if (id !== editingFor) { editing = null; reply = ""; editingFor = id; } });
+    });
+    let highlight = $derived($justAdded && $justAdded.note === (showingDraft ? DRAFT : current?.id) ? $justAdded.anchors : []);
+    $effect.pre(() => {
+        if (!$justAdded) return;
+        let timer = setTimeout(() => justAdded.set(null), 1600);
+        return () => clearTimeout(timer);
+    });
 
     // an agent may reply from the command line while the view is open
-    let poll: ReturnType<typeof setInterval> | undefined;
-    $: {
-        clearInterval(poll);
-        poll = active ? setInterval(() => { now = Date.now(); if (document.visibilityState === "visible" && !busy) loadAnnotations(); }, 3000) : undefined;
-        if (active) loadAnnotations();
-    }
-    onDestroy(() => { clearInterval(poll); clearTimeout(copiedTimer); clearTimeout(addedTimer); });
+    $effect(() => {
+        if (!active) return;
+        untrack(() => loadAnnotations());
+        let timer = setInterval(() => { now = Date.now(); if (document.visibilityState === "visible" && !busy) loadAnnotations(); }, 3000);
+        return () => clearInterval(timer);
+    });
+    onDestroy(() => clearTimeout(copiedTimer));
 
     let relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "short" });
     function age(timestamp: string, reference: number) {
@@ -186,14 +201,14 @@
 </ViewToolbar>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape closes the open note from anywhere in the view) -->
-<section class="annotations" aria-label="Annotations" on:keydown={keydown}>
+<section class="annotations" aria-label="Annotations" onkeydown={keydown}>
     {#if $annotationError}<p class="error" role="alert">{$annotationError}</p>{/if}
     {#if !visible.length && !$draft}
         <div class="empty">
             <Icon name="message-square" />
             <h3>{threads.length ? "No open notes" : "No notes yet"}</h3>
             <p>Right-click changes, bookmarks, files or diff lines and choose Annotate. Select several changes first to note them together. Notes stay on this computer until you copy them.</p>
-            {#if threads.length}<button type="button" class="link" on:click={() => showResolved = true}>Show resolved notes</button>{/if}
+            {#if threads.length}<button type="button" class="link" onclick={() => showResolved = true}>Show resolved notes</button>{/if}
         </div>
     {:else}
         <div class="layout" class:open={detailOpen}>
@@ -202,7 +217,7 @@
                     {#if $draft}
                         <li class="row draft" class:current={showingDraft}>
                             <span class="check-slot"></span>
-                            <button type="button" aria-expanded={showingDraft} aria-controls="annotation-detail" on:click={() => showingDraft ? close() : openAnnotation.set(DRAFT)}>
+                            <button type="button" aria-expanded={showingDraft} aria-controls="annotation-detail" onclick={() => showingDraft ? close() : openAnnotation.set(DRAFT)}>
                                 <span class="row-title">{plainLine($draft.body) || "Unsaved note"}</span>
                                 <span class="row-meta">
                                     <span class="draft-tag"><Icon name="edit-3" />Draft</span>
@@ -216,7 +231,7 @@
                         {@const outdated = outdatedCount(thread)}
                         <li class="row" class:current={thread.id === current?.id} class:checked={selected.has(thread.id)} class:resolved={thread.status === "resolved"}>
                             <span class="check-slot"><NoteCheck checked={selected.has(thread.id)} label="Select note: {noteTitle(thread)}" onChange={() => toggle(thread.id)} /></span>
-                            <button type="button" aria-expanded={thread.id === current?.id} aria-controls="annotation-detail" on:click={() => toggleOpen(thread.id)}>
+                            <button type="button" aria-expanded={thread.id === current?.id} aria-controls="annotation-detail" onclick={() => toggleOpen(thread.id)}>
                                 <span class="row-title">{noteTitle(thread)}</span>
                                 <span class="row-meta">
                                     <Icon name={anchorIcon(thread.targets[0].anchor)} /><span class="anchor" title={anchorDescription(thread.targets[0].anchor, thread.targets[0].subject)}>{anchorLabel(thread.targets[0].anchor)}</span>
@@ -238,7 +253,7 @@
                     {#if showingDraft && $draft}
                         <header class="detail-header">
                             <div class="context">{@render context($draft.targets, DRAFT)}</div>
-                            <button type="button" class="close" aria-label="Close draft" title="Close (the draft is kept)" on:click={close}><Icon name="x" /></button>
+                            <button type="button" class="close" aria-label="Close draft" title="Close (the draft is kept)" onclick={close}><Icon name="x" /></button>
                         </header>
                         <p class="tip"><Icon name="plus-square" />To point this note at more places, right-click them and choose Add to draft.</p>
                         <div class="compose">
@@ -252,7 +267,7 @@
                     {:else if current}
                         <header class="detail-header">
                             <div class="context">{@render context(current.targets, current.id)}</div>
-                            <button type="button" class="close" aria-label="Close note" title="Close" on:click={close}><Icon name="x" /></button>
+                            <button type="button" class="close" aria-label="Close note" title="Close" onclick={close}><Icon name="x" /></button>
                         </header>
                         <div class="detail-actions">
                             <ActionWidget safe secondary onClick={() => current && copy([current.id])}><Icon name="clipboard" />Copy</ActionWidget>
@@ -265,7 +280,7 @@
                                     <p class="byline">
                                         <span class="author">{post.author.name}</span>{#if post.author.kind === "agent"}<span class="agent">Agent</span>{/if}
                                         <time datetime={post.created_at} title={new Date(post.created_at).toLocaleString()}>{age(post.created_at, now)}</time>{#if post.edited_at}<span title={new Date(post.edited_at).toLocaleString()}>edited</span>{/if}
-                                        {#if mine(post) && editing?.post !== post.id}<button type="button" class="post-edit" on:click={() => editing = { post: post.id, body: post.body }}>Edit</button>{/if}
+                                        {#if mine(post) && editing?.post !== post.id}<button type="button" class="post-edit" onclick={() => editing = { post: post.id, body: post.body }}>Edit</button>{/if}
                                     </p>
                                     {#if editing?.post === post.id}
                                         <NoteEditor bind:value={editing.body} label="Edit note" rows={5} focusKey={post.id} onSubmit={saveEdit} onCancel={() => editing = null} />

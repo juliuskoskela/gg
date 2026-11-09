@@ -3,15 +3,15 @@
     import { operationState } from "../operations";
     import { workspaceController } from "../workspace/state";
     import Icon from "../controls/Icon.svelte";
-    let visible = false;
-    let timer: ReturnType<typeof setTimeout>;
-    $: {
+    let visible = $state(false);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    $effect.pre(() => {
         clearTimeout(timer);
         let state = $operationState;
         visible = !!state && state.phase !== "pending";
         if (state?.phase === "pending") timer = setTimeout(() => visible = true, 500);
         else if (state?.phase === "succeeded" || state?.phase === "cancelled") timer = setTimeout(() => visible = false, 5000);
-    }
+    });
     onDestroy(() => clearTimeout(timer));
 </script>
 
@@ -20,7 +20,7 @@
         <div class="operation-feedback" data-phase={$operationState.phase}>
             <Icon name={$operationState.phase === "succeeded" ? "check" : $operationState.phase === "cancelled" ? "x" : "clock"} />
             <span>{$operationState.label}{ $operationState.phase === "pending" ? "…" : $operationState.phase === "cancelled" ? " — cancelled" : ` — ${$operationState.detail ?? "complete"}`}</span>
-            <button type="button" aria-label="Dismiss operation status" on:click={() => visible = false}><Icon name="x" /></button>
+            <button type="button" aria-label="Dismiss operation status" onclick={() => visible = false}><Icon name="x" /></button>
         </div>
     {/if}
 </div>

@@ -1,21 +1,34 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { tick } from "svelte";
     import Markdown from "./Markdown.svelte";
 
-    export let value: string;
-    export let label: string;
-    export let placeholder = "";
-    export let rows = 6;
-    /** changes whenever the editor should take focus */
-    export let focusKey: unknown = undefined;
-    export let onSubmit: () => void;
-    export let onCancel: (() => void) | null = null;
 
-    let preview = false;
-    let field: HTMLTextAreaElement | undefined;
-    let previous: unknown = undefined;
-    $: if (focusKey !== undefined && focusKey !== previous) { previous = focusKey; focus(); }
-    $: if (!value.trim()) preview = false;
+    interface Props {
+        value: string;
+        label: string;
+        placeholder?: string;
+        rows?: number;
+        /** changes whenever the editor should take focus */
+        focusKey?: unknown;
+        onSubmit: () => void;
+        onCancel?: (() => void) | null;
+    }
+
+    let {
+        value = $bindable(),
+        label,
+        placeholder = "",
+        rows = 6,
+        focusKey = undefined,
+        onSubmit,
+        onCancel = null
+    }: Props = $props();
+
+    let preview = $state(false);
+    let field: HTMLTextAreaElement | undefined = $state();
+    let previous: unknown;
 
     async function focus() {
         preview = false;
@@ -28,18 +41,25 @@
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); onSubmit(); }
         else if (event.key === "Escape" && onCancel) { event.preventDefault(); event.stopPropagation(); onCancel(); }
     }
+    $effect.pre(() => {
+        let key = focusKey;
+        untrack(() => { if (key !== undefined && key !== previous) { previous = key; focus(); } });
+    });
+    $effect.pre(() => {
+        if (!value.trim()) preview = false;
+    });
 </script>
 
 <div class="note-editor">
     <div class="tabs" role="group" aria-label="{label} editor">
-        <button type="button" aria-pressed={!preview} on:click={focus}>Write</button>
-        <button type="button" aria-pressed={preview} disabled={!value.trim()} on:click={() => preview = true}>Preview</button>
+        <button type="button" aria-pressed={!preview} onclick={focus}>Write</button>
+        <button type="button" aria-pressed={preview} disabled={!value.trim()} onclick={() => preview = true}>Preview</button>
     </div>
     {#if preview}
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions (keyboard users can scroll a long preview and still save) -->
-        <div class="preview" role="region" aria-label="Preview" tabindex="0" on:keydown={keydown}><Markdown source={value} /></div>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (keyboard users can scroll a long preview and still save) -->
+        <div class="preview" role="region" aria-label="Preview" tabindex="0" onkeydown={keydown}><Markdown source={value} /></div>
     {:else}
-        <textarea bind:this={field} bind:value aria-label={label} {placeholder} {rows} on:keydown={keydown}></textarea>
+        <textarea bind:this={field} bind:value aria-label={label} {placeholder} {rows} onkeydown={keydown}></textarea>
     {/if}
 </div>
 
