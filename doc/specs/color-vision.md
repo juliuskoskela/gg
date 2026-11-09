@@ -70,3 +70,28 @@ When adding a hue token, give it a value in each colour vision block in `app/dis
 ## Typical palettes
 
 The same requirements, applied to the families' own colours under typical vision, find near-identical graph lanes (lane 1 against lane 6 at ΔE00 0.7; lane 2 against lane 3 at 1.0), bookmark and workspace chips at 4.2, and accent against negative at 8.4. The typical palettes are outside this feature and are not tested against these rules.
+
+## Default families
+
+The same rendered-token checks also cover typical vision in all nine default
+family/appearance combinations. Default graph lanes must meet the existing
+separation requirements (10 between neighbours, 5 between any pair); reference
+chips must meet 12. These are project design thresholds, not clinical guarantees.
+
+The default-family adjustments preserve surfaces, body text, status colours and
+syntax roles except the function hue. They separate the reused graph colours and
+keep the identity colour shared across families, including its pressed state.
+The colour-vision overrides remain independent. Measurements use the browser's
+resolved colours, including mixed diff tints, rather than only the hex primitives.
+
+Across the default families, the token measurements before and after adjustment
+are below. The browser tests independently enforce the required minimums.
+
+| Checked pair | Before | After | Required |
+| --- | ---: | ---: | ---: |
+| Neighbouring graph lanes (ΔE00) | 1.04 | 10.33 | 10 |
+| Any graph lane pair (ΔE00) | 0.67 | 5.26 | 5 |
+| Reference chips (ΔE00) | 4.18 | 12.63 | 12 |
+| Accent and negative (ΔE00) | 8.36 | 15.32 | 15 |
+| Plain-surface contrast ratio | 4.69 | 4.69 | 4.5 |
+| Hovered graph-row contrast ratio | 4.68 | 4.62 | 4.5 |
