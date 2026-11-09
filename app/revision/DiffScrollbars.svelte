@@ -1,14 +1,19 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onDestroy, tick } from "svelte";
 
-    export let columns: HTMLElement[] = [];
-    let tracks: HTMLDivElement[] = [];
-    let widths: number[] = [];
-    let overflowing: boolean[] = [];
+    interface Props {
+        columns?: HTMLElement[];
+    }
+
+    let { columns = [] }: Props = $props();
+    let tracks: HTMLDivElement[] = $state([]);
+    let widths: number[] = $state([]);
+    let overflowing: boolean[] = $state([]);
     let disconnect = () => {};
     let destroyed = false;
 
-    $: connect(columns);
     async function connect(codeColumns: HTMLElement[]) {
         disconnect();
         await tick();
@@ -31,12 +36,16 @@
         disconnect = () => { observer.disconnect(); cleanups.forEach(cleanup => cleanup()); };
     }
     onDestroy(() => { destroyed = true; disconnect(); });
+    $effect(() => {
+        let codeColumns = columns;
+        untrack(() => connect(codeColumns));
+    });
 </script>
 
 <div class="diff-scrollbars" hidden={!overflowing.some(Boolean)} style={`grid-template-columns: repeat(${Math.max(1, columns.length)}, minmax(0, 1fr));`}>
     {#each columns as code, i}
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (native overflow remains keyboard scrollable) -->
-        <div class="horizontal-track" class:empty={!overflowing[i]} role="region" aria-label={columns.length === 1 ? "Scroll diff horizontally" : i === 0 ? "Scroll original lines horizontally" : "Scroll changed lines horizontally"} tabindex={overflowing[i] ? 0 : -1} bind:this={tracks[i]} on:scroll={event => code.scrollLeft = event.currentTarget.scrollLeft}>
+        <div class="horizontal-track" class:empty={!overflowing[i]} role="region" aria-label={columns.length === 1 ? "Scroll diff horizontally" : i === 0 ? "Scroll original lines horizontally" : "Scroll changed lines horizontally"} tabindex={overflowing[i] ? 0 : -1} bind:this={tracks[i]} onscroll={event => code.scrollLeft = event.currentTarget.scrollLeft}>
             <div style={`width: ${widths[i] ?? 0}px; height: 1px;`}></div>
         </div>
     {/each}

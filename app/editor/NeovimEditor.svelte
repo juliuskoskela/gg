@@ -1,37 +1,45 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+    import { on } from "svelte/events";
+
     import { onMount } from "svelte";
     import { token } from "virtual:gg-neovim";
     import { effectiveTheme } from "../display/theme";
     import { NeovimGrid, type Redraw } from "./grid";
     import { GridRenderer } from "./renderer";
-    export let repository: string;
-    export let commit: string;
-    export let path: string;
-    export let visible = true;
-    let host: HTMLDivElement;
-    let canvas: HTMLCanvasElement;
-    let input: HTMLTextAreaElement;
+    interface Props {
+        repository: string;
+        commit: string;
+        path: string;
+        visible?: boolean;
+    }
+
+    let {
+        repository,
+        commit,
+        path,
+        visible = true
+    }: Props = $props();
+    let host!: HTMLDivElement;
+    let canvas!: HTMLCanvasElement;
+    let input!: HTMLTextAreaElement;
     let socket: WebSocket | undefined;
     let renderer: GridRenderer | undefined;
     let grid = new NeovimGrid();
-    let ready = false;
-    let error = "";
-    let opened = "";
-    let mode = "normal";
-    let syntaxLanguage = "";
-    let syntaxWarning = "";
-    let screenText = "";
+    let ready = $state(false);
+    let error = $state("");
+    let opened = $state("");
+    let mode = $state("normal");
+    let syntaxLanguage = $state("");
+    let syntaxWarning = $state("");
+    let screenText = $state("");
     let frame = 0;
     let dimensions = "";
     let requested = "";
-    let composing = false;
-    let dragging = false;
-    let wheel = 0;
+    let composing = $state(false);
+    let dragging = $state(false);
+    let wheel = $state(0);
     let send = (message: object) => { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)); };
-    $: if (ready && path && commit && repository) open(repository, commit, path);
-    $: if (ready && $effectiveTheme) theme();
-    $: if (visible && ready) requestAnimationFrame(resize);
-    $: if (visible && opened) requestAnimationFrame(() => input?.focus({ preventScroll: true }));
     function open(repo: string, revision: string, file: string) {
         let key = `${repo}:${revision}:${file}`;
         if (requested === key) return;
@@ -80,6 +88,13 @@
         send({ type: "mouse", button: "left", action, row: Math.floor((event.clientY - bounds.top) / renderer.cellHeight), col: Math.floor((event.clientX - bounds.left) / renderer.cellWidth) });
     }
     onMount(() => {
+        let stopWheel = on(host, "wheel", event => {
+            event.preventDefault();
+            wheel += event.deltaY;
+            if (Math.abs(wheel) < 24) return;
+            send({ type: "mouse", button: "wheel", action: wheel > 0 ? "down" : "up", row: 0, col: 0 });
+            wheel = 0;
+        }, { passive: false });
         let alive = true;
         let observer: ResizeObserver;
         let themeObserver: MutationObserver;
@@ -108,7 +123,22 @@
             window.addEventListener("resize", resize);
         };
         connect();
-        return () => { alive = false; observer?.disconnect(); themeObserver?.disconnect(); window.removeEventListener("resize", resize); cancelAnimationFrame(frame); socket?.close(); renderer?.destroy(); };
+        return () => { stopWheel(); alive = false; observer?.disconnect(); themeObserver?.disconnect(); window.removeEventListener("resize", resize); cancelAnimationFrame(frame); socket?.close(); renderer?.destroy(); };
+    });
+    $effect(() => {
+        let available = ready, file = path, revision = commit, repo = repository;
+        if (available && file && revision && repo) untrack(() => open(repo, revision, file));
+    });
+    $effect(() => { if (ready && $effectiveTheme) untrack(theme); });
+    $effect(() => {
+        if (!visible || !ready) return;
+        let request = requestAnimationFrame(resize);
+        return () => cancelAnimationFrame(request);
+    });
+    $effect(() => {
+        if (!visible || !opened) return;
+        let request = requestAnimationFrame(() => input?.focus({ preventScroll: true }));
+        return () => cancelAnimationFrame(request);
     });
 </script>
 
@@ -118,17 +148,17 @@
     <!-- keyboard and pointer events are forwarded to Neovim; the textarea owns input semantics. -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="editor-surface" bind:this={host}
-        on:pointerdown={event => { if (event.button !== 0) return; event.preventDefault(); input.focus({ preventScroll: true }); dragging = true; host.setPointerCapture(event.pointerId); mouse(event, "press"); }}
-        on:pointermove={event => { if (dragging) mouse(event, "drag"); }}
-        on:pointerup={event => { if (dragging) mouse(event, "release"); dragging = false; }}
-        on:pointercancel={() => dragging = false}
-        on:wheel|nonpassive={event => { event.preventDefault(); wheel += event.deltaY; if (Math.abs(wheel) < 24) return; send({ type: "mouse", button: "wheel", action: wheel > 0 ? "down" : "up", row: 0, col: 0 }); wheel = 0; }}>
+        onpointerdown={event => { if (event.button !== 0) return; event.preventDefault(); input.focus({ preventScroll: true }); dragging = true; host.setPointerCapture(event.pointerId); mouse(event, "press"); }}
+        onpointermove={event => { if (dragging) mouse(event, "drag"); }}
+        onpointerup={event => { if (dragging) mouse(event, "release"); dragging = false; }}
+        onpointercancel={() => dragging = false}
+>
         <canvas bind:this={canvas} aria-hidden="true"></canvas>
         <pre class="screen-text">{screenText}</pre>
         <textarea bind:this={input} aria-label="Neovim scratch editor" aria-describedby="neovim-help" spellcheck="false" autocapitalize="off" autocomplete="off"
-            on:keydown={keydown} on:input={() => { if (!composing) { text(input.value); input.value = ""; } }}
-            on:compositionstart={() => composing = true} on:compositionend={() => { composing = false; text(input.value); input.value = ""; }}
-            on:paste={event => { event.preventDefault(); send({ type: "paste", text: event.clipboardData?.getData("text/plain") ?? "" }); }}></textarea>
+            onkeydown={keydown} oninput={() => { if (!composing) { text(input.value); input.value = ""; } }}
+            oncompositionstart={() => composing = true} oncompositionend={() => { composing = false; text(input.value); input.value = ""; }}
+            onpaste={event => { event.preventDefault(); send({ type: "paste", text: event.clipboardData?.getData("text/plain") ?? "" }); }}></textarea>
         {#if error}<div class="message" role="alert">{error}</div>{:else if !opened}<div class="message" role="status">{ready ? "Opening file…" : "Starting Neovim…"}</div>{/if}
     </div>
     <p id="neovim-help" class="editor-help">i to insert · Esc for normal mode · / to search · u to undo · buffers survive Diff / File switching</p>
