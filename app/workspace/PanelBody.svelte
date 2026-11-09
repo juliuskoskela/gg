@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { ReviewComparison, CompareReview } from "../review/comparison";
+    import PluginPanel from "../plugins/PluginPanel.svelte";
     import { untrack } from "svelte";
     import { provideToolbarOwner } from "../controls/toolbars";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
@@ -63,7 +64,9 @@
 
 {#if id === "diff" && detail && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} /></ViewToolbar>{/if}
 
-{#if id === "evolution"}
+{#if id.startsWith("plugin:")}
+    <PluginPanel {id} />
+{:else if id === "evolution"}
     <EvolutionPanel {headers} {active} />
 {:else if id === "history"}
     <OperationHistory {active} />

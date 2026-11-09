@@ -1,5 +1,6 @@
 <script lang="ts">
     import ReviewLifecycle from "./review/ReviewLifecycle.svelte";
+    import { pluginHost } from "./plugins/runtime";
     import { focusModality } from "./display/focus";
     import TextField from "./controls/TextField.svelte";
     import { effectiveTheme, themeFamily, darkDepth, colorVision } from "./display/theme";
@@ -79,6 +80,12 @@
             document.body.removeEventListener("click", clearContext, true);
         };
     });
+
+    $effect(() => {
+        let repository = repositoryScope($repoConfigEvent), workspace = $repoConfigEvent.type === "Workspace" ? $repoConfigEvent.absolute_path : "", status = $repoStatusEvent, selected = $revisionSelectEvent;
+        untrack(() => pluginHost.update({ repository, workspace, status, selection: selected }));
+    });
+    onDestroy(() => pluginHost.update({ repository: "", workspace: "", status: undefined }));
 
     let workspacePath = $state("");
     async function initialize(path?: string) {

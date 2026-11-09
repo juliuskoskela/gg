@@ -1,7 +1,8 @@
 <script lang="ts">
     import { fade } from "svelte/transition";
     import { dockAnnouncement, panelDragging } from "./panelDrag";
-    import { panelLabel } from "./panels";
+    import { panelLabelFor } from "./panels";
+    import { pluginContributions } from "../plugins/contributions";
     import { onMount } from "svelte";
     let reduced = $state(false);
     let innerWidth = $state(0);
@@ -16,14 +17,14 @@
 </script>
 
 <svelte:window bind:innerWidth bind:innerHeight />
-<div class="drag-instructions" role="status">{#if $panelDragging}Moving {panelLabel[$panelDragging.id]}. {#if landing}{landing.edge.startsWith("tab") ? "Group with" : `Split ${landing.edge} of`} {panelLabel[landing.target]}. {/if}Escape to cancel.{:else}{$dockAnnouncement}{/if}</div>
+<div class="drag-instructions" role="status">{#if $panelDragging}Moving {panelLabelFor($panelDragging.id, $pluginContributions)}. {#if landing}{landing.edge.startsWith("tab") ? "Group with" : `Split ${landing.edge} of`} {panelLabelFor(landing.target, $pluginContributions)}. {/if}Escape to cancel.{:else}{$dockAnnouncement}{/if}</div>
 {#if $panelDragging}
-    <div class="dock-drag-ghost" style:left="{Math.max(0, Math.min($panelDragging.x + 16, innerWidth - 180))}px" style:top="{Math.min($panelDragging.y + 18, innerHeight - 40)}px" aria-hidden="true">{panelLabel[$panelDragging.id]}</div>
+    <div class="dock-drag-ghost" style:left="{Math.max(0, Math.min($panelDragging.x + 16, innerWidth - 180))}px" style:top="{Math.min($panelDragging.y + 18, innerHeight - 40)}px" aria-hidden="true">{panelLabelFor($panelDragging.id, $pluginContributions)}</div>
     {#if landing}
         <div class="dock-drop-preview" data-edge={landing.edge} data-target={landing.target}
             style:left="{landing.x}px" style:top="{landing.y}px" style:width="{landing.width}px" style:height="{landing.height}px"
             transition:fade={{ duration: reduced ? 0 : 100 }} aria-hidden="true">
-            <span>{landing.edge.startsWith("tab") ? "Group with" : `Split ${landing.edge} of`} {panelLabel[landing.target]}</span>
+            <span>{landing.edge.startsWith("tab") ? "Group with" : `Split ${landing.edge} of`} {panelLabelFor(landing.target, $pluginContributions)}</span>
         </div>
     {/if}
 {/if}

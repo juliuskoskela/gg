@@ -1,6 +1,8 @@
+import { isPluginPanelId, type PluginPanelId } from "../plugins/contributions";
 import { writable, type Writable } from "svelte/store";
 
-export type PanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history" | "annotations";
+export type CorePanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history" | "annotations";
+export type PanelId = CorePanelId | PluginPanelId;
 export type Edge = "tab" | "tab-end" | "left" | "right" | "top" | "bottom";
 export type DockNode =
     | { type: "split"; direction: "row" | "column"; ratio: number; first: DockNode; second: DockNode }
@@ -10,7 +12,7 @@ export type DockState = { root: DockNode | null; compactActive: PanelId | null }
 let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings", "evolution", "history", "annotations"];
 const STORAGE_KEY = "gg.dock.layout";
 
-const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
+const slot: Record<CorePanelId, { beside: PanelId | null; edge: Edge }> = {
     timeline: { beside: null, edge: "left" },
     description: { beside: "timeline", edge: "right" },
     diff: { beside: "description", edge: "bottom" },
@@ -25,7 +27,7 @@ const slot: Record<PanelId, { beside: PanelId | null; edge: Edge }> = {
 };
 
 export function isPanelId(value: unknown): value is PanelId {
-    return typeof value === "string" && PANEL_IDS.includes(value as PanelId);
+    return typeof value === "string" && (PANEL_IDS.includes(value as PanelId) || isPluginPanelId(value));
 }
 
 export function clampRatio(value: number): number {
@@ -109,7 +111,7 @@ function splitAround(node: DockNode, target: PanelId, id: PanelId, edge: Edge, i
 export function openPanel(node: DockNode | null, id: PanelId): DockNode {
     if (!node) return tabs(id);
     if (contains(node, id)) return activate(node, id);
-    let preferred = slot[id];
+    let preferred = slot[id as CorePanelId] ?? { beside: "description" as PanelId, edge: "tab" as Edge };
     if (preferred.beside && contains(node, preferred.beside)) return splitAround(node, preferred.beside, id, preferred.edge).node;
     let incoming = tabs(id);
     if (preferred.edge === "left" || preferred.edge === "top") return split(preferred.edge === "left" ? "row" : "column", 0.32, incoming, node);

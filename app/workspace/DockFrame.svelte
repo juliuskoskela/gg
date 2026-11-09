@@ -7,7 +7,8 @@
     import PanelGroup from "../controls/PanelGroup.svelte";
     import PanelTabs from "../controls/PanelTabs.svelte";
     import type { DockNode, Edge, PanelId } from "./dock";
-    import { panelLabel } from "./panels";
+    import { panelLabelFor } from "./panels";
+    import { pluginContributions } from "../plugins/contributions";
     import PanelBody from "./PanelBody.svelte";
     import { annotations, lineMenu } from "../annotations/store";
     import { menuPanel } from "./viewCommands";
@@ -97,7 +98,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions (the same views are in the Views menu) -->
     <div class="tabs" data-panel-group={node.active} oncontextmenucapture={() => node.type === "tabs" && noteMenuPanel(node.active)} oncontextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
         <PanelGroup>
-            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
+            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabelFor(id, $pluginContributions), count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
                 onSelect={onFocus} {onClose} {onMove} />
             <div class="stack">
                 {#each node.panels as id (id)}

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import PluginSettings from "../plugins/PluginSettings.svelte";
     import { effectiveTheme, effectiveAppearance, setAppearance, useDefaultAppearance, themePreference, colorVision, colorVisions, type ColorVision } from "../display/theme";
     import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
     import { mutationPending } from "../operations";
@@ -55,6 +56,7 @@
                 <ToggleWidget tip="Override immutability" bind:checked={$ignoreToggled} disabled={busy} safe on="shield-off" off="shield" />
             </div>
         </section>
+        <PluginSettings />
         <section aria-labelledby="operation-heading">
             <h2 id="operation-heading">Current operation</h2>
             <p class="operation-description">{$repoStatusEvent?.operation_description ?? "No operation"}</p>

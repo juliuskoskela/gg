@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { pluginCommands, pluginContributions, pluginPanels } from "../plugins/contributions";
+    import { dock } from "../workspace/dock";
     import { annotationCommands } from "../annotations/commands";
     import Icon from "../controls/Icon.svelte";
     import TextField from "../controls/TextField.svelte";
@@ -26,6 +28,8 @@
     let commands = $derived([
         ...zoomCommands($appZoom, $nativeZoomEnabled),
         ...repositoryCommands("", $currentMutation, $mutationPending, $repoStatusEvent, $repoConfigEvent),
+        ...pluginCommands($commandOperand, false, $pluginContributions),
+        ...pluginPanels($pluginContributions).map((view): Command => ({ id: `view.${view.id}`, label: `Open ${view.label}`, icon: "box", scope: "View", reason: null, execute: () => dock.open(view.id) })),
         ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),
         ...contextCommands($commandOperand ?? $currentContext, $currentWorkspaceIdentity, $currentMutation, $mutationPending, $ignoreToggled),

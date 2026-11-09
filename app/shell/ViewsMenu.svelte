@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { pluginContributions, pluginPanels } from "../plugins/contributions";
     import { onMount, tick } from "svelte";
     import { menuBehavior, menuPosition } from "../controls/menu";
     import { get } from "svelte/store";
@@ -12,7 +13,7 @@
     let list = $state<HTMLDivElement>();
     let position = $state("");
     let menuOpen = $state(false);
-    let choices = $derived(viewChoices(!!$repoStatusEvent));
+    let choices = $derived(viewChoices(!!$repoStatusEvent, pluginPanels($pluginContributions)));
 
     onMount(() => {
         let openMenu = () => { void show(); };

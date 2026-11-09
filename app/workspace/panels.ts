@@ -1,7 +1,8 @@
 import { enabled as neovimEnabled } from "virtual:gg-neovim";
-import type { PanelId } from "./dock";
+import { pluginPanels, type PluginEntry } from "../plugins/contributions";
+import type { CorePanelId, PanelId } from "./dock";
 
-export const panelLabel: Record<PanelId, string> = {
+export const panelLabel: Record<CorePanelId, string> = {
     timeline: "Timeline",
     settings: "Settings",
     evolution: "Evolution",
@@ -15,9 +16,13 @@ export const panelLabel: Record<PanelId, string> = {
     "revision-tools": "Revision tools",
 };
 
-export function viewChoices(hasStatus: boolean): { id: PanelId; label: string }[] {
-    let choices: { id: PanelId; label: string }[] = ["timeline", "description", "revision-tools", "diff", "tree", "evolution", "history", "annotations"].map(id => ({ id: id as PanelId, label: panelLabel[id as PanelId] }));
+export function panelLabelFor(id: PanelId, extensions?: readonly PluginEntry[]): string {
+    return panelLabel[id as CorePanelId] ?? pluginPanels(extensions).find(view => view.id === id)?.label ?? "Plugin";
+}
+
+export function viewChoices(hasStatus: boolean, extensions = pluginPanels()): { id: PanelId; label: string }[] {
+    let choices: { id: PanelId; label: string }[] = ["timeline", "description", "revision-tools", "diff", "tree", "evolution", "history", "annotations"].map(id => ({ id: id as PanelId, label: panelLabelFor(id as PanelId) }));
     if (neovimEnabled) choices.push({ id: "edit", label: panelLabel.edit });
     if (hasStatus) choices.push({ id: "operation", label: panelLabel.operation });
-    return choices;
+    return [...choices, ...extensions.map(view => ({ id: view.id, label: view.label }))];
 }

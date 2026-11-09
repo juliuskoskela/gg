@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { pluginCommands, pluginContributions } from "../plugins/contributions";
     import { menuBehavior, menuPosition } from "./menu";
     import { currentWorkspaceIdentity } from "../commands/context";
     import type { Operand } from "../messages/Operand";
@@ -49,8 +50,8 @@
         onClose,
         views = true
     }: Props = $props();
-    let commands = $derived(items ?? [...actionCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending), ...annotationCommands(operand)]);
-    let viewItems = $derived(views ? openViewCommands().filter(command => !command.reason) : []);
+    let commands = $derived(items ?? [...actionCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending), ...annotationCommands(operand), ...pluginCommands(operand, true, $pluginContributions)]);
+    let viewItems = $derived(views ? openViewCommands(undefined, $pluginContributions).filter(command => !command.reason) : []);
     // destructive actions stay last, after the views
     let actionSections = $derived(sections(commands));
     let destructive = $derived(actionSections.filter(section => section.every(command => command.destructive)));
