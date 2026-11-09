@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { repositoryScope } from "./workspace/repository";
     import { setCommandOperand } from "./commands/context";
     import { executeOperandCommand } from "./commands/registry";
@@ -11,31 +13,26 @@
     import { revisionModules } from "./revision/modules";
     import { onEvent } from "./ipc";
 
-    export let revs: RevisionDetail;
-    export let integrated = false;
-    export let focused = false;
-    export let requestedPath: string | null = null;
-    export let onFileSelected: (path: string) => void = () => {};
-    let workspaceWidth = 800;
-    let resizingFiles = false;
-    $: maxFilesWidth = Math.max(180, Math.floor(Math.min(workspaceWidth * 0.6, workspaceWidth - 284)));
-    $: filesWidth = Math.max(180, Math.min(maxFilesWidth, Number.isFinite($fileTreeWidth) ? $fileTreeWidth : 200));
-    let selectedModule = "changes";
-    let selectedPath = "";
-    let previousKey = "";
-    $: syntheticChanges = [...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path));
-    $: reviewKey = revisionIdentity(revs, repositoryScope($repoConfigEvent));
-    $: if (reviewKey !== previousKey) {
-        let saved = revisionReviewState.get(reviewKey);
-        selectedPath = syntheticChanges.find(change => change.path.repo_path === (saved?.path ?? selectedPath))?.path.repo_path ?? syntheticChanges[0]?.path.repo_path ?? "";
-        previousKey = reviewKey;
+    interface Props {
+        revs: RevisionDetail;
+        integrated?: boolean;
+        focused?: boolean;
+        requestedPath?: string | null;
+        onFileSelected?: (path: string) => void;
     }
-    $: if ($changeSelectEvent && syntheticChanges.includes($changeSelectEvent) && $changeSelectEvent.path.repo_path !== selectedPath) selectFile($changeSelectEvent);
-    $: if (reviewKey) revisionReviewState.set(reviewKey, { path: selectedPath, scrollTop: revisionReviewState.get(reviewKey)?.scrollTop ?? 0 });
-    $: if (requestedPath && requestedPath !== selectedPath) selectedPath = requestedPath;
-    $: context = { revs, focused, changes: syntheticChanges, selectedPath, onSelectFile: selectFile };
-    $: modules = $revisionModules.filter(module => !module.available || module.available(context));
-    $: activeModule = modules.find(module => module.id === selectedModule) ?? modules[0];
+
+    let {
+        revs,
+        integrated = false,
+        focused = false,
+        requestedPath = null,
+        onFileSelected = () => {}
+    }: Props = $props();
+    let workspaceWidth = $state(800);
+    let resizingFiles = $state(false);
+    let selectedModule = $state("changes");
+    let selectedPath = $state("");
+    let previousKey = $state("");
     onEvent<string>("gg://menu/revision", event => executeOperandCommand(revs.headers.length === 1 ? { type: "Revision", header: revs.headers[0] } : { type: "Revisions", headers: revs.headers }, event));
     function resizeFiles(width: number) {
         fileTreeWidth.set(Math.max(180, Math.min(maxFilesWidth, width)));
@@ -61,6 +58,34 @@
         onFileSelected(selectedPath);
         changeSelectEvent.set(change);
     }
+    let maxFilesWidth = $derived(Math.max(180, Math.floor(Math.min(workspaceWidth * 0.6, workspaceWidth - 284))));
+    let filesWidth = $derived(Math.max(180, Math.min(maxFilesWidth, Number.isFinite($fileTreeWidth) ? $fileTreeWidth : 200)));
+    let syntheticChanges = $derived([...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path)));
+    let reviewKey = $derived(revisionIdentity(revs, repositoryScope($repoConfigEvent)));
+    $effect.pre(() => {
+        let key = reviewKey, files = syntheticChanges, requested = requestedPath;
+        untrack(() => {
+            if (key !== previousKey) {
+                let saved = revisionReviewState.get(key);
+                selectedPath = requested || files.find(change => change.path.repo_path === (saved?.path ?? selectedPath))?.path.repo_path || files[0]?.path.repo_path || "";
+                previousKey = key;
+            }
+        });
+    });
+    $effect.pre(() => {
+        let path = requestedPath;
+        untrack(() => { if (path && path !== selectedPath) selectedPath = path; });
+    });
+    $effect.pre(() => {
+        let change = $changeSelectEvent, files = syntheticChanges, path = selectedPath;
+        if (change && files.includes(change) && change.path.repo_path !== path) untrack(() => selectFile(change));
+    });
+    $effect.pre(() => {
+        if (reviewKey) revisionReviewState.set(reviewKey, { path: selectedPath, scrollTop: revisionReviewState.get(reviewKey)?.scrollTop ?? 0 });
+    });
+    let context = $derived({ revs, focused, changes: syntheticChanges, selectedPath, onSelectFile: selectFile });
+    let modules = $derived($revisionModules.filter(module => !module.available || module.available(context)));
+    let activeModule = $derived(modules.find(module => module.id === selectedModule) ?? modules[0]);
 </script>
 
 <section class="revision-pane" class:integrated inert={$hasModal} aria-label="Selected revision">
@@ -68,15 +93,15 @@
         <div class="revision-content">
             <RevisionOverviewPanel {revs} />
             <div class="revision-main">
-                {#if modules.length > 1}<nav class="module-tabs" aria-label="Revision views">{#each modules as module}<button class="selection-item" type="button" aria-current={module.id === activeModule?.id ? "page" : undefined} on:click={() => selectedModule = module.id}>{module.label}</button>{/each}</nav>{/if}
-                {#if activeModule}<svelte:boundary><svelte:component this={activeModule.component} {...context} />{#snippet failed(_error, reset)}<div class="module-error" role="alert"><p>Couldn’t display {activeModule.label.toLowerCase()}.</p><ActionWidget secondary tip="Retry revision view" onClick={reset}>Try again</ActionWidget></div>{/snippet}</svelte:boundary>{/if}
+                {#if modules.length > 1}<nav class="module-tabs" aria-label="Revision views">{#each modules as module}<button class="selection-item" type="button" aria-current={module.id === activeModule?.id ? "page" : undefined} onclick={() => selectedModule = module.id}>{module.label}</button>{/each}</nav>{/if}
+                {#if activeModule}<svelte:boundary><activeModule.component {...context} />{#snippet failed(_error, reset)}<div class="module-error" role="alert"><p>Couldn’t display {activeModule.label.toLowerCase()}.</p><ActionWidget secondary tip="Retry revision view" onClick={reset}>Try again</ActionWidget></div>{/snippet}</svelte:boundary>{/if}
             </div>
 
         </div>
         <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role (the focusable separator follows the window splitter pattern) -->
         <button type="button" class="files-separator" class:dragging={resizingFiles} role="separator" aria-label="Resize changed files" aria-controls="changed-files" aria-orientation="vertical" aria-valuenow={Math.round(filesWidth)} aria-valuemin={180} aria-valuemax={maxFilesWidth}
-            on:pointerdown={event => { event.preventDefault(); resizingFiles = true; event.currentTarget.setPointerCapture(event.pointerId); }}
-            on:pointermove={moveFilesSplitter} on:pointerup={() => resizingFiles = false} on:pointercancel={() => resizingFiles = false} on:lostpointercapture={() => resizingFiles = false} on:keydown={filesSplitterKeydown}></button>
+            onpointerdown={event => { event.preventDefault(); resizingFiles = true; event.currentTarget.setPointerCapture(event.pointerId); }}
+            onpointermove={moveFilesSplitter} onpointerup={() => resizingFiles = false} onpointercancel={() => resizingFiles = false} onlostpointercapture={() => resizingFiles = false} onkeydown={filesSplitterKeydown}></button>
         <RevisionFiles changes={syntheticChanges} headers={revs.headers} {selectedPath} {reviewKey} visible={true} overlay={false} onSelect={selectFile} onClose={null} />
     </div>
 </section>

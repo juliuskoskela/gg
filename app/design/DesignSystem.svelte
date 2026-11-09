@@ -26,19 +26,19 @@
     import RepositoryNavigation from "../shell/RepositoryNavigation.svelte";
 
     setContext("settings", { markUnpushedBookmarks: true });
-    $: theme = $effectiveTheme;
-    let active = "diff";
-    let currentQuery = "all()";
-    let wrap = true;
-    let editingSample = false;
-    let sampleDescription = "Keep revision descriptions readable";
-    let sampleSearch = "";
-    let sampleQuery = "all()";
-    let sampleRemote = "origin";
-    let samplePreset = "custom";
-    let timelineExample: HTMLDivElement;
+    let theme = $derived($effectiveTheme);
+    let active = $state("diff");
+    let currentQuery = $state("all()");
+    let wrap = $state(true);
+    let editingSample = $state(false);
+    let sampleDescription = $state("Keep revision descriptions readable");
+    let sampleSearch = $state("");
+    let sampleQuery = $state("all()");
+    let sampleRemote = $state("origin");
+    let samplePreset = $state("custom");
+    let timelineExample!: HTMLDivElement;
     let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.ts", relative_path: "app/workspace.ts" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 6 }, to_file: { start: 1, len: 6 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n', ' // Keep the active panel visible.\n', ' function selectPanel(index: number = 0) { return panels[index]; }\n'] } }], stat: { added: 1, removed: 1 } }];
-    let items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }];
+    let items = $state([{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]);
     let workspace = { query_choices: { default: "all()", "My revisions": "mine()" } };
     let rows = [
         { kind: "context", number: 1, text: 'import PanelTabs from "./controls/PanelTabs.svelte";' },
@@ -51,7 +51,7 @@
 
 <div id="shell" use:focusModality class={theme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth} data-color-vision={$colorVision}>
     <main class="system-page">
-        <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><div class="gallery-theme-controls"><SelectWidget label="Color family" value={$themeFamily} options={themeFamilies.map(family => ({ value: family.id, label: family.label }))} onChange={event => themeFamily.set((event.target as HTMLSelectElement).value as import("../display/theme").ThemeFamily)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><SelectWidget label="Dark depth" value={$darkDepth} options={[{ value: "twilight", label: "Twilight" }, { value: "midnight", label: "Midnight" }]} onChange={event => darkDepth.set((event.target as HTMLSelectElement).value as import("../display/theme").DarkDepth)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(vision => ({ value: vision.id, label: vision.label }))} onChange={event => colorVision.set((event.target as HTMLSelectElement).value as import("../display/theme").ColorVision)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><button type="button" on:click={() => themePreference.set(theme === "dark" ? "light" : "dark")}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></div></header>
+        <header class="page-heading"><div><h1>GG+ design system</h1><p>Shared components for the revision workspace.</p></div><div class="gallery-theme-controls"><SelectWidget label="Color family" value={$themeFamily} options={themeFamilies.map(family => ({ value: family.id, label: family.label }))} onChange={event => themeFamily.set((event.target as HTMLSelectElement).value as import("../display/theme").ThemeFamily)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><SelectWidget label="Dark depth" value={$darkDepth} options={[{ value: "twilight", label: "Twilight" }, { value: "midnight", label: "Midnight" }]} onChange={event => darkDepth.set((event.target as HTMLSelectElement).value as import("../display/theme").DarkDepth)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(vision => ({ value: vision.id, label: vision.label }))} onChange={event => colorVision.set((event.target as HTMLSelectElement).value as import("../display/theme").ColorVision)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><button type="button" onclick={() => themePreference.set(theme === "dark" ? "light" : "dark")}><Icon name={theme === "dark" ? "sun" : "moon"} />{theme === "dark" ? "Light" : "Dark"} theme</button></div></header>
         <section id="panel-spacing" class="spacing-specimen" aria-labelledby="spacing-heading">
             <h2 id="spacing-heading">Panel structure and spacing</h2>
             <p>Each tab pairs its label with its own close button. Tools align to the trailing edge. The Diff header below and Timeline specimen use the production components.</p>
@@ -77,7 +77,7 @@
                         {:else}<PanelHeader><h2>Current operation</h2></PanelHeader><p class="operation-example">No pending operation in this component preview.</p>{/if}
                     </div>
                 {/each}
-                {#if !items.length}<p class="operation-example">No views open. <button type="button" on:click={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]; active = "diff"; }}>Restore views</button></p>{/if}
+                {#if !items.length}<p class="operation-example">No views open. <button type="button" onclick={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]; active = "diff"; }}>Restore views</button></p>{/if}
             </div>
         </section>
         <section id="typography" class="description-specimen" aria-labelledby="typography-heading">
@@ -99,7 +99,7 @@
             <section><h2>Revision tools</h2><p>Commands live in their own dockable panel, available from Views. They follow the selected revision.</p><div class="tools-specimen"><PanelTabs items={[{ id: "tools", label: "Revision tools" }]} active="tools" prefix="tools-specimen" onSelect={() => {}} /><div id="tools-specimen-tools" role="region" aria-labelledby="tools-specimen-tab-tools"><RevisionTools headers={[]} /></div></div></section>
             <section id="selects"><h2>Dropdowns</h2><p>Remote and revset choices use the same native select, inset Feather chevron and keyboard behavior.</p><div class="control-example"><SelectWidget label="Example remote" options={[{ value: "origin" }, { value: "upstream" }]} bind:value={sampleRemote} /><SelectWidget label="Example preset" options={[{ value: "custom", label: "Custom" }, { value: "default", label: "Default" }]} bind:value={samplePreset}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget></div></section>
             <section class="field-specimens"><h2>Fields and inline editing</h2><p>Text, search and multiline fields share native behavior and the same surface, border and focus tokens.</p><TextField label="Example search" type="search" placeholder="Find a file…" bind:value={sampleSearch} />
-                {#if editingSample}<TextAreaField label="Example description" bind:value={sampleDescription} /><button type="button" on:click={() => editingSample = false}>Done</button>{:else}<EditableText text={sampleDescription} label="Edit example description" onEdit={() => editingSample = true} />{/if}
+                {#if editingSample}<TextAreaField label="Example description" bind:value={sampleDescription} /><button type="button" onclick={() => editingSample = false}>Done</button>{:else}<EditableText text={sampleDescription} label="Edit example description" onEdit={() => editingSample = true} />{/if}
                 <TextAreaField label="Empty working-copy example" placeholder="Describe this change…" />
             </section>
             <section><h2>Selection</h2><p>Use a neutral surface and stronger text. Underlines and side stripes are prohibited for active tabs, navigation and selected rows. Focus uses a complete outline.</p><div class="row-example" role="listbox" aria-label="Example files"><button class="selection-item" role="option" aria-selected="true"><Icon name="file-text" />workspace.svelte</button><button class="selection-item" role="option" aria-selected="false"><Icon name="file-text" />global.css</button></div></section>

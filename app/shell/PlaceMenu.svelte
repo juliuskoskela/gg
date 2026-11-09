@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onDestroy, tick } from "svelte";
+    import { onDestroy, tick, untrack } from "svelte";
     import { get } from "svelte/store";
     import TextField from "../controls/TextField.svelte";
     import type { RepoConfig } from "../messages/RepoConfig";
@@ -8,28 +8,28 @@
     import { isTauri, query } from "../ipc";
     import { repoConfigEvent } from "../stores";
 
-    export let workspace: Extract<RepoConfig, { type: "Workspace" }>;
-    let root: HTMLDivElement;
-    let identityButton: HTMLButtonElement;
-    let panel: HTMLDivElement;
-    let context: WorkspaceContext | null = null;
-    let loading = false;
-    let failed = false;
-    let open = false;
-    let recent: string[] = [];
-    let recentLoading = false;
-    let recentFailed = false;
-    let pathField = "";
+    interface Props {
+        workspace: Extract<RepoConfig, { type: "Workspace" }>;
+    }
+
+    let { workspace }: Props = $props();
+    let root!: HTMLDivElement;
+    let identityButton!: HTMLButtonElement;
+    let panel = $state<HTMLDivElement>();
+    let context: WorkspaceContext | null = $state.raw(null);
+    let loading = $state(false);
+    let failed = $state(false);
+    let open = $state(false);
+    let recent: string[] = $state.raw([]);
+    let recentLoading = $state(false);
+    let recentFailed = $state(false);
+    let pathField = $state("");
     let contextRequest = 0;
     let recentRequest = 0;
     let navigationRequest = 0;
     let native = isTauri();
     let commands = nativeRepositoryCommands();
 
-    $: folder = workspace.absolute_path.split(/[\\/]/).filter(Boolean).pop() ?? "Repository";
-    $: projectLabel = context?.project_name ?? folder;
-    $: workspaceLabel = context?.workspace_name ?? "default";
-    $: void loadContext(workspace.absolute_path);
 
     onDestroy(() => { contextRequest++; recentRequest++; navigationRequest++; });
 
@@ -112,12 +112,19 @@
     }
 
     function pathName(path: string) { return path.split(/[\\/]/).filter(Boolean).pop() ?? path; }
+    let folder = $derived(workspace.absolute_path.split(/[\\/]/).filter(Boolean).pop() ?? "Repository");
+    let projectLabel = $derived.by(() => context?.project_name ?? folder);
+    let workspaceLabel = $derived.by(() => context?.workspace_name ?? "default");
+    $effect.pre(() => {
+        let path = workspace.absolute_path;
+        untrack(() => void loadContext(path));
+    });
 </script>
 
-<svelte:window on:pointerdown={event => { if (open && !root.contains(event.target as Node)) close(); }} on:focusin={event => { if (open && !root.contains(event.target as Node)) close(); }} />
+<svelte:window onpointerdown={event => { if (open && !root.contains(event.target as Node)) close(); }} onfocusin={event => { if (open && !root.contains(event.target as Node)) close(); }} />
 
 <div class="place" bind:this={root}>
-    <button bind:this={identityButton} type="button" class="place-button" aria-label="Repository navigation: {workspaceLabel}@{projectLabel}" aria-haspopup="dialog" aria-expanded={open} aria-controls="repository-navigation" title="Switch workspace or open repository" on:click={() => open ? close() : show()} on:keydown={event => {
+    <button bind:this={identityButton} type="button" class="place-button" aria-label="Repository navigation: {workspaceLabel}@{projectLabel}" aria-haspopup="dialog" aria-expanded={open} aria-controls="repository-navigation" title="Switch workspace or open repository" onclick={() => open ? close() : show()} onkeydown={event => {
         if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); show(event.key === "ArrowUp"); }
         else if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); close(true); }
     }}>
@@ -125,16 +132,16 @@
         <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </button>
     {#if open}
-        <div id="repository-navigation" class="place-menu" bind:this={panel} role="dialog" aria-label="Repository navigation" on:keydown={navigate} tabindex="-1">
+        <div id="repository-navigation" class="place-menu" bind:this={panel} role="dialog" aria-label="Repository navigation" onkeydown={navigate} tabindex="-1">
             <p class="place-path" title={context?.repo_path ?? workspace.absolute_path}>{context?.repo_path ?? workspace.absolute_path}</p>
             {#if native}
                 <div class="menu-group">
                     {#each commands.filter(command => ["repository.open", "repository.init", "repository.clone"].includes(command.id)) as command}
-                        <button type="button" disabled={!!command.reason} title={command.reason ?? undefined} on:click={() => execute(command)}><span>{command.label}</span><small class="shortcut">{command.shortcut ?? ""}</small></button>
+                        <button type="button" disabled={!!command.reason} title={command.reason ?? undefined} onclick={() => execute(command)}><span>{command.label}</span><small class="shortcut">{command.shortcut ?? ""}</small></button>
                     {/each}
                 </div>
             {:else}
-                <form class="path-form" on:submit|preventDefault={() => openPath(pathField.trim())}>
+                <form class="path-form" onsubmit={event => { event.preventDefault(); void openPath(pathField.trim()); }}>
                     <label for="repository-path">Open repository</label>
                     <div class="path-controls"><TextField id="repository-path" label="Repository path" placeholder="Path to a repository" bind:value={pathField} /><button type="submit" disabled={!pathField.trim()}>Open</button></div>
                 </form>
@@ -143,7 +150,7 @@
                 <h2>Workspaces</h2>
                 {#if context?.workspaces.length}
                     {#each context.workspaces as record}
-                        <button type="button" class="location-item" disabled={!record.path} aria-current={record.name === context.workspace_name ? "page" : undefined} title={record.path ?? "Path not recorded"} on:click={() => record.path && openPath(record.path)}>
+                        <button type="button" class="location-item" disabled={!record.path} aria-current={record.name === context.workspace_name ? "page" : undefined} title={record.path ?? "Path not recorded"} onclick={() => record.path && openPath(record.path)}>
                             <span class="location-heading"><span>{record.name}</span>{#if record.name === context.workspace_name}<small>Current</small>{/if}</span>
                             <small class="location-path">{record.path ?? "Path not recorded"}</small>
                         </button>
@@ -155,7 +162,7 @@
             <section class="menu-group" aria-label="Recent workspaces" aria-busy={recentLoading}>
                 <h2>Recent workspaces</h2>
                 {#each recent as path}
-                    <button type="button" class="location-item" title={path} on:click={() => openPath(path)}><span>{pathName(path)}</span><small class="location-path">{path}</small></button>
+                    <button type="button" class="location-item" title={path} onclick={() => openPath(path)}><span>{pathName(path)}</span><small class="location-path">{path}</small></button>
                 {:else}
                     <p class="place-note">{recentLoading ? "Loading recent workspaces…" : recentFailed ? "Couldn’t load recent workspaces." : "No recent workspaces."}</p>
                 {/each}
@@ -163,7 +170,7 @@
             {#if native}
                 <div class="menu-group">
                     {#each commands.filter(command => ["repository.reopen", "repository.close"].includes(command.id)) as command}
-                        <button type="button" disabled={!!command.reason} title={command.reason ?? undefined} on:click={() => execute(command)}><span>{command.label}</span><small class="shortcut">{command.shortcut ?? ""}</small></button>
+                        <button type="button" disabled={!!command.reason} title={command.reason ?? undefined} onclick={() => execute(command)}><span>{command.label}</span><small class="shortcut">{command.shortcut ?? ""}</small></button>
                     {/each}
                 </div>
             {/if}

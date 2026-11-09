@@ -3,7 +3,7 @@
     import RevisionObject from "../objects/RevisionObject.svelte";
     import { revisionFixture } from "./revisionFixture";
 
-    let selected = 1;
+    let selected = $state(1);
     let names = ["Refine shared controls", "Keep recovery within reach", "Make revision history readable", "Align panel tools", "Preserve workspace context", "Unify file navigation", "Review changes in place", "Keep the graph quiet", "Current workspace", "Another workspace"];
     let rows = names.map((name, index) => ({
         ...revisionFixture.headers[0],
