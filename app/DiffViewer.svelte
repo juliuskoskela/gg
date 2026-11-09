@@ -1,4 +1,4 @@
-<script lang="ts" context="module">
+<script lang="ts" module>
     import { registerCustomCSSVariableTheme } from "@pierre/diffs";
 
     // keep syntax and diff surfaces on the same theme as the surrounding workspace.
@@ -18,7 +18,7 @@
 
 <script lang="ts">
     import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData, type SelectedLineRange } from "@pierre/diffs";
-    import { onMount } from "svelte";
+    import { onMount, untrack } from "svelte";
     import { createDiffFoldRow } from "./revision/DiffFoldRow";
     import { FoldingFileDiff } from "./revision/FoldingFileDiff";
     import DiffScrollbars from "./revision/DiffScrollbars.svelte";
@@ -27,33 +27,34 @@
     import { diffStyle, diffWrap, fileHorizontalPositions } from "./stores";
     import { colorVision, effectiveTheme } from "./display/theme";
 
-    export let change: RevChange;
-    export let readingKey = "";
-    export let themeOverride: "light" | "dark" | undefined = undefined;
-    export let fullContext = false;
-    // supplies both complete sides so collapsed blocks can be unfolded one at a time
-    export let loadFullFiles: (() => Promise<{ before: string; after: string }>) | null = null;
-    // right-clicking a line, or inside a selected range, offers actions for those lines
-    export let onLineMenu: ((event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) => void) | null = null;
+    interface Props {
+        change: RevChange;
+        readingKey?: string;
+        themeOverride?: "light" | "dark";
+        fullContext?: boolean;
+        loadFullFiles?: (() => Promise<{ before: string; after: string }>) | null;
+        onLineMenu?: ((event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) => void) | null;
+    }
+    let { change, readingKey = "", themeOverride, fullContext = false, loadFullFiles = null, onLineMenu = null }: Props = $props();
     let selectedRange: SelectedLineRange | null = null;
     let renderedKey = "";
     let disconnectColumns = () => {};
-    let host: HTMLDivElement;
-    let leadingFold: HTMLDivElement;
+    let host!: HTMLDivElement;
+    let leadingFold!: HTMLDivElement;
     let pendingAnchor: { gap: number; top: number; left: number; focus: boolean } | undefined;
     let toggling = false;
     let leadingKey = "";
     let renderGeneration = 0;
     let anchorFrame: number | undefined;
-    let width = 0;
-    $: resolvedStyle = $diffStyle === "auto" ? (width >= 720 ? "split" : "unified") : $diffStyle;
+    let width = $state(0);
+    let resolvedStyle = $derived( $diffStyle === "auto" ? (width >= 720 ? "split" : "unified") : $diffStyle);
     let viewer: FileDiff<number> | File | undefined;
-    let error = "";
-    let mounted = false;
-    let scrollColumns: HTMLElement[] = [];
+    let error = $state("");
+    let mounted = $state(false);
+    let scrollColumns = $state.raw<HTMLElement[]>([]);
     // gap index i is the unchanged block before hunk i; hunks.length is the block after the last hunk
     let unfolded = new Set<number>();
-    $: options = {
+    let options = $derived({
         theme: "gg",
         themeType: themeOverride ?? $effectiveTheme,
         diffStyle: resolvedStyle,
@@ -72,7 +73,7 @@
         disableFileHeader: true,
         onPostRender: postRender,
         unsafeCSS: ":host { color-scheme: inherit !important; --diffs-font-family: var(--stack-code); --diffs-font-size: var(--type-code); --diffs-line-height: calc(var(--type-code) * var(--code-leading)); --diffs-bg-context-override: var(--surface); --diffs-bg-buffer-override: var(--diff-buffer); --diffs-bg-separator-override: var(--raised); --diffs-fg-number-override: var(--muted); --diffs-addition-color-override: var(--positive); --diffs-deletion-color-override: var(--negative); --diffs-selection-color-override: var(--selection-bg); --diffs-bg-addition-override: var(--diff-addition); --diffs-bg-addition-emphasis-override: var(--diff-addition-emphasis); --diffs-bg-deletion-override: var(--diff-deletion); --diffs-bg-deletion-emphasis-override: var(--diff-deletion-emphasis); } [data-code] { scrollbar-width: none; } [data-code]::-webkit-scrollbar { height: 0; }" + FOLD_CSS,
-    } satisfies FileDiffOptions<number, undefined>;
+    } satisfies FileDiffOptions<number, undefined>);
     async function loadDiffFiles(fileDiff: FileDiffMetadata) {
         let files = await loadFullFiles!();
         return { oldFile: { name: fileDiff.prevName ?? fileDiff.name, contents: files.before }, newFile: { name: fileDiff.name, contents: files.after } };
@@ -264,7 +265,10 @@
             }
         } catch (cause) { error = `Couldn’t render this diff: ${cause instanceof Error ? cause.message : String(cause)}`; }
     }
-    $: if (mounted && change && options && readingKey !== undefined) render();
+    $effect(() => {
+        let ready = mounted, file = change, settings = options, key = readingKey;
+        if (ready && file && settings && key !== undefined) untrack(render);
+    });
     onMount(() => {
         mounted = true;
         return () => {
@@ -282,7 +286,7 @@
 <div dir="ltr" class="diff-viewer" bind:clientWidth={width} aria-label={`Diff for ${change.path.relative_path}`}>
     <div class="diff-leading-fold" bind:this={leadingFold}></div>
     <!-- svelte-ignore a11y_no_static_element_interactions (the menu is also reachable from the Annotations view and the hunk menu) -->
-    <div class="diff-content" bind:this={host} on:contextmenu={lineMenu}></div>
+    <div class="diff-content" bind:this={host} oncontextmenu={lineMenu}></div>
     <DiffScrollbars columns={scrollColumns} />
 </div>
 
