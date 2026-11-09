@@ -113,13 +113,37 @@ describe("workspace complex-state acceptance", () => {
         await ctx.page.keyboard.press("Tab");
         let checked = 0;
         for (let i = 0; i < 8; i++) {
-            let state = await ctx.page.evaluate(() => {
+            let state = await ctx.page.evaluate(async () => {
                 let element = document.activeElement as HTMLElement;
+                await Promise.all(element.getAnimations().map(animation => animation.finished));
                 let box = element.getBoundingClientRect();
                 let style = getComputedStyle(element);
                 let ring = getComputedStyle(element, "::before");
                 let insetFocus = element.matches(":focus-visible") && ring.content !== "none" && ring.borderStyle === "solid" && parseFloat(ring.borderWidth) >= 2;
-                return { tag: element.tagName, name: element.getAttribute("aria-label") ?? element.textContent?.trim().slice(0, 80), width: box.width, height: box.height, top: box.top, bottom: box.bottom, left: box.left, right: box.right, inert: !!element.closest("[inert], [aria-hidden=true]"), outline: style.outlineStyle, shadow: style.boxShadow, insetFocus };
+                let fieldFocus = false;
+                let fieldDiagnostic: unknown = { visible: element.matches(":focus-visible"), border: style.borderColor, background: style.backgroundColor };
+                if (element.matches("input:focus-visible, textarea:focus-visible, select:focus-visible")) {
+                    let border = style.borderColor, background = style.backgroundColor;
+                    element.blur();
+                    await Promise.all(element.getAnimations().map(animation => animation.finished));
+                    let restingBorder = getComputedStyle(element).borderColor;
+                    element.focus({ preventScroll: true });
+                    await Promise.all(element.getAnimations().map(animation => animation.finished));
+                    let canvas = document.createElement("canvas").getContext("2d")!;
+                    let luminance = (color: string) => {
+                        canvas.fillStyle = color; canvas.fillRect(0, 0, 1, 1);
+                        let channels = [...canvas.getImageData(0, 0, 1, 1).data].slice(0, 3).map(channel => {
+                            let value = channel / 255;
+                            return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+                        });
+                        return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+                    };
+                    let a = luminance(border), b = luminance(background);
+                    let ratio = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+                    fieldDiagnostic = { border, restingBorder, ratio };
+                    fieldFocus = border !== restingBorder && ratio >= 3;
+                }
+                return { fieldFocus, fieldDiagnostic, tag: element.tagName, name: element.getAttribute("aria-label") ?? element.textContent?.trim().slice(0, 80), width: box.width, height: box.height, top: box.top, bottom: box.bottom, left: box.left, right: box.right, inert: !!element.closest("[inert], [aria-hidden=true]"), outline: style.outlineStyle, shadow: style.boxShadow, insetFocus };
             });
             if (state.tag === "BODY") break; // Tab may leave document for browser chrome.
             checked++;
@@ -130,7 +154,7 @@ describe("workspace complex-state acceptance", () => {
             expect(state.bottom).toBeGreaterThan(0);
             expect(state.left).toBeLessThan(320);
             expect(state.right).toBeGreaterThan(0);
-            expect(state.outline !== "none" || state.shadow !== "none" || state.insetFocus, JSON.stringify(state)).toBe(true);
+            expect(state.outline !== "none" || state.shadow !== "none" || state.insetFocus || state.fieldFocus, JSON.stringify(state)).toBe(true);
             await ctx.page.keyboard.press("Tab");
         }
         expect(checked).toBeGreaterThanOrEqual(3);

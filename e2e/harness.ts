@@ -20,9 +20,17 @@ export interface TestContext {
 export async function createContext(): Promise<TestContext> {
     let browser = await chromium.launch({ headless: true, executablePath: process.env.GG_TEST_BROWSER || undefined });
     let page = await browser.newPage();
+    page.setDefaultTimeout(10_000);
     let tempDir = await mkdtemp(join(tmpdir(), "gg-test-"));
     let dataDir = await mkdtemp(join(tmpdir(), "gg-data-"));
     return { browser, page, tempDir, dataDir, ggProcess: null };
+}
+
+export async function closeView(page: Page, name: string): Promise<void> {
+    let close = page.getByRole("button", { name: `Close ${name}`, exact: true });
+    // desktop close actions appear when the pointer enters the tab pill.
+    await close.locator("..").hover();
+    await close.click();
 }
 
 export async function destroyContext(ctx: TestContext): Promise<void> {

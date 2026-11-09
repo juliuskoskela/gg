@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+import { closeView, createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
 
 describe("GG+ workspace", () => {
     let ctx: TestContext;
@@ -67,13 +67,13 @@ describe("GG+ workspace", () => {
         if (!await ctx.page.getByRole("textbox", { name: "Revision description" }).isVisible()) await ctx.page.getByRole("button", { name: "Edit revision description" }).click();
         let editor = ctx.page.getByRole("textbox", { name: "Revision description" });
         await editor.fill("Draft preserved while browsing history");
-        await ctx.page.getByRole("button", { name: "Close Description", exact: true }).click();
+        await closeView(ctx.page, "Description");
         expect(await ctx.page.locator(".description-panel").count()).toBe(0);
         expect(await ctx.page.getByRole("group", { name: "Revision actions", exact: true }).count()).toBe(0);
         await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
         await ctx.page.getByRole("menuitemcheckbox", { name: "Description", exact: true }).click();
         await expect.poll(() => editor.inputValue()).toBe("Draft preserved while browsing history");
-        await ctx.page.getByRole("button", { name: "Close Timeline", exact: true }).click();
+        await closeView(ctx.page, "Timeline");
         expect(await ctx.page.locator(".graph").count()).toBe(0);
         await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
         await ctx.page.getByRole("menuitemcheckbox", { name: "Timeline", exact: true }).click();
@@ -98,9 +98,11 @@ describe("GG+ workspace", () => {
         await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
         await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools", exact: true }).click();
         await ctx.page.locator(".revision-tools").waitFor();
-        expect(await ctx.page.locator(".revision-tools button").count()).toBe(13);
+        for (let name of ["Copy change ID", "Copy commit ID", "New child", "Abandon"]) {
+            expect(await ctx.page.locator(".revision-tools").getByRole("button", { name, exact: true }).count()).toBe(1);
+        }
         expect(await ctx.page.locator(".overview .revision-tools, .overview .revision-actions").count()).toBe(0);
-        await ctx.page.getByRole("button", { name: "Close Revision tools", exact: true }).click();
+        await closeView(ctx.page, "Revision tools");
         expect(await ctx.page.locator(".revision-tools").count()).toBe(0);
         expect(await ctx.page.getByRole("textbox", { name: "Revision description", exact: true }).isVisible()).toBe(true);
         let gutters = await ctx.page.locator(".timeline-section").evaluate(node => {
@@ -138,7 +140,7 @@ describe("GG+ workspace", () => {
         let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("no-such-file");
         expect(await files.textContent()).toContain("No matching files");
-        await ctx.page.getByRole("button", { name: "Close Files", exact: true }).click();
+        await closeView(ctx.page, "Files");
         expect(await files.count()).toBe(0);
         await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
         await ctx.page.getByRole("menuitemcheckbox", { name: "Files", exact: true }).click();
@@ -156,7 +158,7 @@ describe("GG+ workspace", () => {
         await ctx.page.locator(".description-panel .revision-heading").waitFor();
         let views = ctx.page.getByRole("button", { name: "Views", exact: true });
         let viewsPosition = (await views.boundingBox())!;
-        await ctx.page.getByRole("button", { name: "Close Files", exact: true }).click();
+        await closeView(ctx.page, "Files");
         await views.click();
         await ctx.page.getByRole("menuitemcheckbox", { name: "Files", exact: true }).click();
         let viewsBounds = (await views.boundingBox())!;
@@ -196,7 +198,7 @@ describe("GG+ workspace", () => {
         let files = ctx.page.getByRole("complementary", { name: "Changed files", exact: true });
         await files.waitFor();
         let originalPanel = await files.elementHandle();
-        let search = files.getByRole("searchbox", { name: "Filter changed files" });
+        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("no-such-file");
         await ctx.page.getByRole("button", { name: "Expand repository navigation" }).click();
         expect(await files.isVisible()).toBe(true);
@@ -212,7 +214,7 @@ describe("GG+ workspace", () => {
         let diffBounds = (await ctx.page.locator(".file-review").boundingBox())!;
         expect(treeBounds.x + treeBounds.width).toBeLessThanOrEqual(diffBounds.x + 1);
 
-        await ctx.page.getByRole("button", { name: "Close Files", exact: true }).click();
+        await closeView(ctx.page, "Files");
         await ctx.page.getByRole("button", { name: "Expand repository navigation" }).click();
         expect(await files.count()).toBe(0);
         await ctx.page.locator(".file-path button").first().click();
@@ -241,7 +243,7 @@ describe("GG+ workspace", () => {
         let filter = ctx.page.getByRole("textbox", { name: "Filter revisions with a revset" });
         await filter.fill("yvtwywll");
         await filter.press("Tab");
-        await ctx.page.locator('.graph button[id^="Revision-"]').filter({ hasText: "yvtwywll" }).first().click();
+        await ctx.page.locator(".graph").getByRole("option").filter({ hasText: "yvtwywll" }).first().click();
         await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
         let files = ctx.page.getByRole("complementary", { name: "Changed files", exact: true });
         await files.waitFor();
@@ -250,7 +252,7 @@ describe("GG+ workspace", () => {
         expect(panel.x).toBeGreaterThanOrEqual(dock.x);
         expect(panel.x + panel.width).toBeLessThanOrEqual(dock.x + dock.width + 1);
         expect(await ctx.page.getByRole("dialog", { name: "Changed files" }).count()).toBe(0);
-        let search = files.getByRole("searchbox", { name: "Filter changed files" });
+        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
         await search.press("Escape");
         expect(await files.isVisible()).toBe(true);
         let file = files.getByRole("option").first();
