@@ -14,6 +14,7 @@
     export let heading: string | null = null;
     export let x: number;
     export let y: number;
+    export let placement: "pointer" | "above-end" = "pointer";
     export let onClose: () => void;
     let menuElement: HTMLDivElement;
     let previous = document.activeElement as HTMLElement | null;
@@ -68,8 +69,10 @@
     $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? (views ? "All views are open" : "No actions available")) : null;
     $: if (menuElement) {
         let rect = menuElement.getBoundingClientRect();
-        menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
-        menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
+        let left = placement === "above-end" ? x - rect.width : x;
+        let top = placement === "above-end" ? y - rect.height - 4 : y;
+        menuElement.style.left = `${Math.max(8, Math.min(left, window.innerWidth - rect.width - 8))}px`;
+        menuElement.style.top = `${Math.max(8, Math.min(top, window.innerHeight - rect.height - 8))}px`;
     }
 </script>
 <svelte:window on:click={onClose} on:blur={onClose} on:resize={onClose} />

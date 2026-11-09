@@ -80,10 +80,10 @@ describe("Settings dock and repository actions", () => {
         expect(page.url()).toBe(routeBefore);
         expect(await page.locator('[aria-label="Settings preferences"]').isVisible()).toBe(true);
         expect(await page.getByRole("heading", { name: "Browser zoom", exact: true }).isVisible()).toBe(true);
-        expect(await page.getByRole("button", { name: "More repository actions", exact: true }).count()).toBe(0);
+        expect(await page.getByRole("button", { name: "More repository actions", exact: true }).count()).toBe(1);
         expect(await page.getByRole("dialog", { name: "Repository navigation", exact: true, includeHidden: true }).count()).toBe(width < 768 ? 1 : 0);
         if (width < 768) expect(await page.getByRole("dialog", { name: "Repository navigation", exact: true }).isVisible()).toBe(false);
-        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "Refresh repository", "Commands"]) {
+        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "More repository actions"]) {
             let button = page.getByRole("button", { name, exact: true });
             expect(await button.isVisible()).toBe(true);
             let box = (await button.boundingBox())!;
@@ -136,9 +136,11 @@ describe("Settings dock and repository actions", () => {
     it.each(["pointer", "escape", "keyboard"])("restores Commands focus without carrying a mouse-opened input ring: %s", async mode => {
         await page.setViewportSize({ width: 1440, height: 960 });
         await page.goto(`${url}/?panel=settings`);
-        let commands = page.getByRole("button", { name: "Commands", exact: true });
+        let commands = page.getByRole("button", { name: "More repository actions", exact: true });
         if (mode === "keyboard") { await commands.focus(); await commands.press("Enter"); }
         else await commands.click();
+        if (mode === "keyboard") { await page.keyboard.press("End"); await page.keyboard.press("Enter"); }
+        else await page.getByRole("menuitem", { name: "Commands…", exact: true }).click();
         let dialog = page.getByRole("dialog", { name: "Commands", exact: true });
         await dialog.waitFor();
         await dialog.getByRole("textbox").pressSequentially("view history");

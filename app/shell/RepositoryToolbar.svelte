@@ -1,9 +1,11 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, tick } from "svelte";
     import { mutationPending } from "../operations";
     import SelectWidget from "../controls/SelectWidget.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Icon from "../controls/Icon.svelte";
+    import ContextMenu from "../controls/ContextMenu.svelte";
+    import type { Command } from "../commands/registry";
     import IdSpan from "../controls/IdSpan.svelte";
     import { repositoryCommands } from "../commands/registry";
     import type { Operand } from "../messages/Operand";
@@ -17,6 +19,24 @@
     export let refreshing = false;
     export let onRefresh: () => void;
     let remoteName = "";
+    let moreOpen = false;
+    let moreX = 0;
+    let moreY = 0;
+    let moreButton: HTMLButtonElement;
+    $: overflowCommands = repositoryCommands(remoteName, $currentMutation, $mutationPending, $repoConfigEvent, $repoStatusEvent, $ignoreToggled)
+        .filter(command => !["repository.fetch", "repository.push", "repository.undo", "repository.redo"].includes(command.id))
+        .map(command => command.id === "repository.refresh" ? { ...command, reason: refreshing ? "Refreshing repository" : command.reason } : command);
+    $: moreCommands = [...overflowCommands, {
+        id: "repository.commands", label: "Commands…", icon: "command", scope: "Repository", group: 1, reason: null,
+        execute: async () => { moreOpen = false; await tick(); moreButton.focus(); window.dispatchEvent(new Event("gg:open-commands")); },
+    } satisfies Command];
+    function toggleMore() {
+        if (moreOpen) { moreOpen = false; return; }
+        let bounds = moreButton.getBoundingClientRect();
+        moreX = bounds.right;
+        moreY = bounds.top;
+        moreOpen = true;
+    }
     $: remotes = $repoConfigEvent.type === "Workspace" ? $repoConfigEvent.git_remotes : [];
     $: if (!remotes.includes(remoteName)) remoteName = remotes[0] ?? "";
     $: remoteOptions = remotes.length ? remotes.map(value => ({ value })) : [{ value: "", label: "No remote" }];
@@ -70,15 +90,16 @@
     <div class="sync-actions" role="group" aria-label="Remote synchronization">
         <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || busy} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
         <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || busy} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
+        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}><svelte:fragment let:option>{option.value || "No remote"}</svelte:fragment></SelectWidget></div>
     </div>
     <div class="history-actions" role="group" aria-label="Operation history">
         <ActionWidget secondary tip="Undo the latest operation" disabled={busy} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
-        <span class="secondary-history"><ActionWidget secondary tip="Redo the latest undone operation" disabled={!!redoReason} disabledReason={redoReason} onClick={onRedo}><Icon name="rotate-cw" /> <span class="action-label">Redo</span></ActionWidget>
-        <ActionWidget secondary tip="Refresh repository" disabled={refreshing || busy} onClick={onRefresh}><Icon name="refresh-cw" /></ActionWidget></span>
+        <ActionWidget secondary tip="Redo the latest undone operation" disabled={!!redoReason} disabledReason={redoReason} onClick={onRedo}><Icon name="rotate-cw" /> <span class="action-label">Redo</span></ActionWidget>
     </div>
-    <button class="commands-button" type="button" aria-label="Commands" on:click={() => window.dispatchEvent(new Event("gg:open-commands"))}><Icon name="command" /><span class="action-label">Commands</span></button>
-    <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}><svelte:fragment let:option>{option.value || "No remote"}</svelte:fragment></SelectWidget></div>
+    <button class="more-button" type="button" aria-label="More repository actions" title="More repository actions" aria-haspopup="menu" aria-expanded={moreOpen} bind:this={moreButton} on:click|stopPropagation={toggleMore} on:keydown={event => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); if (!moreOpen) toggleMore(); } }}><Icon name="more-horizontal" /></button>
 </div>
+
+{#if moreOpen}<ContextMenu items={moreCommands} views={false} heading="Repository actions" placement="above-end" x={moreX} y={moreY} onClose={() => moreOpen = false} />{/if}
 
 {#if dropHint}
     <div role="status" class="drag-bar" class:target class:maybe>
@@ -97,36 +118,32 @@
 {/if}
 
 <style>
-    .repository-toolbar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--tool-group-gap); padding: 0; background: transparent; border: 0; border-radius: var(--radius-control); box-shadow: none; pointer-events: auto; min-width: 0; }
-    .commands-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); border: 0; border-radius: var(--radius-control); padding: 5px var(--control-padding-inline); background: transparent; color: var(--text); line-height: 20px; cursor: pointer; }
-    @media (hover: hover) { .commands-button:hover { background: var(--hover); } }
-    .commands-button:active { background: var(--control-pressed); }
-    /* proximity carries the grouping: related actions touch, groups get the wider gap */
-    .repository-toolbar { gap: 20px; }
-    .sync-actions, .history-actions { display: flex; align-items: center; gap: 2px; min-width: 0; flex-wrap: nowrap; }
+    .repository-toolbar { display: flex; align-items: center; gap: var(--tool-group-gap); width: 100%; min-width: 0; pointer-events: auto; }
+    .sync-actions, .history-actions { display: flex; align-items: center; gap: 2px; min-width: 0; }
+    .history-actions { margin-inline-start: auto; }
+    .remote-select { width: 104px; min-width: 0; margin-inline-start: 4px; }
     .remote-select :global(select) { height: var(--control-height); padding-block: 0; }
     .remote-select :global(.select-trigger) { min-height: 0; height: 100%; padding-block: 0; }
-    .remote-select { width: 104px; min-width: 0; }
-    .repository-toolbar :global(button:not(.select-trigger)) { font-size: var(--type-ui); max-width: 100%; }
-    .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .commands-button { height: var(--control-height); }
-    .secondary-history { display: contents; }
-    .drag-bar { position: fixed; inset-block-end: 16px; inset-inline: 16px; margin-inline: auto; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-surface); box-shadow: var(--shadow-float); z-index: 60; font-size: 13px; pointer-events: none; }
+    .repository-toolbar :global(button:not(.select-trigger)) { font: var(--font-body); }
+    .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .more-button { height: var(--control-height); }
+    .more-button { display: grid; place-items: center; flex: none; width: var(--control-height); min-width: 28px; min-height: 28px; padding: 4px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; }
+    .more-button[aria-expanded="true"] { background: var(--interaction-selected); }
+    @media (hover: hover) { .more-button:hover { background: var(--hover); } }
+    .more-button:active { background: var(--control-pressed); }
+    .drag-bar { position: fixed; inset-block-end: calc(var(--repository-footer-height, 40px) + env(safe-area-inset-bottom) + 16px); inset-inline: 16px; margin-inline: auto; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-surface); box-shadow: var(--shadow-float); z-index: 60; font: var(--font-body); pointer-events: none; }
     .drag-bar.target { color: var(--text); }
     .drag-bar.maybe { color: var(--warning); }
-    @media (pointer: coarse), (max-width: 600px) {
-        .repository-toolbar :global(button:not(.select-trigger)) { min-height: 44px; }
-        .repository-toolbar :global(button:not(.select-trigger)) { min-width: 44px; }
-        .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .commands-button { height: 44px; }
-    }
     @media (max-width: 1100px) { .action-label { display: none; } }
-    @media (max-width: 600px) {
-        /* one row of actions; the narrowest screens scroll it rather than stacking a third chrome row */
-        .repository-toolbar { flex: 0 1 auto; flex-wrap: nowrap; gap: 2px; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-inline-start: auto; }
-        .repository-toolbar::-webkit-scrollbar { display: none; }
-        .sync-actions, .history-actions { gap: 0; flex-shrink: 0; }
-        .remote-select { width: 92px; flex-shrink: 0; }
+    @media (pointer: coarse), (max-width: 600px) {
+        .repository-toolbar { gap: 8px; }
+        .repository-toolbar :global(button:not(.select-trigger)) { min-height: 44px; min-width: 44px; }
+        .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .more-button { height: 44px; }
+        .remote-select { width: 92px; }
         .remote-select :global(select) { height: 44px; }
     }
-    /* a faded trailing edge says the row continues */
-    @media (max-width: 380px) { .repository-toolbar { mask-image: linear-gradient(to left, transparent, black 24px); } }
+    @media (max-width: 350px) {
+        .repository-toolbar { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+        .sync-actions { grid-column: 1 / -1; }
+        .history-actions { margin-inline-start: 0; }
+    }
 </style>

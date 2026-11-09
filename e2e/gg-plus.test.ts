@@ -56,7 +56,8 @@ describe("GG+ workspace", () => {
         await empty.waitFor();
         expect((await empty.boundingBox())!.y).toBeLessThan((await ctx.page.locator(".graph-body").boundingBox())!.y + (await ctx.page.locator(".graph-body").boundingBox())!.height);
         await ctx.page.route("**/api/query/query_snapshot", route => route.fulfill({ status: 503, body: "Snapshot temporarily unavailable" }));
-        await ctx.page.getByRole("button", { name: "Refresh repository", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "More repository actions", exact: true }).click();
+        await ctx.page.getByRole("menuitem", { name: "Refresh repository", exact: true }).click();
         await ctx.page.getByRole("alert").waitFor();
         expect((await ctx.page.locator(".workspace-content").boundingBox())!.height).toBeGreaterThan(300);
     });
@@ -225,8 +226,9 @@ describe("GG+ workspace", () => {
     it("keeps repository actions discoverable in phone commands", async () => {
         await ctx.page.setViewportSize({ width: 320, height: 740 });
         await ctx.page.goto(await startGG(ctx));
-        let trigger = ctx.page.getByRole("button", { name: "Commands", exact: true });
+        let trigger = ctx.page.getByRole("button", { name: "More repository actions", exact: true });
         await trigger.click();
+        await ctx.page.getByRole("menuitem", { name: "Commands…", exact: true }).click();
         let commands = ctx.page.getByRole("dialog", { name: "Commands" });
         for (let name of [/Fetch remote bookmarks/, /Push all bookmarks/, /Undo/]) {
             expect(await commands.getByRole("button", { name }).isVisible()).toBe(true);

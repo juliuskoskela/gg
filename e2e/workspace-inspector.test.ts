@@ -283,7 +283,7 @@ describe("compact workspace inspector", () => {
         await search.fill("migration-step-00");
         await ctx.page.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
         let command = async () => {
-            await ctx.page.getByRole("button", { name: "Commands", exact: true }).click();
+            await ctx.page.keyboard.press("Control+k");
             let palette = ctx.page.getByRole("dialog", { name: "Commands" });
             await palette.getByRole("textbox", { name: "Commands" }).fill("Move file changes to");
             await palette.getByRole("button", { name: /Move file changes to/ }).click();
@@ -333,7 +333,7 @@ describe("compact workspace inspector", () => {
         await actions.getByRole("option").first().click();
         let before = await getPaths();
         let openMove = async () => {
-            await ctx.page.getByRole("button", { name: "Commands", exact: true }).click();
+            await ctx.page.keyboard.press("Control+k");
             let palette = ctx.page.getByRole("dialog", { name: "Commands" });
             await palette.getByRole("textbox", { name: "Commands" }).fill("Move hunk changes to");
             await palette.getByRole("button", { name: /Move hunk changes to/ }).click();
@@ -378,7 +378,7 @@ describe("compact workspace inspector", () => {
         let bookmark = ctx.page.locator(".graph").getByRole("option", { name: /^main;/ });
         await bookmark.click();
         let openMove = async () => {
-            await ctx.page.getByRole("button", { name: "Commands", exact: true }).click();
+            await ctx.page.keyboard.press("Control+k");
             let palette = ctx.page.getByRole("dialog", { name: "Commands" });
             await palette.getByRole("textbox", { name: "Commands" }).fill("Move bookmark to");
             await palette.getByRole("button", { name: /Move bookmark to/ }).click();
@@ -424,7 +424,7 @@ describe("compact workspace inspector", () => {
         };
         let after = await queryCurrent();
         expect(after).not.toBe(before.commit.hex);
-        await ctx.page.getByRole("button", { name: "Commands", exact: true }).click();
+        await ctx.page.keyboard.press("Control+k");
         let commands = ctx.page.getByRole("dialog", { name: "Commands" });
         await commands.getByRole("textbox", { name: "Commands" }).fill("Refresh repository");
         await commands.getByRole("button", { name: /Refresh repository/ }).click();

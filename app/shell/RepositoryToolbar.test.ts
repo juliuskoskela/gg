@@ -39,9 +39,10 @@ describe("repository toolbar and commands", () => {
         repoConfigEvent.set({ ...workspace, git_remotes: [] }); repoStatusEvent.set(workspace.status);
         let opened = vi.fn(); window.addEventListener("gg:open-commands", opened);
         let { getByRole, queryByRole } = render(Toolbar, { props: { target: false, onRefresh: () => {} } });
-        expect(queryByRole("button", { name: "More repository actions" })).toBeNull();
-        await fireEvent.click(getByRole("button", { name: "Commands" }));
-        expect(opened).toHaveBeenCalledOnce();
+        expect(queryByRole("button", { name: "Commands" })).toBeNull();
+        await fireEvent.click(getByRole("button", { name: "More repository actions" }));
+        await fireEvent.click(getByRole("menuitem", { name: "Commands…" }));
+        await waitFor(() => expect(opened).toHaveBeenCalledOnce());
         expect(repositoryCommands().find(c => c.id === "repository.push")?.reason).toBe("No Git remote configured");
         expect(repositoryCommands().find(c => c.id === "repository.redo")?.reason).toBe("Nothing to redo");
         let redo = getByRole("button", { name: "Redo the latest undone operation" }) as HTMLButtonElement;

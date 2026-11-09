@@ -65,7 +65,8 @@ describe("redo after an external jj undo", () => {
         expect(external?.operation_description).toMatch(/^undo: restore to operation /);
         expect(external?.can_redo).toBe(true);
 
-        await ctx.page.getByRole("button", { name: "Refresh repository", exact: true }).click();
+        await ctx.page.getByRole("button", { name: "More repository actions", exact: true }).click();
+        await ctx.page.getByRole("menuitem", { name: "Refresh repository", exact: true }).click();
         await expect.poll(() => redo.isEnabled()).toBe(true);
         expect(await redo.isVisible()).toBe(true);
         await redo.click();
@@ -79,7 +80,7 @@ describe("redo after an external jj undo", () => {
     it.each([1024, 390, 320])("keeps primary repository actions visible at %ipx", async width => {
         await ctx.page.setViewportSize({ width, height: 960 });
         await ctx.page.goto(`${url}/?inspect=@`);
-        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "Refresh repository", "Commands"]) {
+        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "More repository actions"]) {
             let action = ctx.page.getByRole("button", { name, exact: true });
             await expect.poll(() => action.isVisible()).toBe(true);
             let box = (await action.boundingBox())!;
@@ -88,7 +89,7 @@ describe("redo after an external jj undo", () => {
         }
         expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         if (width === 1024) expect((await ctx.page.locator(".workspace-topbar").boundingBox())?.height).toBe(40);
-        expect(await ctx.page.getByRole("button", { name: "More repository actions" }).count()).toBe(0);
+        expect(await ctx.page.getByRole("button", { name: "More repository actions" }).count()).toBe(1);
         let remote = ctx.page.getByRole("combobox", { name: "Git remote" });
         expect(await remote.isVisible()).toBe(true);
         if (width <= 600) return;
