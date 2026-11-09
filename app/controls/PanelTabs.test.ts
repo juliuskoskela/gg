@@ -23,6 +23,16 @@ describe("panel header tabs", () => {
         expect(onSelect).not.toHaveBeenCalled();
         expect(getByRole("tab", { name: "Diff" }).getAttribute("aria-selected")).toBe("true");
     });
+    it("selects once from either the tab label or its surrounding pill", async () => {
+        let onSelect = vi.fn();
+        let { getByRole } = render(PanelTabs, { items, active: "diff", onSelect });
+        let tab = getByRole("tab", { name: "Edit" });
+        await fireEvent.click(tab.parentElement!);
+        expect(onSelect).toHaveBeenCalledExactlyOnceWith("edit");
+        onSelect.mockClear();
+        await fireEvent.click(tab);
+        expect(onSelect).toHaveBeenCalledExactlyOnceWith("edit");
+    });
     it("supports deleting the focused tab", async () => {
         let onClose = vi.fn(), onSelect = vi.fn();
         let { getByRole } = render(PanelTabs, { items, active: "diff", onSelect, onClose });

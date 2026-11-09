@@ -99,14 +99,15 @@
         <div class="panel-tabs-bar" data-panel-bar>
             <div class="panel-tabs" use:observeTabs role="tablist" aria-label={label}>
                 {#each items as item, index (item.id)}
-                    <div class="panel-tab-item" class:closable={!!onClose} class:active={active === item.id} role="presentation">
+                    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions (the inner tab owns keyboard activation; its padding is also clickable) -->
+                    <div class="panel-tab-item" class:closable={!!onClose} class:active={active === item.id} role="presentation" on:click={() => onSelect(item.id)}>
                         <!-- svelte-ignore a11y_interactive_supports_focus (roving focus is managed by the tabs) -->
                         <div class="panel-tab" role="tab" id="{prefix}-tab-{item.id}" data-panel-handle tabindex={active === item.id ? 0 : -1}
                             aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
                             use:panelDraggable={{ id: item.id as PanelId, enabled: draggable, move: onMove }}
                             aria-describedby={draggable ? `${prefix}-drag-help-${items[0]?.id}` : undefined}
                             on:focus={() => void revealActive(item.id)}
-                            on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, index)}>
+                            on:keydown={event => keydown(event, index)}>
                             <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
                         </div>
                         {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click|stopPropagation={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
