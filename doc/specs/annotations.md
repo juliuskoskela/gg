@@ -15,9 +15,11 @@ Every annotation is the root of a thread. Its first post is the note; later post
 
 ## Agents and the command line
 
-`gg annotations` (alias `gg notes`) reads and answers notes without opening the app. It finds the repository from the current directory, or from `-R <path>`.
+`gg annotations` (alias `gg notes`) reads and writes notes without opening the app. It finds the repository from the current directory, or from `-R <path>`.
 
 ```sh
+gg annotations create [<text> | -] [--revision <revset> | --bookmark <name>] [--file <path>] [--lines <start-end>] [--side old|new] [--agent <name>] [--json]
+gg annotations edit <note> [<text> | -] [--post <id>] [--agent <name>] [--json]
 gg annotations list [--all] [--json]
 gg annotations show <note> [--json]
 gg annotations export [<note>...]        # markdown, all open notes by default
@@ -26,7 +28,20 @@ gg annotations resolve <note>
 gg annotations reopen <note>
 ```
 
-A note id may be shortened to any unambiguous prefix. Replies read standard input when the text is `-` or omitted. Without `--agent`, the author is the jj user. The open Annotations view picks up replies within a few seconds. Each thread has **Copy for agent**; this copies context locally and does not dispatch work. Agent replies can include model and reported-risk metadata; see [the local agent loop](annotation-agent-loop.md) for flags, limits and the review flow.
+A note id may be shortened to any unambiguous prefix. Create, edit and reply read standard input when the text is `-` or omitted. Without `--agent`, the author is the jj user. The open Annotations view picks up replies within a few seconds. Each thread has **Copy for agent**; this copies context locally and does not dispatch work. Agent replies can include model and reported-risk metadata; see [the local agent loop](annotation-agent-loop.md) for flags, limits and the review flow.
+
+Creation defaults to `@`; a revision expression must resolve to exactly one commit.
+`--change` is an alias for `--revision`. Bookmark targets use an exact local name;
+file paths are relative to the workspace root. A line range is inclusive and its
+quote is read from the retained commit (`--side old` uses its merged parent tree).
+Invalid paths, binary/conflicted line content and out-of-bounds ranges fail before
+creating a thread. These commands do not snapshot or rewrite repository history;
+run `jj status` first if you want to capture current working files. Creation
+refuses concurrent operation heads and asks you to resolve them with jj first.
+
+Editing defaults to the opening post. `--post` selects one exact post or an
+unambiguous prefix within the thread. The existing author check still applies,
+and editing preserves the post's original author and agent metadata.
 
 ## Anchors
 
@@ -72,4 +87,4 @@ Note bodies may come from agents or other tools. Markdown is sanitized: no scrip
 
 This is the core layer. A plugin could build forge reviews on it, for example syncing threads with Tangled or GitHub. The plugin would supply what only the forge knows, such as merges and remote comments. It would record that as events and relocations, never by editing notes directly. Review mode (PR #14) predates this layer; moving it onto these anchors and threads is follow-up work.
 
-Not included yet: markers in the diff gutter, editing from the command line, and creating notes from the command line.
+Markers in the diff gutter are tracked separately in issue #20.

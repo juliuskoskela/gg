@@ -118,6 +118,21 @@ impl From<BackendError> for RevsetError {
 
 impl WorkerSession {
     pub async fn load_workspace(&mut self, cwd: &Path) -> Result<WorkspaceSession<'_>> {
+        self.load_workspace_internal(cwd, false).await
+    }
+
+    pub(crate) async fn load_workspace_readonly(
+        &mut self,
+        cwd: &Path,
+    ) -> Result<WorkspaceSession<'_>> {
+        self.load_workspace_internal(cwd, true).await
+    }
+
+    async fn load_workspace_internal(
+        &mut self,
+        cwd: &Path,
+        readonly: bool,
+    ) -> Result<WorkspaceSession<'_>> {
         let factory = DefaultWorkspaceLoaderFactory;
         let loader = factory.create(find_workspace_dir(cwd))?;
 
@@ -144,7 +159,24 @@ impl WorkerSession {
             query_choices: preset_choices,
         };
 
-        let operation = load_at_head(&workspace, &data).await?;
+        let operation = if readonly {
+            let loader = workspace.repo_loader();
+            let heads = loader.op_heads_store().get_op_heads().await?;
+            let [head] = heads.as_slice() else {
+                return Err(anyhow!(
+                    "Concurrent repository operations must be resolved first. Run `jj status`, then retry creating the note."
+                ));
+            };
+            let op = Operation::new(
+                loader.op_store().clone(),
+                head.clone(),
+                loader.op_store().read_operation(head).await?,
+            );
+            let repo = loader.load_at(&op).await?;
+            OperationData::new(workspace.workspace_name(), &data, repo)
+        } else {
+            load_at_head(&workspace, &data).await?
+        };
 
         let index_store = workspace.repo_loader().index_store();
         let index = index_store

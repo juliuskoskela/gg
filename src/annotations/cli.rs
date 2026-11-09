@@ -1,8 +1,11 @@
-//! `gg annotations`: read and answer notes without opening the app, so an
+//! `gg annotations`: read and write notes without opening the app, so an
 //! agent can reply in the exact context a person asked about.
 
 use std::io::{IsTerminal as _, Read as _};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use pollster::FutureExt as _;
 
 use anyhow::{Context, Result, anyhow, bail};
 use jj_lib::settings::UserSettings;
@@ -10,11 +13,46 @@ use jj_lib::settings::UserSettings;
 use super::{AnnotationStore, describe_anchor, export_markdown, short_id};
 use crate::messages::annotation_agents::{AgentIdentity, AgentRiskScore, AnnotationMetadata};
 use crate::messages::annotations::{
-    AnnotationAuthor, AnnotationStatus, AnnotationThread, AuthorKind,
+    AnnotationAuthor, AnnotationStatus, AnnotationThread, AuthorKind, LineSide,
 };
 
 #[derive(clap::Subcommand, Debug)]
 pub enum Action {
+    /// Start a thread at one retained revision, bookmark, file or line range.
+    Create {
+        text: Option<String>,
+        /// Revision or revset resolving to one commit (defaults to @).
+        #[arg(long, alias = "change", conflicts_with = "bookmark")]
+        revision: Option<String>,
+        /// Exact local bookmark name.
+        #[arg(long)]
+        bookmark: Option<String>,
+        /// File path relative to the workspace root.
+        #[arg(long)]
+        file: Option<String>,
+        /// One line or inclusive START-END range in the retained file.
+        #[arg(long, requires = "file")]
+        lines: Option<String>,
+        /// Side of the revision diff to read the file from.
+        #[arg(long, default_value = "new", value_parser = ["old", "new"])]
+        side: String,
+        #[arg(long)]
+        agent: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Edit your opening text, or a specific post selected with --post.
+    Edit {
+        id: String,
+        text: Option<String>,
+        /// Exact post id or unique prefix; defaults to the opening post.
+        #[arg(long)]
+        post: Option<String>,
+        #[arg(long)]
+        agent: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
     /// List notes, newest activity first.
     List {
         /// Include resolved notes.
@@ -73,6 +111,74 @@ pub fn run(workspace: Option<&Path>, settings: &UserSettings, action: Action) ->
     let store = open(workspace)?;
     let author = |agent: Option<String>| author(settings, agent);
     match action {
+        Action::Create {
+            text,
+            revision,
+            bookmark,
+            file,
+            lines,
+            side,
+            agent,
+            json,
+        } => {
+            let root = workspace_root(workspace)?;
+            let mut session = crate::worker::WorkerSession::new(
+                Arc::new(SilentSink),
+                Some(root.clone()),
+                settings.clone(),
+                false,
+                false,
+            );
+            let ws = session.load_workspace_readonly(&root).block_on()?;
+            let target = crate::worker::annotation_targets::resolve(
+                &ws,
+                crate::worker::annotation_targets::TargetQuery {
+                    revision: revision.as_deref().unwrap_or("@"),
+                    bookmark: bookmark.as_deref(),
+                    file: file.as_deref(),
+                    lines: lines.as_deref(),
+                    side: if side == "old" {
+                        LineSide::Old
+                    } else {
+                        LineSide::New
+                    },
+                },
+            )
+            .block_on()?;
+            let body = read_body(text)?;
+            let thread = store.create(vec![target], ws.name().as_str(), author(agent), &body)?;
+            print_result(&thread, json, "Created")?;
+        }
+        Action::Edit {
+            id,
+            text,
+            post,
+            agent,
+            json,
+        } => {
+            let thread = store.get(&id)?;
+            let post = match post {
+                None => thread
+                    .posts
+                    .first()
+                    .context("The thread has no opening post")?
+                    .id
+                    .clone(),
+                Some(prefix) => {
+                    let matches: Vec<_> = thread
+                        .posts
+                        .iter()
+                        .filter(|post| post.id.starts_with(&prefix))
+                        .collect();
+                    let [post] = matches.as_slice() else {
+                        bail!("The post id must identify one post in this thread");
+                    };
+                    post.id.clone()
+                }
+            };
+            let thread = store.edit(&id, &post, author(agent), &read_body(text)?)?;
+            print_result(&thread, json, "Edited")?;
+        }
         Action::List { all, json } => {
             let threads: Vec<AnnotationThread> = store
                 .list()?
@@ -128,10 +234,7 @@ pub fn run(workspace: Option<&Path>, settings: &UserSettings, action: Action) ->
             risk_explanation,
             json,
         } => {
-            let body = match text.as_deref() {
-                Some("-") | None => read_stdin()?,
-                Some(text) => text.to_owned(),
-            };
+            let body = read_body(text)?;
             let identity = author(agent.clone());
             let metadata = agent.map(|agent| AnnotationMetadata {
                 on_behalf_of: Some(AgentIdentity {
@@ -163,7 +266,32 @@ pub fn run(workspace: Option<&Path>, settings: &UserSettings, action: Action) ->
     Ok(())
 }
 
+struct SilentSink;
+impl crate::worker::EventSink for SilentSink {
+    fn send(&self, _event_name: &str, _payload: serde_json::Value) {}
+}
+
+fn print_result(thread: &AnnotationThread, json: bool, action: &str) -> Result<()> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(thread)?);
+    } else {
+        println!("{action} note {}.", short_id(&thread.id));
+    }
+    Ok(())
+}
+
+fn read_body(text: Option<String>) -> Result<String> {
+    match text.as_deref() {
+        Some("-") | None => read_stdin(),
+        Some(text) => Ok(text.to_owned()),
+    }
+}
+
 fn open(workspace: Option<&Path>) -> Result<AnnotationStore> {
+    AnnotationStore::for_workspace(&workspace_root(workspace)?)
+}
+
+fn workspace_root(workspace: Option<&Path>) -> Result<PathBuf> {
     let start = match workspace {
         Some(path) => path.to_path_buf(),
         None => std::env::current_dir()?,
@@ -174,7 +302,7 @@ fn open(workspace: Option<&Path>) -> Result<AnnotationStore> {
         .find(|path| path.join(".jj").is_dir())
         .ok_or_else(|| anyhow!("{} is not inside a jj workspace", start.display()))?
         .to_path_buf();
-    AnnotationStore::for_workspace(&root)
+    Ok(root)
 }
 
 fn author(settings: &UserSettings, agent: Option<String>) -> AnnotationAuthor {
@@ -200,12 +328,12 @@ fn author(settings: &UserSettings, agent: Option<String>) -> AnnotationAuthor {
 fn read_stdin() -> Result<String> {
     let mut stdin = std::io::stdin();
     if stdin.is_terminal() {
-        eprintln!("Write your reply, then press Ctrl-D.");
+        eprintln!("Write your text, then press Ctrl-D.");
     }
     let mut body = String::new();
     stdin
         .read_to_string(&mut body)
-        .context("Reading the reply")?;
+        .context("Reading annotation text")?;
     Ok(body)
 }
 
@@ -309,6 +437,30 @@ mod tests {
                 "answer"
             ])
             .is_ok()
+        );
+    }
+    #[test]
+    fn authoring_accepts_default_revision_and_rejects_ambiguous_target_flags() {
+        assert!(Arguments::try_parse_from(["gg", "create", "A note"]).is_ok());
+        assert!(
+            Arguments::try_parse_from(["gg", "create", "--bookmark", "main", "A note"]).is_ok()
+        );
+        assert!(Arguments::try_parse_from(["gg", "create", "--lines", "1-2", "A note"]).is_err());
+        assert!(
+            Arguments::try_parse_from([
+                "gg",
+                "create",
+                "--revision",
+                "@",
+                "--bookmark",
+                "main",
+                "A note"
+            ])
+            .is_err()
+        );
+        assert!(
+            Arguments::try_parse_from(["gg", "edit", "note", "--post", "post-prefix", "Edited"])
+                .is_ok()
         );
     }
 }

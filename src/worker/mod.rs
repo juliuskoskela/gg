@@ -15,6 +15,7 @@
 //! for an example of wiring this up.
 
 mod annotation_ownership;
+pub(crate) mod annotation_targets;
 mod annotations;
 mod categories;
 mod git_util;
