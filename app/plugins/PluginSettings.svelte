@@ -4,6 +4,9 @@
     let { host = pluginHost }: { host?: typeof pluginHost } = $props();
     let states = $derived(host.statuses);
     let permissions: Record<Capability, string> = {
+        navigation: "Open changes and files",
+        "annotations.write": "Write its session annotations",
+        "annotations.exchange": "Import and export its session annotations",
         "queries.read": "Read repository history and diffs",
         "annotations.read": "Read local annotations",
         "reviews.read": "Read review progress",

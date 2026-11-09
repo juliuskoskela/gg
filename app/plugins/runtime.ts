@@ -1,3 +1,7 @@
+import { tick } from "svelte";
+import { selectRevision } from "./navigation";
+import { loadAnnotations } from "../annotations/store";
+import type { PluginNotesResponse } from "../messages/PluginNotesResponse";
 import { annotate, query } from "../ipc";
 import type { ReviewProgress } from "../messages/ReviewProgress";
 import type { PluginData } from "../messages/PluginData";
@@ -17,6 +21,17 @@ export let pluginHost = createPluginHost(bundledPlugins, {
     annotations: () => localData<AnnotationList>("annotations", { request: { type: "List" } }),
     reviews: () => localData<ReviewProgress>("review_progress", { request: { type: "List" } }),
     data: (plugin, operation, workspace) => localData<PluginData>("plugin_data", { request: { plugin, operation, workspace } }),
+    navigate: selectRevision,
+    notes: async (plugin, context, workspace, action) => {
+        let result = await localData<PluginNotesResponse>("plugin_notes", { request: { plugin, context, workspace, action } });
+        if (action.type !== "List" && action.type !== "Export") await loadAnnotations();
+        return result;
+    },
+    openView: async id => {
+        dock.open(id);
+        await tick();
+        document.getElementById(`panel-tab-${id}`)?.focus();
+    },
     closeView: id => dock.close(id),
     loadEnabled: () => {
         try {

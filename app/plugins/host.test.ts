@@ -21,6 +21,9 @@ function setup(plugin: BundledPlugin, overrides: Partial<HostServices> = {}) {
         annotations: vi.fn(async () => ({ threads: [] })) as unknown as HostServices["annotations"],
         reviews: vi.fn(async () => ({ me: { name: "Julius", email: "test@example.com" }, location: "local", changes: [] })),
         data: vi.fn(async () => ({ value: null, keys: [], facts: [] })),
+        notes: vi.fn(async () => ({ type: "List" as const, value: { location: "local", me: { name: "Reviewer", kind: "human" as const }, threads: [] } })),
+        navigate: vi.fn(async () => {}),
+        openView: vi.fn(async () => {}),
         closeView: vi.fn(), loadEnabled: () => [], saveEnabled: vi.fn(), ...overrides,
     };
     let host = createPluginHost([plugin], services);
@@ -135,6 +138,36 @@ describe("bundled plugin host", () => {
         expect(get(host.statuses)[0].active).toBe(false);
         host.update({ repository: "repo-a", workspace: "/a", status: undefined });
         expect(observed).toHaveBeenCalledTimes(2);
+    });
+
+    it("pins annotation operations to this plugin, session and workspace", async () => {
+        let api!: PluginAPI;
+        let { host, services } = setup(plugin(value => { api = value; return {}; }, ["annotations.read", "annotations.write"]));
+        host.enable("review", true);
+        await api.notes.create("session-one", [], "Question");
+        expect(services.notes).toHaveBeenCalledWith("review", "session-one", "/a", { type: "Create", targets: [], body: "Question" });
+        await expect(api.notes.export("session-one")).rejects.toThrow("annotations.exchange");
+        host.enable("review", false);
+        await expect(api.notes.reply("session-one", "thread", "Reply")).rejects.toThrow("no longer active");
+    });
+
+    it("rechecks navigation before touching core and only opens owned views", async () => {
+        let api!: PluginAPI;
+        let finish!: () => void;
+        let changed = false;
+        let { host, services } = setup(plugin(value => { api = value; return { views: [{ id: "session", label: "Review", component: TestView }] }; }, ["navigation"]), {
+            navigate: async (_id, _path, validate) => { await new Promise<void>(resolve => finish = resolve); validate(); changed = true; },
+        });
+        host.enable("review", true);
+        await vi.waitFor(() => expect(get(host.statuses)[0].active).toBe(true));
+        await api.navigation.openView("session");
+        expect(services.openView).toHaveBeenCalledWith("plugin:review:session");
+        await expect(api.navigation.openView("other-plugin:view")).rejects.toThrow("Unknown plugin view");
+        let pending = api.navigation.select({} as never);
+        host.enable("review", false);
+        finish();
+        await expect(pending).rejects.toThrow("no longer active");
+        expect(changed).toBe(false);
     });
 
     it("does not register an activation that resolves after disabling", async () => {

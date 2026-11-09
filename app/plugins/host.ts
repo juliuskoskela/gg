@@ -1,18 +1,25 @@
 import { writable, type Readable } from "svelte/store";
+import type { PluginNoteAction } from "../messages/PluginNoteAction";
+import type { PluginNotesResponse } from "../messages/PluginNotesResponse";
+import type { RevId } from "../messages/RevId";
+import type { AnnotationList } from "../messages/AnnotationList";
 import type { PluginOperation } from "../messages/PluginOperation";
 import type { PluginData } from "../messages/PluginData";
 import type { PluginFact } from "../messages/PluginFact";
 import { registerContributions, pluginPanelId } from "./contributions";
 import type { BundledPlugin, Capability, PluginAPI, PluginContext, PluginActivation, ReadCommand } from "./types";
 
-let capabilities: Capability[] = ["queries.read", "annotations.read", "reviews.read", "storage", "facts.publish"];
-let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes"];
+let capabilities: Capability[] = ["queries.read", "navigation", "annotations.write", "annotations.exchange", "annotations.read", "reviews.read", "storage", "facts.publish"];
+let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes", "resolve_revision_selection"];
 export interface PluginStatus { manifest: BundledPlugin["manifest"]; enabled: boolean; active: boolean; starting: boolean; error?: string; }
 export interface HostServices {
     query: PluginAPI["query"];
     annotations: PluginAPI["annotations"];
     reviews: PluginAPI["reviews"];
     data: (plugin: string, operation: PluginOperation, workspace: string) => Promise<PluginData>;
+    notes: (plugin: string, context: string, workspace: string, action: PluginNoteAction) => Promise<PluginNotesResponse>;
+    navigate: (id: RevId, path: string | undefined, validate: () => void) => Promise<void>;
+    openView: (id: ReturnType<typeof pluginPanelId>) => Promise<void>;
     closeView: (id: ReturnType<typeof pluginPanelId>) => void;
     loadEnabled: () => string[];
     saveEnabled: (ids: string[]) => void;
@@ -63,6 +70,12 @@ export function createPluginHost(plugins: readonly BundledPlugin[], services: Ho
             return value;
         }
         let data = (operation: PluginOperation) => call("storage", () => services.data(id, operation, boundWorkspace));
+        let notes = (context: string, action: PluginNoteAction, capability: Capability) => call(capability, () => services.notes(id, context, boundWorkspace, action));
+        async function noteList(context: string, action: PluginNoteAction, capability: Capability): Promise<AnnotationList> {
+            let result = await notes(context, action, capability);
+            if (result.type !== "List") throw new Error("Invalid annotation response");
+            return result.value;
+        }
         let api: PluginAPI = {
             context: { subscribe: run => {
                 if (!alive) throw new Error("Plugin instance is no longer active");
@@ -84,6 +97,26 @@ export function createPluginHost(plugins: readonly BundledPlugin[], services: Ho
             }),
             annotations: () => call("annotations.read", services.annotations),
             reviews: () => call("reviews.read", services.reviews),
+            navigation: {
+                select: (selected, path) => call("navigation", () => services.navigate(selected, path, () => guard("navigation"))),
+                openView: view => call("navigation", async () => {
+                    if (!views?.some(item => item.id === view)) throw new Error("Unknown plugin view");
+                    await services.openView(pluginPanelId(id, view));
+                }),
+            },
+            notes: {
+                list: context => noteList(context, { type: "List" }, "annotations.read"),
+                create: (context, targets, body) => noteList(context, { type: "Create", targets, body }, "annotations.write"),
+                reply: (context, thread, body) => noteList(context, { type: "Reply", id: thread, body }, "annotations.write"),
+                edit: (context, thread, post, body) => noteList(context, { type: "Edit", id: thread, post, body }, "annotations.write"),
+                setStatus: (context, thread, status) => noteList(context, { type: "SetStatus", id: thread, status }, "annotations.write"),
+                export: async context => {
+                    let result = await notes(context, { type: "Export" }, "annotations.exchange");
+                    if (result.type !== "Bundle") throw new Error("Invalid annotation export");
+                    return result.value;
+                },
+                import: (context, bundle) => noteList(context, { type: "Import", bundle }, "annotations.exchange"),
+            },
             storage: {
                 get: async key => (await data({ type: "Get", key })).value,
                 set: async (key, value) => { await data({ type: "Set", key, value }); },
