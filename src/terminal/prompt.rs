@@ -19,7 +19,7 @@ pub(super) fn configure(command: &mut CommandBuilder, shell: &OsStr) -> Result<O
                 &rc,
                 r#"
 if [ -r "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi
-_gg_prompt() { PS1='\W > '; PS2='> '; }
+_gg_prompt() { PS1='@ '; PS2='@ '; }
 _gg_hooks=''
 for _gg_hook in "${PROMPT_COMMAND[@]}"; do _gg_hooks+="$_gg_hook"$'\n'; done
 unset PROMPT_COMMAND
@@ -57,7 +57,7 @@ ZDOTDIR=$GG_SHELL_BOOTSTRAP
                 r#"
 ZDOTDIR=$_gg_user_zdotdir
 if [[ -r "$ZDOTDIR/.zshrc" ]]; then source "$ZDOTDIR/.zshrc"; fi
-_gg_prompt() { PS1='%1/ > '; PS2='> '; RPS1=''; RPS2=''; }
+_gg_prompt() { PS1='@ '; PS2='@ '; RPS1=''; RPS2=''; }
 precmd_functions+=(_gg_prompt)
 _gg_prompt
 unset GG_SHELL_ZDOTDIR GG_SHELL_BOOTSTRAP _gg_user_zdotdir
@@ -69,9 +69,7 @@ unset GG_SHELL_ZDOTDIR GG_SHELL_BOOTSTRAP _gg_user_zdotdir
         "fish" => {
             command.arg("--interactive");
             command.arg("--init-command");
-            command.arg(
-                "function fish_prompt; printf '%s > ' (basename -- \"$PWD\"); end; function fish_right_prompt; end",
-            );
+            command.arg("function fish_prompt; printf '@ '; end; function fish_right_prompt; end");
             Ok(None)
         }
         _ => Ok(None),
@@ -122,11 +120,11 @@ mod tests {
         let startup = configure(&mut command, OsStr::new(shell))?;
         let (mut terminal, mut output) = Terminal::spawn(command, 80, 24)?;
         terminal._startup = startup;
-        let initial = read_until(&mut output, "first > ").await;
+        let initial = read_until(&mut output, "@ ").await;
         assert!(!initial.contains("OLD_PROMPT"), "{initial}");
         assert!(!initial.contains("\\["), "{initial}");
         terminal.input(b"cd second\n")?;
-        let changed = read_until(&mut output, "second > ").await;
+        let changed = read_until(&mut output, "@ ").await;
         assert!(!changed.contains("OLD_PROMPT"), "{changed}");
         terminal.input(b"gg_marker\n")?;
         read_until(&mut output, "CONFIG_PRESERVED").await;
@@ -135,12 +133,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bash_keeps_user_config_and_updates_the_minimal_prompt() -> Result<()> {
+    async fn bash_keeps_user_config_and_keeps_the_at_prompt_after_changing_directory() -> Result<()>
+    {
         check_prompt("bash", ".bashrc", "PS1=OLD_PROMPT\nPROMPT_COMMAND='PS1=OLD_PROMPT'\nalias gg_marker='echo CONFIG_PRESERVED'\n").await
     }
 
     #[tokio::test]
-    async fn zsh_keeps_user_config_and_updates_the_minimal_prompt() -> Result<()> {
+    async fn zsh_keeps_user_config_and_keeps_the_at_prompt_after_changing_directory() -> Result<()>
+    {
         check_prompt("zsh", ".zshrc", "PROMPT=OLD_PROMPT\nprecmd() { PROMPT=OLD_PROMPT; }\nalias gg_marker='echo CONFIG_PRESERVED'\n").await
     }
 }

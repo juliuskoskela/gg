@@ -5,8 +5,8 @@ terminal starts the user's `$SHELL` (`COMSPEC` on Windows, falling back to
 `/bin/sh` or `cmd.exe`) in the loaded workspace's working directory. It edits
 the working copy, independently of the revision being inspected.
 
-Bash, Zsh and Fish use a compact `folder >` prompt that follows directory
-changes. GG loads the shell's normal configuration first, then applies its prompt
+Bash, Zsh and Fish use a plain monospace `@` prompt, matching jj’s working-copy
+notation. GG loads the shell's normal configuration first, then applies its prompt
 for this session only. Your shell configuration files are not modified. The
 toolbar shows the starting folder name; its tooltip keeps the full path.
 
