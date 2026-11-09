@@ -15,28 +15,43 @@
     import { openNotesByChange } from "../annotations/store";
     import WorkspaceObject from "./WorkspaceObject.svelte";
 
-    export let header: RevHeader;
-    $: notes = $openNotesByChange.get(header.id.change.hex) ?? [];
-    export let child: RevHeader | null = null;
-    export let selected: boolean; // same as the imported event, but parent may want to force a value
-    export let noBookmarks: boolean = false;
-    export let expanded = false;
-    export let tall = false;
-    export let rowHeight = revisionRowHeight;
-    export let textScale = 1;
-    export let onClick: ((header: RevHeader) => void) | undefined = undefined;
-    export let onShiftClick: ((header: RevHeader) => void) | undefined = undefined;
-    /** Ctrl/⌘+click: add or remove this revision from a scattered selection */
-    export let onToggle: ((header: RevHeader) => void) | null = null;
-    /** which identifiers to show; the timeline lets people choose, other lists keep the change id */
-    export let showChange = true;
-    export let showCommit = false;
-    export let showBookmarks = true;
-    export let showTags = true;
+    interface Props {
+        header: RevHeader;
+        child?: RevHeader | null;
+        selected: boolean; // same as the imported event, but parent may want to force a value
+        noBookmarks?: boolean;
+        expanded?: boolean;
+        tall?: boolean;
+        rowHeight?: number;
+        textScale?: number;
+        onClick?: ((header: RevHeader) => void) | undefined;
+        onShiftClick?: ((header: RevHeader) => void) | undefined;
+        /** Ctrl/⌘+click: add or remove this revision from a scattered selection */
+        onToggle?: ((header: RevHeader) => void) | null;
+        /** which identifiers to show; the timeline lets people choose, other lists keep the change id */
+        showChange?: boolean;
+        showCommit?: boolean;
+        showBookmarks?: boolean;
+        showTags?: boolean;
+    }
 
-    $: referenceNames = header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name);
-    $: accessibleLabel = [revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; ");
-    $: operand = (child ? { type: "Parent", header, child } : { type: "Revision", header }) as Operand;
+    let {
+        header,
+        child = null,
+        selected,
+        noBookmarks = false,
+        expanded = false,
+        tall = false,
+        rowHeight = revisionRowHeight,
+        textScale = 1,
+        onClick = undefined,
+        onShiftClick = undefined,
+        onToggle = null,
+        showChange = true,
+        showCommit = false,
+        showBookmarks = true,
+        showTags = true
+    }: Props = $props();
 
     /*
      * Select this revision by default, or callback to a list that needs more complex behaviour.
@@ -62,6 +77,10 @@
     function onEdit() {
         new RevisionMutator([header], $ignoreToggled).onEdit();
     }
+    let notes = $derived($openNotesByChange.get(header.id.change.hex) ?? []);
+    let referenceNames = $derived(header.refs.map(ref => ref.type === "Tag" ? ref.tag_name : ref.type === "RemoteBookmark" ? `${ref.bookmark_name}@${ref.remote_name}` : ref.bookmark_name));
+    let accessibleLabel = $derived([revisionLabel(header), ...referenceNames, ...(header.working_copy_of ? [`Workspace ${header.working_copy_of}`] : [])].join("; "));
+    let operand = $derived((child ? { type: "Parent", header, child } : { type: "Revision", header }) as Operand);
 </script>
 
 <Object
@@ -87,7 +106,6 @@
                 {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
                 {dragHint ?? (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}
             </span>
-
 
             <span class="refs" role="group" aria-label="Bookmarks and workspaces">
                 {#each header.refs as ref}

@@ -4,9 +4,13 @@
     import Icon from "../controls/Icon.svelte";
     import Object from "./Object.svelte";
 
-    export let name: string;
+    interface Props {
+        name: string;
+    }
 
-    $: operand = { type: "Workspace", name } as Operand;
+    let { name }: Props = $props();
+
+    let operand = $derived({ type: "Workspace", name } as Operand);
 </script>
 
 <Object {operand} label={name} defaultCommand="open" conflicted={false} let:context>

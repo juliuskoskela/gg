@@ -16,25 +16,30 @@
     import NoteMarker from "../annotations/NoteMarker.svelte";
     import { openNotesByChange } from "../annotations/store";
 
-    export let headers: RevHeader[] | null;
-    export let change: RevChange;
-    export let selected: boolean;
-    export let tree = false;
-    export let wrap = false;
-    export let compactPath = false;
-    export let setSize: number | undefined = undefined;
-    export let position: number | undefined = undefined;
-    export let onSelected: () => void = () => {};
+    interface Props {
+        headers: RevHeader[] | null;
+        change: RevChange;
+        selected: boolean;
+        tree?: boolean;
+        wrap?: boolean;
+        compactPath?: boolean;
+        setSize?: number | undefined;
+        position?: number | undefined;
+        onSelected?: () => void;
+    }
 
-    $: operand = headers ? { type: "Change", headers, path: change.path, hunk: null } as Operand : null;
-    // notes on the file or its lines, in the one revision shown
-    $: notes = headers?.length === 1 ? ($openNotesByChange.get(headers[0].id.change.hex) ?? []).filter(note => note.targets.some(target => target.anchor.change_id === headers![0].id.change.hex && "path" in target.anchor && target.anchor.path === change.path.repo_path)) : [];
+    let {
+        headers,
+        change,
+        selected,
+        tree = false,
+        wrap = false,
+        compactPath = false,
+        setSize = undefined,
+        position = undefined,
+        onSelected = () => {}
+    }: Props = $props();
 
-    $: hasDiffTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool;
-    $: hasMergeTool = $repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool;
-
-    $: insertions = change.stat?.added ?? countLines(change, "+");
-    $: deletions = change.stat?.removed ?? countLines(change, "-");
     function countLines(target: RevChange, sign: string) {
         return target.hunks.reduce((total, hunk) => total + hunk.lines.lines.filter(line => line.startsWith(sign)).length, 0);
     }
@@ -58,6 +63,13 @@
             path: change.path,
         });
     }
+    let operand = $derived(headers ? { type: "Change", headers, path: change.path, hunk: null } as Operand : null);
+    // notes on the file or its lines, in the one revision shown
+    let notes = $derived(headers?.length === 1 ? ($openNotesByChange.get(headers[0].id.change.hex) ?? []).filter(note => note.targets.some(target => target.anchor.change_id === headers![0].id.change.hex && "path" in target.anchor && target.anchor.path === change.path.repo_path)) : []);
+    let hasDiffTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool);
+    let hasMergeTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool);
+    let insertions = $derived(change.stat?.added ?? countLines(change, "+"));
+    let deletions = $derived(change.stat?.removed ?? countLines(change, "-"));
 </script>
 
 <Object

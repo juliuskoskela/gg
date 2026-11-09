@@ -7,11 +7,15 @@
     import Zone from "./Zone.svelte";
     import { commandOperand } from "../commands/context";
 
-    export let header: RevHeader | null;
-    export let path: TreePath;
-    export let hunk: ChangeHunk;
+    interface Props {
+        header: RevHeader | null;
+        path: TreePath;
+        hunk: ChangeHunk;
+    }
 
-    $: operand = (
+    let { header, path, hunk }: Props = $props();
+
+    let operand = $derived((
         header == null
             ? null
             : {
@@ -19,7 +23,7 @@
                   headers: [header],
                   path,
                   hunk,
-              }) satisfies Operand | null;
+              }) satisfies Operand | null);
 
     function getHunkDescription(hunk: ChangeHunk): string {
         return `@@ -${hunk.location.from_file.start},${hunk.location.from_file.len} +${hunk.location.to_file.start},${hunk.location.to_file.len} @@`;

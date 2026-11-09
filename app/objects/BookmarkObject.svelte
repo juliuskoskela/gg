@@ -11,25 +11,29 @@
     import Zone from "./Zone.svelte";
     import RefMutator from "../mutators/RefMutator";
 
-    export let header: RevHeader;
-    export let ref: Extract<StoreRef, { type: "LocalBookmark" | "RemoteBookmark" }>;
+    interface Props {
+        header: RevHeader;
+        ref: Extract<StoreRef, { type: "LocalBookmark" | "RemoteBookmark" }>;
+    }
+
+    let { header, ref }: Props = $props();
 
     let settings = getContext<Settings>("settings");
 
-    $: operand = { type: "Ref", header, ref } as Operand;
+    let operand = $derived({ type: "Ref", header, ref } as Operand);
 
-    $: label = ref.type === "LocalBookmark" ? ref.bookmark_name : `${ref.bookmark_name}@${ref.remote_name}`;
+    let label = $derived(ref.type === "LocalBookmark" ? ref.bookmark_name : `${ref.bookmark_name}@${ref.remote_name}`);
 
-    $: disconnected =
-        settings.markUnpushedBookmarks &&
+    let disconnected =
+        $derived(settings.markUnpushedBookmarks &&
         (ref.type === "LocalBookmark"
             ? ref.available_remotes == 0 && ref.potential_remotes > 0
-            : ref.is_tracked && ref.is_absent);
+            : ref.is_tracked && ref.is_absent));
 
-    $: defaultCommand = RefMutator.defaultCommand(ref);
+    let defaultCommand = $derived(RefMutator.defaultCommand(ref));
 
-    $: tip = bookmarkStatus(ref);
-    $: lifecycleIcon = ref.has_conflict ? "alert-triangle" : ref.type === "RemoteBookmark" ? (ref.is_tracked ? (ref.is_absent ? "minus-circle" : "link") : "help-circle") : (!ref.is_synced ? "upload" : null);
+    let tip = $derived(bookmarkStatus(ref));
+    let lifecycleIcon = $derived(ref.has_conflict ? "alert-triangle" : ref.type === "RemoteBookmark" ? (ref.is_tracked ? (ref.is_absent ? "minus-circle" : "link") : "help-circle") : (!ref.is_synced ? "upload" : null));
 </script>
 
 <Object {operand} label={bookmarkLabel(ref)} {defaultCommand} conflicted={ref.has_conflict} let:context let:hint={dragHint}>

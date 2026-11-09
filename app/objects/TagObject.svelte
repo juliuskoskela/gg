@@ -1,14 +1,15 @@
 <script lang="ts">
     import type { RevHeader } from "../messages/RevHeader";
     import type { StoreRef } from "../messages/StoreRef";
-    import type { Operand } from "../messages/Operand";
     import Chip from "../controls/Chip.svelte";
     import Icon from "../controls/Icon.svelte";
 
-    export let header: RevHeader;
-    export let ref: Extract<StoreRef, { type: "Tag" }>;
+    interface Props {
+        header: RevHeader;
+        ref: Extract<StoreRef, { type: "Tag" }>;
+    }
 
-    let operand: Operand = { type: "Ref", header, ref };
+    let { ref }: Props = $props();
 </script>
 
 <Chip tone="tag" context={false} target={false} immobile tip="tag">
