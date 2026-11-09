@@ -359,7 +359,8 @@ describe("GG+ workspace", () => {
         await expect.poll(() => ctx.page.locator(".graph").textContent()).not.toContain("Inspect GG+ description workflow");
         let subject = previous.split("\n")[0];
         if (subject) await expect.poll(() => ctx.page.locator(".graph").textContent()).toContain(subject);
-        expect(await ctx.page.locator('.overview [aria-label="Revision metadata"]').isVisible()).toBe(true);
+        // the inspector summary loads independently of the updated graph.
+        await expect.poll(() => ctx.page.locator('.overview [aria-label="Revision metadata"]').isVisible()).toBe(true);
         let revset = ctx.page.getByRole("textbox", { name: "Filter revisions with a revset" });
         await revset.fill("description('no matching revision')");
         await revset.press("Tab");
