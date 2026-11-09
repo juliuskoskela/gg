@@ -1,4 +1,6 @@
 <script lang="ts">
+    import ReviewDelta from "../review/ReviewDelta.svelte";
+    import type { ReviewComparison, CompareReview } from "../review/comparison";
     import ReviewControl from "../review/ReviewControl.svelte";
     import { untrack } from "svelte";
 
@@ -23,6 +25,9 @@
 
     let width = $state(1200);
     interface Props {
+        comparison?: ReviewComparison | null;
+        onCompare?: CompareReview;
+        onCloseComparison?: () => void;
         focused?: boolean;
         showTools?: boolean;
         revs: RevisionDetail;
@@ -33,6 +38,9 @@
     }
 
     let {
+        comparison = undefined,
+        onCompare = undefined,
+        onCloseComparison = undefined,
         focused = false,
         showTools = true,
         revs,
@@ -41,6 +49,18 @@
         onSelectFile = change => changeSelectEvent.set(change),
         onRequestFiles = null
     }: Props = $props();
+    let localComparison = $state.raw<ReviewComparison | null>(null);
+    let requestedComparison = $derived(comparison === undefined ? localComparison : comparison);
+    let activeComparison = $derived(revs.headers.length === 1 && requestedComparison?.to.commit.hex === revs.headers[0].id.commit.hex ? requestedComparison : null);
+    function compare(from: ReviewComparison["from"], to: ReviewComparison["to"], path: string | null) {
+        if (onCompare) onCompare(from, to, path);
+        else localComparison = { from, to, path };
+    }
+    function closeComparison() {
+        localComparison = null;
+        onCloseComparison?.();
+        void tick().then(() => scrollElement?.focus({ preventScroll: true }));
+    }
     let readingKey = $state("");
     let scrollTop = $state(0);
     let scrollElement = $state<HTMLDivElement>();
@@ -102,6 +122,17 @@
         let detail = revs, file = currentChange, scope = repository, fullContext = $diffFullContext;
         untrack(() => loadFile(detail, file, scope, fullContext));
     });
+    $effect.pre(() => {
+        let selection = [key, selectedPath];
+        untrack(() => { localComparison = null; });
+    });
+    $effect(() => {
+        let viewed = activeComparison;
+        untrack(() => {
+            if (viewed) void tick().then(() => { if (activeComparison === viewed && scrollElement) scrollElement.scrollTop = 0; });
+            else void restoreScroll(readingKey, fileScrollPositions.get(readingKey) ?? scrollTop);
+        });
+    });
     let selectedIndex = $derived(currentChange ? changes.indexOf(currentChange) : -1);
     let nextReadingKey = $derived(`${key}:${currentChange?.path.repo_path ?? ""}`);
     $effect.pre(() => {
@@ -120,15 +151,16 @@
 <div class="changes-module" bind:clientWidth={width}>
     {#if showTools}
         <PanelHeader className="changes-heading" label="Diff tools">
-            <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} />
+            <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} onCompare={compare} />
         </PanelHeader>
     {/if}
-    {#if changes.length}
+    {#if changes.length || activeComparison}
         <div class="changes-layout">
             <div class="file-review">
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex (overflow region needs keyboard scrolling) -->
-                <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} onscroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
-                    {#if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p>{#if onRequestFiles}<button type="button" onclick={onRequestFiles}>Choose another file</button>{/if}</div>
+                <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} onscroll={event => { if (!activeComparison) { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); } }}>
+                    {#if activeComparison}<ReviewDelta from={activeComparison.from} to={activeComparison.to} path={activeComparison.path} />
+                    {:else if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p>{#if onRequestFiles}<button type="button" onclick={onRequestFiles}>Choose another file</button>{/if}</div>
                     {:else if loaded.type === "wait"}<p class="diff-message" role="status">Loading {currentChange.path.relative_path}…</p>
                     {:else if loaded.type === "error"}<div class="diff-message" role="alert"><p>Couldn’t load this file: {loaded.message}</p><button type="button" onclick={() => loadFile(revs, currentChange, repository, $diffFullContext)}>Retry file</button></div>
                     {:else if loaded.value}
@@ -143,9 +175,12 @@
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
                 <PanelFooter className="diff-footer"><div class="diff-toolbar">
-                    {#if currentChange && revs.headers.length === 1}<ReviewControl header={revs.headers[0]} path={currentChange.path.repo_path} />{/if}
+                    {#if activeComparison}<button class="review-back" type="button" onclick={closeComparison}>Back to file diff</button>
+                    {:else}
+                    {#if currentChange && revs.headers.length === 1}<ReviewControl header={revs.headers[0]} path={currentChange.path.repo_path} onCompare={compare} />{/if}
                     <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} onclick={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} onclick={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
                     <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
+                    {/if}
                 </div></PanelFooter>
             </div>
         </div>
@@ -166,7 +201,9 @@
     .file-path :global(.layout span) { white-space: nowrap; }
     .file-navigation { display: flex; align-items: center; flex-shrink: 0; }
     .diff-toolbar button { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 24px; min-height: 28px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 15px; }
+    .diff-toolbar .review-back { width: auto; padding-inline: var(--space-2); font: var(--font-label); white-space: nowrap; }
     .diff-toolbar button:disabled { color: var(--text-disabled); cursor: default; }
+    .diff-scroll > :global(.review-delta) { padding-inline: var(--panel-inset); }
     .diff-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; pointer-events: auto; scroll-padding-block: 12px; }
     .hunk-actions { margin: 0 12px 4px; pointer-events: auto; }
     .hunk-actions summary { display: flex; align-items: center; justify-content: space-between; gap: var(--panel-gap); width: 100%; padding-inline: var(--control-padding-inline); border-radius: var(--radius-control); font: var(--font-body); color: var(--text); cursor: pointer; min-height: var(--control-height); list-style: none; }

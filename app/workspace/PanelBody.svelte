@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { ReviewComparison, CompareReview } from "../review/comparison";
     import { untrack } from "svelte";
     import { provideToolbarOwner } from "../controls/toolbars";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
@@ -50,11 +51,17 @@
     // parents key this component by panel id, so toolbar ownership lasts for its lifetime.
     provideToolbarOwner(untrack(() => id));
 
+    let comparison = $state.raw<ReviewComparison | null>(null);
+    let compare: CompareReview = (from, to, path) => { comparison = { from, to, path }; };
+    $effect.pre(() => {
+        let selection = [reviewKey, selectedPath];
+        untrack(() => { comparison = null; });
+    });
     let headers = $derived(detail?.headers ?? []);
     let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
-{#if id === "diff" && detail && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} /></ViewToolbar>{/if}
+{#if id === "diff" && detail && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} /></ViewToolbar>{/if}
 
 {#if id === "evolution"}
     <EvolutionPanel {headers} {active} />
@@ -92,7 +99,7 @@
     {/if}
 {:else if id === "diff"}
     {#if detail}
-        <RevisionChanges revs={detail} {changes} {selectedPath} {onSelectFile} focused={true} showTools={false} />
+        <RevisionChanges revs={detail} {changes} {selectedPath} {onSelectFile} focused={true} showTools={false} {comparison} onCompare={compare} onCloseComparison={() => comparison = null} />
     {:else}
         <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : selection.type === "error" ? selection.message : "This revset matches nothing."}</p>
     {/if}

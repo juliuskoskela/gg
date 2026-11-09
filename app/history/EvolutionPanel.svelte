@@ -11,6 +11,8 @@
     import { repositoryScope } from "../workspace/repository";
     import HistoryBrowser from "./HistoryBrowser.svelte";
     import VersionPatch from "./VersionPatch.svelte";
+    import ReviewDelta from "../review/ReviewDelta.svelte";
+    import SelectWidget from "../controls/SelectWidget.svelte";
     interface Props {
         headers?: RevHeader[];
         active?: boolean;
@@ -19,6 +21,7 @@
     let { headers = [], active = true }: Props = $props();
     let entries: EvolutionEntry[] = $state.raw([]);
     let selected = $state("");
+    let compareFrom = $state("");
     let loading = $state(false);
     let error = $state("");
     let more = $state(false);
@@ -26,7 +29,7 @@
     let loadedKey = $state("");
     onDestroy(() => request++);
     function reset(id = source, _status?: unknown, _repo?: unknown) {
-        request++; entries = []; selected = ""; error = ""; more = false; loading = false;
+        request++; entries = []; selected = ""; compareFrom = ""; error = ""; more = false; loading = false;
         if (id) void load();
     }
     async function load() {
@@ -46,6 +49,8 @@
         untrack(() => { if (enabled && key !== loadedKey) { loadedKey = key; reset(); } });
     });
     let entry = $derived(entries.find(entry => entry.revision.id.commit.hex === selected));
+    let comparable = $derived(entries.filter(item => item.revision.id.change.hex === entry?.revision.id.change.hex && item.revision.id.commit.hex !== selected));
+    let earlier = $derived(comparable.find(item => item.revision.id.commit.hex === compareFrom));
     let rows = $derived(entries.map(entry => ({ id: entry.revision.id.commit.hex, title: entry.revision.description.lines[0] || "No description set", code: entry.revision.id.commit.hex.slice(0, 8), who: entry.revision.author.name, time: entry.operation?.finished_at ?? entry.revision.author.timestamp, badge: entry.revision.id.commit.hex === source?.commit.hex ? "Selected" : entry.revision.id.change.hex !== source?.change.hex ? "Contributed" : undefined, tone: entry.revision.id.commit.hex === source?.commit.hex ? "default" as const : "muted" as const })));
 </script>
 
@@ -66,7 +71,11 @@
             </dl>
             {#if entry.revision.has_conflict}<p class="history-copy">This version contains unresolved conflicts.</p>{/if}
             {#if !entry.operation}<p class="history-copy">No earlier evolution record is retained for this version.</p>{/if}
-            {#key selected}<VersionPatch id={entry.revision.id} />{/key}
+            <button type="button" disabled={!comparable.length} onclick={() => compareFrom = earlier ? "" : comparable[0]?.revision.id.commit.hex ?? ""}>{earlier ? "Show version patch" : "Compare versions"}</button>
+            {#if earlier}
+                <SelectWidget label="Compare from version" options={comparable.map(item => ({ value: item.revision.id.commit.hex, label: `${item.revision.id.commit.hex.slice(0, 8)} · ${item.revision.description.lines[0] || "No description"}` }))} bind:value={compareFrom}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget>
+                <ReviewDelta from={earlier.revision.id} to={entry.revision.id} title="Changes between versions" />
+            {:else}{#key selected}<VersionPatch id={entry.revision.id} />{/key}{/if}
         {:else if !loading && !error}<p class="history-empty">Select a version to inspect its exact patch.</p>{/if}
     </HistoryBrowser>
 {/if}
