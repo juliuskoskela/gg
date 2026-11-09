@@ -36,7 +36,7 @@
     let sampleQuery = $state("all()");
     let sampleRemote = $state("origin");
     let samplePreset = $state("custom");
-    let timelineExample!: HTMLDivElement;
+    let timelineExample = $state<HTMLDivElement>();
     let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.ts", relative_path: "app/workspace.ts" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 6 }, to_file: { start: 1, len: 6 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n', ' // Keep the active panel visible.\n', ' function selectPanel(index: number = 0) { return panels[index]; }\n'] } }], stat: { added: 1, removed: 1 } }];
     let items = $state([{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]);
     let workspace = { query_choices: { default: "all()", "My revisions": "mine()" } };

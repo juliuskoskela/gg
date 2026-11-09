@@ -4,7 +4,7 @@
     import { hasModal } from "../stores";
 
     interface Props {
-        element: HTMLDivElement;
+        element?: HTMLDivElement;
         showHeader?: boolean;
         showSummary?: boolean;
         header?: Snippet;
@@ -14,7 +14,7 @@
     }
 
     let {
-        element = $bindable(),
+        element = $bindable(undefined),
         showHeader = true,
         showSummary = true,
         header,

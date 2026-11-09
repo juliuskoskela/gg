@@ -41,46 +41,45 @@
     import ErrorDialog from "./shell/ErrorDialog.svelte";
     import ProgressDialog from "./shell/ProgressDialog.svelte";
     import RecentWorkspaces from "./shell/RecentWorkspaces.svelte";
-    import { onMount, setContext } from "svelte";
+    import { onMount, onDestroy, setContext, untrack, type Snippet } from "svelte";
     import InputDialog from "./shell/InputDialog.svelte";
     import type Settings from "./shell/Settings";
     import type { RepoEvent } from "./messages/RepoEvent";
     import RepositoryMutator from "./mutators/RepositoryMutator";
 
-    interface $$Slots {
-        default: {
-            workspace: Extract<RepoConfig, { type: "Workspace" }>;
-            selection: Query<RevsResult>;
-        };
+    interface Props {
+        revsetOverride?: string | null;
+        revsetFromOverride?: string | null;
+        children?: Snippet<[{ workspace: Extract<RepoConfig, { type: "Workspace" }>; selection: Query<RevsResult> }]>;
     }
 
-    export let revsetOverride: string | null = null;
-    export let revsetFromOverride: string | null = null;
+    let { revsetOverride = null, revsetFromOverride = null, children: workspaceContent }: Props = $props();
 
-    let selection: Query<RevsResult> = {
+    let selection: Query<RevsResult> = $state.raw({
         type: "wait",
-    };
+    });
     // for open recent workspaces when error dialogs happen
-    let recentWorkspaces: string[] = [];
+    let recentWorkspaces: string[] = $state.raw([]);
 
-    if (isTauri()) {
-        document.addEventListener("keydown", (event) => {
-            const key = event.key.toLowerCase();
-            // webviews don't pass these to the native menu, and webview2 would reload on f5
+    onMount(() => {
+        function forwardAccelerator(event: KeyboardEvent) {
+            let key = event.key.toLowerCase();
+            // webviews reserve these shortcuts unless the frontend forwards them.
             if (((key === "n" || key === "m" || key === "o") && event.ctrlKey) || key === "f5") {
                 event.preventDefault();
-                trigger("forward_accelerator", {
-                    key,
-                    ctrl: event.ctrlKey,
-                    shift: event.shiftKey,
-                });
+                trigger("forward_accelerator", { key, ctrl: event.ctrlKey, shift: event.shiftKey });
             }
-        });
-    }
+        }
+        let clearContext = () => currentContext.set(null);
+        if (isTauri()) document.addEventListener("keydown", forwardAccelerator);
+        document.body.addEventListener("click", clearContext, true);
+        return () => {
+            document.removeEventListener("keydown", forwardAccelerator);
+            document.body.removeEventListener("click", clearContext, true);
+        };
+    });
 
-    document.body.addEventListener("click", () => currentContext.set(null), true);
-
-    let workspacePath = "";
+    let workspacePath = $state("");
     async function initialize(path?: string) {
         let result = await query<RepoConfig>("query_workspace", path ? { path } : null);
         if ($repoConfigEvent.type === "TimeoutError") {
@@ -132,9 +131,9 @@
         }
     });
 
-    let settings: Settings = {
+    let settings: Settings = $state({
         markUnpushedBookmarks: true,
-    };
+    });
     setContext<Settings>("settings", settings);
 
     if (isTauri()) {
@@ -143,41 +142,7 @@
         onEvent("gg://focus", handleFocus);
     }
 
-    $: if ($repoConfigEvent) loadRepo($repoConfigEvent);
-    $: if ($repoStatusEvent && revsetOverride && !$revisionSelectEvent) {
-        let syntheticId = {
-            change: {
-                type: "ChangeId" as const,
-                hex: revsetOverride,
-                prefix: revsetOverride,
-                rest: "",
-                offset: null,
-                is_divergent: false,
-            },
-            commit: { type: "CommitId" as const, hex: "", prefix: "", rest: "" },
-        };
-        $revisionSelectEvent = { from: revsetFromOverride ? { ...syntheticId, change: { ...syntheticId.change, hex: revsetFromOverride, prefix: revsetFromOverride } } : syntheticId, to: syntheticId };
-    }
-    $: if ($repoStatusEvent && $revisionSelectEvent) {
-        loadChange($revisionSelectEvent);
-    }
-    // gui mode: the backend needs the selection for native menu enablement
-    $: if (isTauri()) trigger("set_selection", { set: $revisionSelectEvent ?? null });
-    $: if (!isTauri()) {
-        document.title =
-            $repoConfigEvent.type === "Workspace"
-                ? "GG+ — " + $repoConfigEvent.absolute_path.split("/").pop()
-                : "GG+ — Jujutsu workspace";
-    }
-    $: if (
-        $repoConfigEvent.type === "LoadError" ||
-        $repoConfigEvent.type === "TimeoutError" ||
-        $repoConfigEvent.type === "WorkerError"
-    ) {
-        queryRecentWorkspaces();
-    }
 
-    $: if ($repoConfigEvent && $repoStatusEvent) refreshCurrentWorkspaceIdentity();
 
     let latestSelectionRequest = 0;
     let loadedStatus: RepoStatus | undefined;
@@ -299,16 +264,56 @@
         new RepositoryMutator().handle(event);
     }
 
-    // notes can change outside the app, e.g. an agent replying from the command line
-    $: if ($repoConfigEvent.type === "Workspace") loadAnnotations();
     function refreshAnnotations() {
         if ($repoConfigEvent.type === "Workspace") loadAnnotations();
     }
+    onDestroy(() => { latestSelectionRequest++; if (loadTimeout) clearTimeout(loadTimeout); });
+    $effect.pre(() => {
+        let config = $repoConfigEvent;
+        if (config) untrack(() => loadRepo(config));
+    });
+    $effect.pre(() => {
+        let status = $repoStatusEvent, override = revsetOverride, from = revsetFromOverride;
+        untrack(() => {
+            if (!status || !override || get(revisionSelectEvent)) return;
+            let id = {
+                change: { type: "ChangeId" as const, hex: override, prefix: override, rest: "", offset: null, is_divergent: false },
+                commit: { type: "CommitId" as const, hex: "", prefix: "", rest: "" },
+            };
+            revisionSelectEvent.set({ from: from ? { ...id, change: { ...id.change, hex: from, prefix: from } } : id, to: id });
+        });
+    });
+    $effect.pre(() => {
+        let status = $repoStatusEvent, set = $revisionSelectEvent;
+        if (status && set) untrack(() => loadChange(set));
+    });
+    // gui mode: the backend needs the selection for native menu enablement.
+    $effect(() => {
+        let set = $revisionSelectEvent ?? null;
+        if (isTauri()) untrack(() => trigger("set_selection", { set }));
+    });
+    $effect(() => {
+        if (!isTauri()) document.title = $repoConfigEvent.type === "Workspace"
+            ? "GG+ — " + $repoConfigEvent.absolute_path.split("/").pop()
+            : "GG+ — Jujutsu workspace";
+    });
+    $effect(() => {
+        let config = $repoConfigEvent;
+        if (config.type === "LoadError" || config.type === "TimeoutError" || config.type === "WorkerError") untrack(queryRecentWorkspaces);
+    });
+    $effect.pre(() => {
+        let config = $repoConfigEvent, status = $repoStatusEvent;
+        if (config && status) untrack(refreshCurrentWorkspaceIdentity);
+    });
+    // notes can change outside the app, e.g. an agent replying from the command line.
+    $effect(() => {
+        if ($repoConfigEvent.type === "Workspace") untrack(loadAnnotations);
+    });
 </script>
 
 <OperationFeedback />
 
-<svelte:window on:focus={refreshAnnotations} />
+<svelte:window onfocus={refreshAnnotations} />
 
 <Zone operand={{ type: "Repository" }} alwaysTarget>
     {#snippet children({ target })}
@@ -321,7 +326,7 @@
             </TitlebarInset>
         {:else if $repoConfigEvent.type == "Workspace"}
             <WorkspaceChrome workspace={$repoConfigEvent} {target}>
-                <slot workspace={$repoConfigEvent} {selection} />
+                {@render workspaceContent?.({ workspace: $repoConfigEvent, selection, })}
             </WorkspaceChrome>
         {:else if $repoConfigEvent.type == "LoadError"}
             <ModalOverlay>
