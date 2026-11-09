@@ -8,6 +8,7 @@
 
 pub mod annotations;
 pub mod mutations;
+pub mod plugins;
 pub mod queries;
 pub mod review;
 pub mod review_delta;

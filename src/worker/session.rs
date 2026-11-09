@@ -20,6 +20,7 @@ use super::{
 use crate::{
     config::{GGSettings, read_config},
     messages,
+    plugins::PluginStore,
 };
 
 /// A state in the worker thread's event loop.
@@ -102,6 +103,10 @@ pub enum SessionEvent {
     Annotations {
         tx: Sender<Result<messages::annotations::AnnotationList>>,
         request: messages::annotations::AnnotationRequest,
+    },
+    PluginData {
+        tx: Sender<Result<messages::plugins::PluginData>>,
+        request: messages::plugins::PluginRequest,
     },
     ExportAnnotations {
         tx: Sender<Result<String>>,
@@ -362,6 +367,14 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::Annotations { tx, request } => {
                     tx.send(super::annotations::handle(&self, request))?
                 }
+                SessionEvent::PluginData { tx, request } => tx.send(
+                    PluginStore::for_workspace(
+                        self.workspace.repo_path(),
+                        self.workspace.workspace_root(),
+                        &request.workspace,
+                    )
+                    .and_then(|store| store.handle(request)),
+                )?,
                 SessionEvent::ExportAnnotations { tx, ids } => {
                     tx.send(super::annotations::export(&self, ids))?
                 }
@@ -604,6 +617,14 @@ impl Session for QuerySession<'_, '_> {
                 Ok(SessionEvent::Annotations { tx, request }) => {
                     tx.send(super::annotations::handle(self.ws, request))?
                 }
+                Ok(SessionEvent::PluginData { tx, request }) => tx.send(
+                    PluginStore::for_workspace(
+                        self.ws.workspace.repo_path(),
+                        self.ws.workspace.workspace_root(),
+                        &request.workspace,
+                    )
+                    .and_then(|store| store.handle(request)),
+                )?,
                 Ok(SessionEvent::ExportAnnotations { tx, ids }) => {
                     tx.send(super::annotations::export(self.ws, ids))?
                 }

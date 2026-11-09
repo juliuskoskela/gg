@@ -2,10 +2,15 @@
 
 use std::sync::mpsc::channel;
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{
+    Json, Router,
+    extract::{DefaultBodyLimit, State},
+    routing::post,
+};
 use serde::Deserialize;
 
 use crate::messages::annotations::{AnnotationList, AnnotationRequest};
+use crate::messages::plugins::{PluginData, PluginRequest};
 use crate::worker::SessionEvent;
 
 use super::ApiError;
@@ -16,6 +21,10 @@ pub fn router() -> Router<AppState> {
         .route("/annotations", post(annotations))
         .route("/review_progress", post(review_progress))
         .route("/export_annotations", post(export_annotations))
+        .route(
+            "/plugin_data",
+            post(plugin_data).layer(DefaultBodyLimit::max(5 * 1024 * 1024)),
+        )
 }
 
 #[derive(Deserialize)]
@@ -62,6 +71,23 @@ async fn review_progress(
 ) -> Result<Json<crate::messages::review::ReviewProgress>, ApiError> {
     let (tx, rx) = channel();
     state.worker_tx.send(SessionEvent::ReviewProgress {
+        tx,
+        request: req.request,
+    })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct PluginDataRequest {
+    request: PluginRequest,
+}
+
+async fn plugin_data(
+    State(state): State<AppState>,
+    Json(req): Json<PluginDataRequest>,
+) -> Result<Json<PluginData>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::PluginData {
         tx,
         request: req.request,
     })?;
