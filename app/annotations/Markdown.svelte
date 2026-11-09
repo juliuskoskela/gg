@@ -1,7 +1,11 @@
 <script lang="ts">
     import { marked } from "marked";
     import DOMPurify from "dompurify";
-    export let source: string;
+    interface Props {
+        source: string;
+    }
+
+    let { source }: Props = $props();
 
     // notes can come from agents and other tools, so render nothing that runs or loads
     let purify = DOMPurify();
@@ -13,10 +17,10 @@
             node.setAttribute("rel", "noopener noreferrer");
         }
     });
-    $: html = purify.sanitize(marked.parse(source, { async: false, gfm: true, breaks: true }) as string, {
+    let html = $derived(purify.sanitize(marked.parse(source, { async: false, gfm: true, breaks: true }) as string, {
         FORBID_TAGS: ["img", "style", "iframe", "form", "input", "video", "audio", "svg", "math"],
         FORBID_ATTR: ["style"],
-    });
+    }));
 </script>
 
 <div class="markdown">{@html html}</div>

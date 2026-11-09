@@ -1,4 +1,5 @@
 <script lang="ts">
+    import DockFrame from './DockFrame.svelte';
     import type { Query } from "../events";
     import type { RepoConfig } from "../messages/RepoConfig";
     import type { RevsResult } from "../messages/RevsResult";
@@ -11,19 +12,37 @@
     import { annotations, lineMenu } from "../annotations/store";
     import { menuPanel } from "./viewCommands";
 
-    export let node: DockNode;
-    export let path: number[] = [];
-    export let workspace: Extract<RepoConfig, { type: "Workspace" }>;
-    export let selection: Query<RevsResult>;
-    export let detail: Extract<RevsResult, { type: "Detail" }> | null;
-    export let changes: RevChange[];
-    export let selectedPath: string;
-    export let reviewKey: string;
-    export let onClose: (id: PanelId) => void;
-    export let onMove: (id: PanelId, target: PanelId, edge: Edge) => void;
-    export let onResize: (path: number[], ratio: number) => void;
-    export let onFocus: (id: PanelId) => void;
-    export let onSelectFile: (change: RevChange) => void;
+    interface Props {
+        node: DockNode;
+        path?: number[];
+        workspace: Extract<RepoConfig, { type: "Workspace" }>;
+        selection: Query<RevsResult>;
+        detail: Extract<RevsResult, { type: "Detail" }> | null;
+        changes: RevChange[];
+        selectedPath: string;
+        reviewKey: string;
+        onClose: (id: PanelId) => void;
+        onMove: (id: PanelId, target: PanelId, edge: Edge) => void;
+        onResize: (path: number[], ratio: number) => void;
+        onFocus: (id: PanelId) => void;
+        onSelectFile: (change: RevChange) => void;
+    }
+
+    let {
+        node,
+        path = [],
+        workspace,
+        selection,
+        detail,
+        changes,
+        selectedPath,
+        reviewKey,
+        onClose,
+        onMove,
+        onResize,
+        onFocus,
+        onSelectFile
+    }: Props = $props();
 
     // right-clicking anywhere in a view offers to open another; text fields and selected text keep the native menu
     function noteMenuPanel(id: PanelId) { menuPanel.set(id); }
@@ -35,8 +54,8 @@
         menuPanel.set(id);
         lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [] });
     }
-    let resizing = false;
-    $: openNotes = $annotations.filter(thread => thread.status === "open").length;
+    let resizing = $state(false);
+    let openNotes = $derived($annotations.filter(thread => thread.status === "open").length);
     function moveSplitter(event: PointerEvent) {
         if (!resizing || node.type !== "split") return;
         let container = (event.currentTarget as HTMLElement).parentElement!;
@@ -67,16 +86,16 @@
 
 {#if node.type === "split"}
     <div class="split" class:row={node.direction === "row"} style={node.direction === "row" ? `grid-template-columns: ${node.ratio}fr 1px ${1 - node.ratio}fr` : `grid-template-rows: ${node.ratio}fr 1px ${1 - node.ratio}fr`}>
-        <svelte:self node={node.first} path={[...path, 0]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
+        <DockFrame node={node.first} path={[...path, 0]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
         <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role (the focusable separator follows the window splitter pattern) -->
         <button type="button" class="separator" class:dragging={resizing} role="separator" aria-label="Resize panels" aria-orientation={node.direction === "row" ? "vertical" : "horizontal"} aria-valuemin={16} aria-valuemax={84} aria-valuenow={Math.round(node.ratio * 100)}
-            on:pointerdown={event => { event.preventDefault(); resizing = true; event.currentTarget.setPointerCapture(event.pointerId); }}
-            on:pointermove={moveSplitter} on:pointerup={() => resizing = false} on:pointercancel={() => resizing = false} on:lostpointercapture={() => resizing = false} on:keydown={splitterKey}></button>
-        <svelte:self node={node.second} path={[...path, 1]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
+            onpointerdown={event => { event.preventDefault(); resizing = true; event.currentTarget.setPointerCapture(event.pointerId); }}
+            onpointermove={moveSplitter} onpointerup={() => resizing = false} onpointercancel={() => resizing = false} onlostpointercapture={() => resizing = false} onkeydown={splitterKey}></button>
+        <DockFrame node={node.second} path={[...path, 1]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
     </div>
 {:else}
     <!-- svelte-ignore a11y_no_static_element_interactions (the same views are in the Views menu) -->
-    <div class="tabs" data-panel-group={node.active} on:contextmenu|capture={() => node.type === "tabs" && noteMenuPanel(node.active)} on:contextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
+    <div class="tabs" data-panel-group={node.active} oncontextmenucapture={() => node.type === "tabs" && noteMenuPanel(node.active)} oncontextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
         <PanelGroup>
             <PanelTabs items={node.panels.map(id => ({ id, label: panelLabel[id], count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
                 onSelect={onFocus} {onClose} {onMove} />

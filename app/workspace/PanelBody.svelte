@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { untrack } from "svelte";
     import { provideToolbarOwner } from "./toolbars";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
     import DiffTools from "../revision/DiffTools.svelte";
@@ -22,20 +23,35 @@
     import OperationView from "./OperationView.svelte";
     import SettingsPanel from "../shell/SettingsPanel.svelte";
 
-    export let id: PanelId;
-    export let active: boolean;
-    export let workspace: Extract<RepoConfig, { type: "Workspace" }>;
-    export let selection: Query<RevsResult>;
-    export let detail: Extract<RevsResult, { type: "Detail" }> | null;
-    export let changes: RevChange[];
-    export let selectedPath: string;
-    export let reviewKey: string;
-    export let onSelectFile: (change: RevChange) => void;
+    interface Props {
+        id: PanelId;
+        active: boolean;
+        workspace: Extract<RepoConfig, { type: "Workspace" }>;
+        selection: Query<RevsResult>;
+        detail: Extract<RevsResult, { type: "Detail" }> | null;
+        changes: RevChange[];
+        selectedPath: string;
+        reviewKey: string;
+        onSelectFile: (change: RevChange) => void;
+    }
 
-    provideToolbarOwner(id);
+    let {
+        id,
+        active,
+        workspace,
+        selection,
+        detail,
+        changes,
+        selectedPath,
+        reviewKey,
+        onSelectFile
+    }: Props = $props();
 
-    $: headers = detail?.headers ?? [];
-    $: file = selectedPath || changes[0]?.path.repo_path || "";
+    // parents key this component by panel id, so toolbar ownership lasts for its lifetime.
+    provideToolbarOwner(untrack(() => id));
+
+    let headers = $derived(detail?.headers ?? []);
+    let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
 {#if id === "diff" && detail && changes.length}<ViewToolbar label="Diff tools"><DiffTools {changes} /></ViewToolbar>{/if}

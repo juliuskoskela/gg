@@ -2,19 +2,23 @@
     import { tick } from "svelte";
     import Icon from "./Icon.svelte";
 
-    // an icon button with a menu of independent on/off options, for view settings that don't each earn a toolbar slot
-    export let label: string;
-    export let icon: string;
-    /** options with different groups are separated by a rule */
-    export let options: { id: string; label: string; group?: number; checked: boolean; onToggle: () => void }[];
+    interface Props {
+        // an icon button with a menu of independent on/off options, for view settings that don't each earn a toolbar slot
+        label: string;
+        icon: string;
+        /** options with different groups are separated by a rule */
+        options: { id: string; label: string; group?: number; checked: boolean; onToggle: () => void }[];
+    }
 
-    let open = false;
-    let root: HTMLDivElement;
-    let trigger: HTMLButtonElement;
-    let list: HTMLDivElement | undefined;
+    let { label, icon, options }: Props = $props();
+
+    let open = $state(false);
+    let root!: HTMLDivElement;
+    let trigger!: HTMLButtonElement;
+    let list: HTMLDivElement | undefined = $state();
     let id = `options-${Math.random().toString(36).slice(2, 8)}`;
 
-    let position = "";
+    let position = $state("");
     // toolbars scroll sideways and would clip a dropdown, so the menu is placed against the window
     async function show(focusFirst = false) {
         open = true;
@@ -44,20 +48,20 @@
 </script>
 
 <svelte:window
-    on:pointerdown={event => { if (open && !root.contains(event.target as Node)) close(); }}
-    on:keydown={event => { if (open && event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); close(true); } }}
-    on:resize={() => open && close()} />
+    onpointerdown={event => { if (open && !root.contains(event.target as Node)) close(); }}
+    onkeydown={event => { if (open && event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); close(true); } }}
+    onresize={() => open && close()} />
 
 <div class="options" bind:this={root}>
     <button bind:this={trigger} type="button" class="trigger" class:open aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={id}
-        on:click={() => open ? close() : show()} on:keydown={event => { if (event.key === "ArrowDown" && !open) { event.preventDefault(); show(true); } }}>
+        onclick={() => open ? close() : show()} onkeydown={event => { if (event.key === "ArrowDown" && !open) { event.preventDefault(); show(true); } }}>
         <Icon name={icon} /><span class="caret"><Icon name="chevron-down" /></span>
     </button>
     {#if open}
-        <div {id} class="menu" role="menu" tabindex="-1" aria-label={label} style={position} bind:this={list} on:keydown={key}>
+        <div {id} class="menu" role="menu" tabindex="-1" aria-label={label} style={position} bind:this={list} onkeydown={key}>
             {#each options as option, index (option.id)}
                 {#if index > 0 && (option.group ?? 0) !== (options[index - 1].group ?? 0)}<hr />{/if}
-                <button type="button" role="menuitemcheckbox" aria-checked={option.checked} on:click={option.onToggle}>
+                <button type="button" role="menuitemcheckbox" aria-checked={option.checked} onclick={option.onToggle}>
                     <span class="check" aria-hidden="true">{#if option.checked}<Icon name="check" />{/if}</span>{option.label}
                 </button>
             {/each}

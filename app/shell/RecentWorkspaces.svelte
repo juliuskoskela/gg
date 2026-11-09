@@ -3,7 +3,11 @@
     import { repoConfigEvent } from "../stores.js";
     import type { RepoConfig } from "../messages/RepoConfig.js";
 
-    export let workspaces: string[] = [];
+    interface Props {
+        workspaces?: string[];
+    }
+
+    let { workspaces = [] }: Props = $props();
 
     async function openWorkspace(path: string) {
         const result = await query<RepoConfig>("query_workspace", { path });
@@ -24,7 +28,7 @@
     <ul>
         {#each workspaces as workspace}
             <li>
-                <button on:click={() => openWorkspace(workspace)} title="Open this workspace">
+                <button onclick={() => openWorkspace(workspace)} title="Open this workspace">
                     {workspace}
                 </button>
             </li>

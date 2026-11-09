@@ -1,9 +1,18 @@
 <script lang="ts">
     import type { HistoryRevision } from "../messages/HistoryRevision";
-    export let revisions: HistoryRevision[];
-    export let selected = "";
-    export let heads: string[] = [];
-    export let onSelect: (revision: HistoryRevision) => void;
+    interface Props {
+        revisions: HistoryRevision[];
+        selected?: string;
+        heads?: string[];
+        onSelect: (revision: HistoryRevision) => void;
+    }
+
+    let {
+        revisions,
+        selected = "",
+        heads = [],
+        onSelect
+    }: Props = $props();
     function layout(revisions: HistoryRevision[]) {
         let lanes: (string | null)[] = [];
         let positions = new Map<string, { column: number; row: number }>();
@@ -24,7 +33,7 @@
         let links = revisions.flatMap(revision => revision.parent_ids.map(parent => ({ from: positions.get(revision.id.commit.hex)!, to: positions.get(parent) })).filter(link => !!link.to));
         return { positions, links, width: columns * 14 + 16 };
     }
-    $: graph = layout(revisions);
+    let graph = $derived(layout(revisions));
 </script>
 
 <div class="snapshot-graph" style={`--graph-width: ${graph.width}px`}>
@@ -37,7 +46,7 @@
             <circle cx={position.column * 14 + 10} cy={position.row * 48 + 24} r={heads.includes(revision.id.commit.hex) ? 3 : 2} class:selected={selected === revision.id.commit.hex} />
         {/each}
     </svg>
-    <div class="snapshot-revisions">{#each revisions as revision}<button class="snapshot-row" type="button" aria-pressed={selected === revision.id.commit.hex} on:click={() => onSelect(revision)}><span>{revision.description.lines[0] || "No description set"}</span><small>{revision.id.change.hex.slice(0, 8)} · {revision.id.commit.hex.slice(0, 8)}{#if revision.has_conflict} · Conflict{/if}</small></button>{/each}</div>
+    <div class="snapshot-revisions">{#each revisions as revision}<button class="snapshot-row" type="button" aria-pressed={selected === revision.id.commit.hex} onclick={() => onSelect(revision)}><span>{revision.description.lines[0] || "No description set"}</span><small>{revision.id.change.hex.slice(0, 8)} · {revision.id.commit.hex.slice(0, 8)}{#if revision.has_conflict} · Conflict{/if}</small></button>{/each}</div>
 </div>
 
 <style>

@@ -2,34 +2,45 @@
     import type { RepoConfig } from "../messages/RepoConfig";
     import Icon from "../controls/Icon.svelte";
 
-    export let workspace: Pick<Extract<RepoConfig, { type: "Workspace" }>, "query_choices">;
-    export let currentQuery: string;
-    export let collapsed = false;
-    export let onSelect: (revset: string) => void;
-    export let onWorkingCopy: () => void;
-    export let onHistory: () => void = () => {};
-    $: views = [
+    interface Props {
+        workspace: Pick<Extract<RepoConfig, { type: "Workspace" }>, "query_choices">;
+        currentQuery: string;
+        collapsed?: boolean;
+        onSelect: (revset: string) => void;
+        onWorkingCopy: () => void;
+        onHistory?: () => void;
+    }
+
+    let {
+        workspace,
+        currentQuery,
+        collapsed = false,
+        onSelect,
+        onWorkingCopy,
+        onHistory = () => {}
+    }: Props = $props();
+    let views = $derived([
         { label: "All revisions", icon: "git-branch", revset: workspace.query_choices.default ?? "all()" },
         { label: "Bookmarks", icon: "bookmark", revset: "bookmarks()" },
         { label: "Conflicts", icon: "git-merge", revset: "conflicts()" },
-    ];
-    $: savedViews = Object.entries(workspace.query_choices).filter(([name]) => name !== "default");
+    ]);
+    let savedViews = $derived(Object.entries(workspace.query_choices).filter(([name]) => name !== "default"));
 </script>
 
 <div class="repository-navigation" class:collapsed>
-    <button class="working-copy" type="button" aria-label="Working copy" title="Working copy" on:click={onWorkingCopy}><Icon name="edit-3" />{#if !collapsed}<span>Working copy</span><kbd>@</kbd>{/if}</button>
-    <button class="selection-item history-entry" type="button" aria-label="Repository history" title="Repository history" on:click={onHistory}><Icon name="clock" />{#if !collapsed}<span>History</span>{/if}</button>
+    <button class="working-copy" type="button" aria-label="Working copy" title="Working copy" onclick={onWorkingCopy}><Icon name="edit-3" />{#if !collapsed}<span>Working copy</span><kbd>@</kbd>{/if}</button>
+    <button class="selection-item history-entry" type="button" aria-label="Repository history" title="Repository history" onclick={onHistory}><Icon name="clock" />{#if !collapsed}<span>History</span>{/if}</button>
     <nav aria-label="Repository views">
         {#if !collapsed}<h2>Revisions</h2>{/if}
         {#each views as view}
-            <button class="selection-item" type="button" aria-label={view.label} title={view.label} aria-current={currentQuery === view.revset ? "page" : undefined} on:click={() => onSelect(view.revset)}><Icon name={view.icon} />{#if !collapsed}<span>{view.label}</span>{/if}</button>
+            <button class="selection-item" type="button" aria-label={view.label} title={view.label} aria-current={currentQuery === view.revset ? "page" : undefined} onclick={() => onSelect(view.revset)}><Icon name={view.icon} />{#if !collapsed}<span>{view.label}</span>{/if}</button>
         {/each}
     </nav>
     {#if savedViews.length}
         <nav aria-label="Saved revsets">
             {#if !collapsed}<h2>Saved revsets</h2>{/if}
             {#each savedViews as [name, revset]}
-                <button class="selection-item" type="button" aria-label={`Saved revset: ${name.replaceAll("-", " ")}`} title={`Saved revset: ${name.replaceAll("-", " ")}: ${revset}`} aria-current={currentQuery === revset ? "page" : undefined} on:click={() => onSelect(revset)}><Icon name="filter" />{#if !collapsed}<span>{name.replaceAll("-", " ")}</span>{/if}</button>
+                <button class="selection-item" type="button" aria-label={`Saved revset: ${name.replaceAll("-", " ")}`} title={`Saved revset: ${name.replaceAll("-", " ")}: ${revset}`} aria-current={currentQuery === revset ? "page" : undefined} onclick={() => onSelect(revset)}><Icon name="filter" />{#if !collapsed}<span>{name.replaceAll("-", " ")}</span>{/if}</button>
             {/each}
         </nav>
     {/if}

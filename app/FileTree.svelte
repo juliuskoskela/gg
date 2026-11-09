@@ -1,26 +1,37 @@
-<script context="module" lang="ts">
+<script module lang="ts">
     let collapsedFolders = new Map<string, boolean>();
 </script>
 
 <script lang="ts">
+    import FileTree from './FileTree.svelte';
     import type { RevChange } from "./messages/RevChange";
     import type { RevHeader } from "./messages/RevHeader";
     import ChangeObject from "./objects/ChangeObject.svelte";
     import Icon from "./controls/Icon.svelte";
 
-    export let changes: RevChange[];
-    export let headers: RevHeader[];
-    export let prefix = "";
-    export let selectedPath: string | undefined = undefined;
-    export let onSelect: (change: RevChange) => void = () => {};
-    $: folders = [...new Set(changes.map(change => change.path.repo_path.slice(prefix.length)).filter(path => path.includes("/")).map(path => path.split("/")[0]))].sort();
-    $: files = changes.filter(change => !change.path.repo_path.slice(prefix.length).includes("/"));
+    interface Props {
+        changes: RevChange[];
+        headers: RevHeader[];
+        prefix?: string;
+        selectedPath?: string | undefined;
+        onSelect?: (change: RevChange) => void;
+    }
+
+    let {
+        changes,
+        headers,
+        prefix = "",
+        selectedPath = undefined,
+        onSelect = () => {}
+    }: Props = $props();
+    let folders = $derived([...new Set(changes.map(change => change.path.repo_path.slice(prefix.length)).filter(path => path.includes("/")).map(path => path.split("/")[0]))].sort());
+    let files = $derived(changes.filter(change => !change.path.repo_path.slice(prefix.length).includes("/")));
 </script>
 
 {#each folders as folder}
-    <details open={!collapsedFolders.get(`${prefix}${folder}`)} on:toggle={event => collapsedFolders.set(`${prefix}${folder}`, !(event.currentTarget as HTMLDetailsElement).open)}>
+    <details open={!collapsedFolders.get(`${prefix}${folder}`)} ontoggle={event => collapsedFolders.set(`${prefix}${folder}`, !(event.currentTarget as HTMLDetailsElement).open)}>
         <summary title={`${prefix}${folder}`}><Icon name="chevron-right" /><span>{folder}</span></summary>
-        <div class="children" role="group" aria-label={`${prefix}${folder}`}><svelte:self changes={changes.filter(change => change.path.repo_path.startsWith(`${prefix}${folder}/`))} {headers} prefix={`${prefix}${folder}/`} {selectedPath} {onSelect} /></div>
+        <div class="children" role="group" aria-label={`${prefix}${folder}`}><FileTree changes={changes.filter(change => change.path.repo_path.startsWith(`${prefix}${folder}/`))} {headers} prefix={`${prefix}${folder}/`} {selectedPath} {onSelect} /></div>
     </details>
 {/each}
 {#each files as change}

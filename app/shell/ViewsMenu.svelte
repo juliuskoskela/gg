@@ -6,9 +6,9 @@
     import { viewChoices } from "../workspace/panels";
     import { repoStatusEvent } from "../stores";
 
-    let root: HTMLDivElement;
-    let menuOpen = false;
-    $: choices = viewChoices(!!$repoStatusEvent);
+    let root!: HTMLDivElement;
+    let menuOpen = $state(false);
+    let choices = $derived(viewChoices(!!$repoStatusEvent));
 
     onMount(() => {
         let openMenu = () => { menuOpen = true; };
@@ -29,17 +29,17 @@
 </script>
 
 <svelte:window
-    on:pointerdown={event => { if (menuOpen && !root.contains(event.target as Node)) menuOpen = false; }}
-    on:keydown={event => { if (event.key === "Escape" && menuOpen) { event.preventDefault(); event.stopPropagation(); menuOpen = false; document.getElementById("views-menu")?.focus(); } }} />
+    onpointerdown={event => { if (menuOpen && !root.contains(event.target as Node)) menuOpen = false; }}
+    onkeydown={event => { if (event.key === "Escape" && menuOpen) { event.preventDefault(); event.stopPropagation(); menuOpen = false; document.getElementById("views-menu")?.focus(); } }} />
 
 <div class="views" bind:this={root}>
-    <button id="views-menu" type="button" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls="views-menu-list" on:click={() => menuOpen = !menuOpen}>Views<svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+    <button id="views-menu" type="button" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls="views-menu-list" onclick={() => menuOpen = !menuOpen}>Views<svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
     {#if menuOpen}
         <div id="views-menu-list" class="views-menu" role="menu" aria-label="Views">
             {#each choices as choice (choice.id)}
-                <button type="button" role="menuitemcheckbox" aria-checked={contains($dock.root, choice.id)} on:click={() => toggle(choice.id)}>{choice.label}</button>
+                <button type="button" role="menuitemcheckbox" aria-checked={contains($dock.root, choice.id)} onclick={() => toggle(choice.id)}>{choice.label}</button>
             {/each}
-            <button type="button" role="menuitem" on:click={() => dock.reset()}>Reset layout</button>
+            <button type="button" role="menuitem" onclick={() => dock.reset()}>Reset layout</button>
         </div>
     {/if}
 </div>

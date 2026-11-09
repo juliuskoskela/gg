@@ -8,9 +8,9 @@
     import ThemeFamilyPicker from "../display/ThemeFamilyPicker.svelte";
     import Icon from "../controls/Icon.svelte";
 
-    $: busy = !!$currentMutation || $mutationPending;
-    $: zoom = zoomCommands($appZoom, $nativeZoomEnabled);
-    $: vision = colorVisions.find(option => option.id === $colorVision) ?? colorVisions[0];
+    let busy = $derived(!!$currentMutation || $mutationPending);
+    let zoom = $derived(zoomCommands($appZoom, $nativeZoomEnabled));
+    let vision = $derived(colorVisions.find(option => option.id === $colorVision) ?? colorVisions[0]);
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (settings scroll independently of the dock) -->
@@ -22,12 +22,12 @@
             <div class="setting-row appearance-row">
                 <div class="setting-copy"><h3>Light level</h3><p>Choose a light workspace or one of two dark depths.</p></div>
                 <div class="theme-choices" role="group" aria-label="Appearance">
-                    <button type="button" aria-pressed={$effectiveAppearance === "light"} on:click={() => setAppearance("light")}><Icon name="sun" />Light</button>
-                    <button type="button" aria-pressed={$effectiveAppearance === "twilight"} on:click={() => setAppearance("twilight")}><Icon name="sunset" />Twilight</button>
-                    <button type="button" aria-pressed={$effectiveAppearance === "midnight"} on:click={() => setAppearance("midnight")}><Icon name="moon" />Midnight</button>
+                    <button type="button" aria-pressed={$effectiveAppearance === "light"} onclick={() => setAppearance("light")}><Icon name="sun" />Light</button>
+                    <button type="button" aria-pressed={$effectiveAppearance === "twilight"} onclick={() => setAppearance("twilight")}><Icon name="sunset" />Twilight</button>
+                    <button type="button" aria-pressed={$effectiveAppearance === "midnight"} onclick={() => setAppearance("midnight")}><Icon name="moon" />Midnight</button>
                 </div>
             </div>
-            <div class="appearance-default"><button type="button" on:click={useDefaultAppearance} disabled={$themePreference === null}>Use repository or system appearance</button>{#if $themePreference === null}<span>Automatic · {$effectiveTheme === "light" ? "Light" : $effectiveAppearance === "twilight" ? "Twilight" : "Midnight"}</span>{/if}</div>
+            <div class="appearance-default"><button type="button" onclick={useDefaultAppearance} disabled={$themePreference === null}>Use repository or system appearance</button>{#if $themePreference === null}<span>Automatic · {$effectiveTheme === "light" ? "Light" : $effectiveAppearance === "twilight" ? "Twilight" : "Midnight"}</span>{/if}</div>
             <div class="setting-row vision-row">
                 <div class="setting-copy"><h3>Color vision</h3><p>{$colorVision === "typical" ? "Use the family’s own hues." : `${vision.description}. Hues are replaced with a palette checked against simulations of this vision, and diffs mark changed lines with + and −.`}</p></div>
                 <div class="vision-choice"><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(option => ({ value: option.id, label: option.label }))} onChange={event => colorVision.set((event.target as HTMLSelectElement).value as ColorVision)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget></div>
@@ -40,7 +40,7 @@
                     <div class="setting-copy"><h3>Interface size</h3><p>{Math.round($appZoom.level * 100)}%{$appZoom.pending ? " · Applying…" : ""}</p></div>
                     <div class="zoom-controls" role="group" aria-label="App zoom">
                         {#each zoom as command}
-                            <button type="button" aria-label={command.label} title={`${command.reason ?? command.label} (${command.shortcut})`} disabled={!!command.reason || $appZoom.pending} on:click={() => command.execute()}><Icon name={command.icon} />{#if command.id === "view.zoom-reset"}<span>100%</span>{/if}</button>
+                            <button type="button" aria-label={command.label} title={`${command.reason ?? command.label} (${command.shortcut})`} disabled={!!command.reason || $appZoom.pending} onclick={() => command.execute()}><Icon name={command.icon} />{#if command.id === "view.zoom-reset"}<span>100%</span>{/if}</button>
                         {/each}
                     </div>
                 </div>

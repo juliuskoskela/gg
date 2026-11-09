@@ -4,10 +4,19 @@
     import type { AnnotationAnchor } from "../messages/AnnotationAnchor";
     import { anchorDescription, anchorIcon, anchorLabel, sameAnchor } from "./anchors";
 
-    export let targets: { anchor: AnnotationAnchor; subject: string; state?: AnchorState }[];
-    export let removable = false;
-    export let highlight: AnnotationAnchor[] = [];
-    export let onRemove: (anchor: AnnotationAnchor) => void = () => {};
+    interface Props {
+        targets: { anchor: AnnotationAnchor; subject: string; state?: AnchorState }[];
+        removable?: boolean;
+        highlight?: AnnotationAnchor[];
+        onRemove?: (anchor: AnnotationAnchor) => void;
+    }
+
+    let {
+        targets,
+        removable = false,
+        highlight = [],
+        onRemove = () => {}
+    }: Props = $props();
 
     function outdated(state: AnchorState | undefined): string | null {
         if (!state) return null;
@@ -27,7 +36,7 @@
             {#if target.anchor.kind === "lines" && target.anchor.side === "old"}<span class="side" title="Before the change">old</span>{/if}
             {#if warning}<span class="warning" role="img" aria-label={warning} title={warning}><Icon name="alert-triangle" /></span>{/if}
             <span class="sr-only">{anchorDescription(target.anchor, target.subject)}</span>
-            {#if removable}<button type="button" class="remove" aria-label="Stop pointing at {anchorLabel(target.anchor)}" title="Remove" on:click={() => onRemove(target.anchor)}><Icon name="x" /></button>{/if}
+            {#if removable}<button type="button" class="remove" aria-label="Stop pointing at {anchorLabel(target.anchor)}" title="Remove" onclick={() => onRemove(target.anchor)}><Icon name="x" /></button>{/if}
         </li>
     {/each}
 </ul>

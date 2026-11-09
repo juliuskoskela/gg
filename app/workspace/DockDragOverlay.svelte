@@ -3,16 +3,16 @@
     import { dockAnnouncement, panelDragging } from "./panelDrag";
     import { panelLabel } from "./panels";
     import { onMount } from "svelte";
-    let reduced = false;
-    let innerWidth = 0;
-    let innerHeight = 0;
+    let reduced = $state(false);
+    let innerWidth = $state(0);
+    let innerHeight = $state(0);
     onMount(() => {
         let media = matchMedia("(prefers-reduced-motion: reduce)");
         function sync() { reduced = media.matches; }
         sync(); media.addEventListener("change", sync);
         return () => media.removeEventListener("change", sync);
     });
-    $: landing = $panelDragging?.landing;
+    let landing = $derived($panelDragging?.landing);
 </script>
 
 <svelte:window bind:innerWidth bind:innerHeight />
