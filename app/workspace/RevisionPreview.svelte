@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { onDestroy, untrack } from "svelte";
+
     import { repositoryScope } from "./repository";
     import { workspaceController } from "./state";
     import { shortFilename } from "../paths";
@@ -9,18 +11,16 @@
     import TimestampSpan from "../controls/TimestampSpan.svelte";
     import Icon from "../controls/Icon.svelte";
 
-    export let revs: RevisionDetail;
-    export let onFull: (path?: string) => void;
-    $: header = revs.headers[0];
-    $: files = [...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))];
-    $: additions = revs.changes.reduce((sum, file) => sum + file.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("+")).length, 0), 0);
-    $: deletions = revs.changes.reduce((sum, file) => sum + file.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("-")).length, 0), 0);
-    $: description = header.description.lines.slice(1).join("\n").trim();
-    let preview: RevChange | null = null;
-    let previewPending = false;
-    let previewError = "";
+    interface Props {
+        revs: RevisionDetail;
+        onFull: (path?: string) => void;
+    }
+
+    let { revs, onFull }: Props = $props();
+    let preview: RevChange | null = $state.raw(null);
+    let previewPending = $state(false);
+    let previewError = $state("");
     let generation = 0;
-    $: loadPreview(revs, files.find(file => file.path.repo_path === $workspaceController.inspector?.activeFilePath) ?? files[0], repositoryScope($repoConfigEvent));
     async function loadPreview(detail: RevisionDetail, file: RevChange | undefined, repository: string) {
         let request = ++generation; preview = null; previewError = ""; previewPending = !!file;
         if (!file) return;
@@ -29,8 +29,18 @@
         previewPending = false;
         if (result.type === "data") preview = result.value; else previewError = result.message;
     }
-    $: previewLines = preview?.hunks[0]?.lines.lines.slice(0, 6) ?? [];
     function status(file: RevChange) { return file.has_conflict ? "Conflict" : file.kind; }
+    let header = $derived(revs.headers[0]);
+    let files = $derived([...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))]);
+    let additions = $derived(revs.changes.reduce((sum, file) => sum + file.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("+")).length, 0), 0));
+    let deletions = $derived(revs.changes.reduce((sum, file) => sum + file.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("-")).length, 0), 0));
+    let description = $derived(header.description.lines.slice(1).join("\n").trim());
+    $effect.pre(() => {
+        let detail = revs, file = files.find(file => file.path.repo_path === $workspaceController.inspector?.activeFilePath) ?? files[0], scope = repositoryScope($repoConfigEvent);
+        untrack(() => loadPreview(detail, file, scope));
+    });
+    onDestroy(() => generation++);
+    let previewLines = $derived.by(() => preview?.hunks[0]?.lines.lines.slice(0, 6) ?? []);
 </script>
 
 <div class="revision-preview">
@@ -40,9 +50,9 @@
     {#if description}<details class="description"><summary>Description</summary><p>{description}</p></details>{/if}
     <div class="summary"><h3>{files.length} {files.length === 1 ? "changed file" : "changed files"}</h3>{#if !revs.summaryOnly}<span aria-label={`${additions} added lines, ${deletions} deleted lines`}><span class="added">+{additions}</span> <span class="removed">−{deletions}</span></span>{/if}</div>
     <ul class="preview-files" aria-label="Changed file preview">
-        {#each files.slice(0, 5) as file}<li><button type="button" aria-label={`Inspect ${file.path.relative_path}`} on:click={() => onFull(file.path.repo_path)}><Icon name={file.has_conflict ? "alert-triangle" : "file"} /><span class="path" title={file.path.relative_path}><span class="filename">{shortFilename(file.path.relative_path)}</span><span class="directory">{file.path.relative_path.split("/").slice(0, -1).join("/")}</span></span><span class="file-status">{status(file)}</span><Icon name="chevron-right" /></button></li>{/each}
+        {#each files.slice(0, 5) as file}<li><button type="button" aria-label={`Inspect ${file.path.relative_path}`} onclick={() => onFull(file.path.repo_path)}><Icon name={file.has_conflict ? "alert-triangle" : "file"} /><span class="path" title={file.path.relative_path}><span class="filename">{shortFilename(file.path.relative_path)}</span><span class="directory">{file.path.relative_path.split("/").slice(0, -1).join("/")}</span></span><span class="file-status">{status(file)}</span><Icon name="chevron-right" /></button></li>{/each}
     </ul>
-    {#if files.length > 5}<button class="all-files" type="button" on:click={() => onFull()}>View all {files.length} files</button>{/if}
+    {#if files.length > 5}<button class="all-files" type="button" onclick={() => onFull()}>View all {files.length} files</button>{/if}
     {#if !files.length}<p class="empty">This revision has no file changes.</p>{/if}
     {#if previewPending}<p class="empty" role="status">Loading diff preview…</p>{:else if previewError}<p class="empty">Diff preview unavailable. Open the full revision to retry.</p>{/if}
     {#if previewLines.length}<div class="diff-preview"><h3>Diff preview <span>{preview?.path.relative_path}</span></h3><pre aria-label="Diff preview">{#each previewLines as line}<code class:added={line.startsWith("+")} class:removed={line.startsWith("-")}>{line + "\n"}</code>{/each}</pre></div>{/if}

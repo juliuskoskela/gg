@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { revisionIdentity } from "./data";
     import { repositoryScope } from "../workspace/repository";
     import { tick } from "svelte";
@@ -11,50 +13,21 @@
     import TextAreaField from "../controls/TextAreaField.svelte";
     import RevisionMetadata from "./RevisionMetadata.svelte";
 
-    export let revs: Extract<RevsResult, { type: "Detail" }>;
-    export let readOnly = false;
-    let editing = false;
-    let editableDescription = "";
-    let baselineDescription = "";
-    let previousKey = "";
-    let resetAuthor = false;
-    let textarea: HTMLTextAreaElement | undefined;
-    let descriptionLink: HTMLButtonElement | undefined;
+    interface Props {
+        revs: Extract<RevsResult, { type: "Detail" }>;
+        readOnly?: boolean;
+    }
+
+    let { revs, readOnly = false }: Props = $props();
+    let editing = $state(false);
+    let editableDescription = $state("");
+    let baselineDescription = $state("");
+    let previousKey = $state("");
+    let resetAuthor = $state(false);
+    let textarea: HTMLTextAreaElement | undefined = $state();
+    let descriptionLink: HTMLButtonElement | undefined = $state();
 
     async function beginEditing() { editing = true; await tick(); textarea?.focus(); }
-    $: singleton = revs.headers.length === 1;
-    $: newest = revs.headers[0];
-    $: canEdit = singleton && !immutable && !readOnly;
-    $: emptyWorkingCopy = canEdit && newest.is_working_copy && !incomingDescription;
-    $: showEditor = canEdit && (editing || emptyWorkingCopy);
-    $: immutable = newest.is_immutable && !$ignoreToggled;
-    $: mutator = new RevisionMutator(revs.headers, $ignoreToggled);
-    $: key = revisionIdentity(revs, repositoryScope($repoConfigEvent));
-    $: incomingDescription = newest.description.lines.join("\n");
-    // an empty description that can be edited is an invitation, not a status
-    $: title = singleton ? newest.description.lines[0] || (canEdit ? "Add a description" : newest.is_working_copy ? "Working copy" : "No description set") : `${revs.headers.length} revisions`;
-    $: descriptionBody = incomingDescription.split("\n").slice(1).join("\n").trim();
-    $: {
-        if (key !== previousKey) {
-            let draft = get(descriptionDrafts)[key];
-            editableDescription = draft ?? incomingDescription;
-            editing = draft !== undefined;
-            resetAuthor = false;
-        } else if (editableDescription === baselineDescription) {
-            editableDescription = incomingDescription;
-        }
-        previousKey = key;
-        baselineDescription = incomingDescription;
-    }
-    $: changed = editableDescription !== baselineDescription || resetAuthor;
-    $: if (key) {
-        descriptionDrafts.update(drafts => {
-            let next = { ...drafts };
-            if (editableDescription !== baselineDescription) next[key] = editableDescription;
-            else delete next[key];
-            return next;
-        });
-    }
     function focusEditButton() {
         tick().then(() => { if (emptyWorkingCopy) textarea?.focus(); else descriptionLink?.focus(); });
     }
@@ -72,7 +45,47 @@
             if (savingKey === key || !changed) { editing = false; resetAuthor = false; focusEditButton(); }
         }
     }
-    $: if (editing && textarea) tick().then(() => { if (editing && document.activeElement?.tagName !== "TEXTAREA") textarea?.focus(); });
+    let singleton = $derived(revs.headers.length === 1);
+    let newest = $derived(revs.headers[0]);
+    let immutable = $derived(newest.is_immutable && !$ignoreToggled);
+    let canEdit = $derived(singleton && !immutable && !readOnly);
+    let incomingDescription = $derived(newest.description.lines.join("\n"));
+    let emptyWorkingCopy = $derived(canEdit && newest.is_working_copy && !incomingDescription);
+    let key = $derived(revisionIdentity(revs, repositoryScope($repoConfigEvent)));
+    $effect.pre(() => {
+        let nextKey = key, description = incomingDescription;
+        untrack(() => {
+            if (nextKey !== previousKey) {
+                let draft = get(descriptionDrafts)[nextKey];
+                editableDescription = draft ?? description;
+                editing = draft !== undefined;
+                resetAuthor = false;
+            } else if (editableDescription === baselineDescription) {
+                editableDescription = description;
+            }
+            previousKey = nextKey;
+            baselineDescription = description;
+        });
+    });
+    let showEditor = $derived(canEdit && (editing || emptyWorkingCopy));
+    let mutator = $derived(new RevisionMutator(revs.headers, $ignoreToggled));
+    // an empty description that can be edited is an invitation, not a status
+    let title = $derived(singleton ? newest.description.lines[0] || (canEdit ? "Add a description" : newest.is_working_copy ? "Working copy" : "No description set") : `${revs.headers.length} revisions`);
+    let descriptionBody = $derived(incomingDescription.split("\n").slice(1).join("\n").trim());
+    let changed = $derived(editableDescription !== baselineDescription || resetAuthor);
+    $effect.pre(() => {
+        let draftKey = key, description = editableDescription, baseline = baselineDescription;
+        if (!draftKey) return;
+        untrack(() => descriptionDrafts.update(drafts => {
+            let next = { ...drafts };
+            if (description !== baseline) next[draftKey] = description;
+            else delete next[draftKey];
+            return next;
+        }));
+    });
+    $effect.pre(() => {
+        if (editing && textarea) tick().then(() => { if (editing && document.activeElement?.tagName !== "TEXTAREA") textarea?.focus(); });
+    });
 </script>
 
 <div class="overview-content">

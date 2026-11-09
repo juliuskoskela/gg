@@ -1,8 +1,10 @@
-<script context="module" lang="ts">
+<script module lang="ts">
     const fileFilters = new Map<string, string>();
 </script>
 
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import ViewToolbar from "../controls/ViewToolbar.svelte";
     import { tick } from "svelte";
     import type { RevChange } from "../messages/RevChange";
@@ -14,42 +16,66 @@
     import PanelHeader from "../controls/PanelHeader.svelte";
     import FileTree from "../FileTree.svelte";
     import { navigateOptions } from "../controls/optionNavigation";
-    export let changes: RevChange[];
-    export let headers: RevHeader[];
-    export let selectedPath: string;
-    export let reviewKey: string;
-    export let visible: boolean;
-    export let overlay: boolean;
-    export let showHeading = true;
-    export let onSelect: (change: RevChange) => void;
-    export let onClose: (() => void) | null = null;
-    let panel: HTMLElement;
-    let searchInput: HTMLInputElement;
-    let search = "";
-    let lastKey = "";
-    let wasVisible = false;
-    $: if (reviewKey !== lastKey) {
-        if (lastKey) fileFilters.set(lastKey, search);
-        search = fileFilters.get(reviewKey) ?? "";
-        lastKey = reviewKey;
+    interface Props {
+        changes: RevChange[];
+        headers: RevHeader[];
+        selectedPath: string;
+        reviewKey: string;
+        visible: boolean;
+        overlay: boolean;
+        showHeading?: boolean;
+        onSelect: (change: RevChange) => void;
+        onClose?: (() => void) | null;
     }
-    $: if (reviewKey) fileFilters.set(reviewKey, search);
-    $: filteredChanges = changes.filter(change => change.path.relative_path.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
-    $: if (visible !== wasVisible) {
-        wasVisible = visible;
-        if (visible && overlay) tick().then(() => { if (visible) searchInput?.focus(); });
-    }
+
+    let {
+        changes,
+        headers,
+        selectedPath,
+        reviewKey,
+        visible,
+        overlay,
+        showHeading = true,
+        onSelect,
+        onClose = null
+    }: Props = $props();
+    let panel!: HTMLElement;
+    let searchInput: HTMLInputElement | undefined = $state();
+    let search = $state("");
+    let lastKey = $state("");
+    let wasVisible = $state(false);
+    $effect.pre(() => {
+        let nextKey = reviewKey;
+        untrack(() => {
+            if (nextKey !== lastKey) {
+                if (lastKey) fileFilters.set(lastKey, search);
+                search = fileFilters.get(nextKey) ?? "";
+                lastKey = nextKey;
+            }
+        });
+    });
+    $effect.pre(() => { if (reviewKey) fileFilters.set(reviewKey, search); });
+    let filteredChanges = $derived(changes.filter(change => change.path.relative_path.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+    $effect.pre(() => {
+        let showing = visible, floating = overlay;
+        untrack(() => {
+            if (showing !== wasVisible) {
+                wasVisible = showing;
+                if (showing && floating) tick().then(() => { if (visible) searchInput?.focus(); });
+            }
+        });
+    });
     function keydown(event: KeyboardEvent) {
         if (event.key === "Escape" && overlay && visible && onClose && panel?.contains(event.target as Node)) { event.preventDefault(); onClose(); }
     }
 </script>
 
-<svelte:window on:keydown={keydown} />
+<svelte:window onkeydown={keydown} />
 <aside class="file-tree" class:overlay hidden={!visible} id="changed-files" aria-label="Changed files" bind:this={panel}>
     {#if showHeading}<PanelHeader><div class="file-tree-heading">Files <span>{changes.length}</span>{#if onClose}<div class="tree-toggle"><ToggleTray label="Changed files"><ToggleItem kind="disclosure" on text="Tree" label="File tree" tip="Hide file tree" controls="changed-files" onClick={onClose} /></ToggleTray></div>{/if}</div></PanelHeader>{/if}
     <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter toolbar-lead"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div></ViewToolbar>
     {#if changes.length > 200}<VirtualFileList changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">No matching files</p>{/if}{:else}
-    <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" on:keydown={navigateOptions}><FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
+    <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" onkeydown={navigateOptions}><FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
 </aside>
 
 <style>

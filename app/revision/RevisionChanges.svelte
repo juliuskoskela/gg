@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { repositoryScope } from "../workspace/repository";
     import { onDestroy, tick } from "svelte";
     import { revisionIdentity, loadRevisionDiff, type RevisionDetail } from "./data";
@@ -18,25 +20,33 @@
     import { targetCommands } from "../annotations/commands";
     import { navigateOptions } from "../controls/optionNavigation";
 
-    export let focused = false;
-    export let showTools = true;
-    export let revs: RevisionDetail;
-    export let changes: RevChange[];
-    let width = 1200;
-    export let selectedPath = "";
-    export let onSelectFile: (change: RevChange) => void = change => changeSelectEvent.set(change);
-    export let onRequestFiles: (() => void) | null = null;
-    let readingKey = "";
-    let scrollTop = 0;
-    let scrollElement: HTMLDivElement;
-    let loaded: Query<RevChange | null> = { type: "wait" };
-    let loadedFullContext = false;
-    let actionsLoaded: Query<RevChange | null> = { type: "wait" };
+    let width = $state(1200);
+    interface Props {
+        focused?: boolean;
+        showTools?: boolean;
+        revs: RevisionDetail;
+        changes: RevChange[];
+        selectedPath?: string;
+        onSelectFile?: (change: RevChange) => void;
+        onRequestFiles?: (() => void) | null;
+    }
+
+    let {
+        focused = false,
+        showTools = true,
+        revs,
+        changes,
+        selectedPath = "",
+        onSelectFile = change => changeSelectEvent.set(change),
+        onRequestFiles = null
+    }: Props = $props();
+    let readingKey = $state("");
+    let scrollTop = $state(0);
+    let scrollElement = $state<HTMLDivElement>();
+    let loaded: Query<RevChange | null> = $state.raw({ type: "wait" });
+    let loadedFullContext = $state(false);
+    let actionsLoaded: Query<RevChange | null> = $state.raw({ type: "wait" });
     let loadGeneration = 0;
-    $: repository = repositoryScope($repoConfigEvent);
-    $: key = revisionIdentity(revs, repository);
-    $: currentChange = selectedPath ? changes.find(change => change.path.repo_path === selectedPath) : changes[0];
-    $: loadFile(revs, currentChange, repository, $diffFullContext);
     async function loadFile(detail: RevisionDetail, file: RevChange | undefined, repo: string, fullContext: boolean) {
         let generation = ++loadGeneration;
         loaded = { type: "wait" };
@@ -51,14 +61,6 @@
         loaded = result;
         await tick();
         if (generation === loadGeneration) restoreScroll(readingKey, fileScrollPositions.get(readingKey) ?? 0);
-    }
-    $: selectedIndex = currentChange ? changes.indexOf(currentChange) : -1;
-    $: nextReadingKey = `${key}:${currentChange?.path.repo_path ?? ""}`;
-    $: if (nextReadingKey !== readingKey) {
-        if (readingKey) fileScrollPositions.set(readingKey, scrollTop);
-        readingKey = nextReadingKey;
-        scrollTop = fileScrollPositions.get(readingKey) ?? 0;
-        restoreScroll(readingKey, scrollTop);
     }
     async function restoreScroll(expected: string, top: number) {
         await tick();
@@ -88,8 +90,29 @@
         return { before: side("+"), after: side("-") };
     }
     onDestroy(() => {
+        loadGeneration++;
         if (readingKey) fileScrollPositions.set(readingKey, scrollTop);
         revisionReviewState.set(key, { path: selectedPath, scrollTop });
+    });
+    let repository = $derived(repositoryScope($repoConfigEvent));
+    let key = $derived(revisionIdentity(revs, repository));
+    let currentChange = $derived(selectedPath ? changes.find(change => change.path.repo_path === selectedPath) : changes[0]);
+    $effect.pre(() => {
+        let detail = revs, file = currentChange, scope = repository, fullContext = $diffFullContext;
+        untrack(() => loadFile(detail, file, scope, fullContext));
+    });
+    let selectedIndex = $derived(currentChange ? changes.indexOf(currentChange) : -1);
+    let nextReadingKey = $derived(`${key}:${currentChange?.path.repo_path ?? ""}`);
+    $effect.pre(() => {
+        let next = nextReadingKey;
+        untrack(() => {
+            if (next !== readingKey) {
+                if (readingKey) fileScrollPositions.set(readingKey, scrollTop);
+                readingKey = next;
+                scrollTop = fileScrollPositions.get(readingKey) ?? 0;
+                restoreScroll(readingKey, scrollTop);
+            }
+        });
     });
 </script>
 
@@ -103,14 +126,14 @@
         <div class="changes-layout">
             <div class="file-review">
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex (overflow region needs keyboard scrolling) -->
-                <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} on:scroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
-                    {#if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p>{#if onRequestFiles}<button type="button" on:click={onRequestFiles}>Choose another file</button>{/if}</div>
+                <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} onscroll={event => { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); }}>
+                    {#if !currentChange}<div class="empty-change" role="status"><h3>File no longer available</h3><p>The requested file is not part of this revision.</p>{#if onRequestFiles}<button type="button" onclick={onRequestFiles}>Choose another file</button>{/if}</div>
                     {:else if loaded.type === "wait"}<p class="diff-message" role="status">Loading {currentChange.path.relative_path}…</p>
-                    {:else if loaded.type === "error"}<div class="diff-message" role="alert"><p>Couldn’t load this file: {loaded.message}</p><button type="button" on:click={() => loadFile(revs, currentChange, repository, $diffFullContext)}>Retry file</button></div>
+                    {:else if loaded.type === "error"}<div class="diff-message" role="alert"><p>Couldn’t load this file: {loaded.message}</p><button type="button" onclick={() => loadFile(revs, currentChange, repository, $diffFullContext)}>Retry file</button></div>
                     {:else if loaded.value}
                         {#key loaded.value}
                             {#if actionsLoaded.type === "data" && actionsLoaded.value && !actionsLoaded.value.has_conflict && actionsLoaded.value.hunks.length}
-                                <details class="hunk-actions"><summary><span class="hunk-action-label"><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></span><DiffStat {changes} /></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" on:keydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
+                                <details class="hunk-actions"><summary><span class="hunk-action-label"><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></span><DiffStat {changes} /></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" onkeydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
                             {:else}
                                 <div class="file-diff-summary"><span>No editable hunks</span><DiffStat {changes} /></div>
                             {/if}
@@ -119,7 +142,7 @@
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
                 <PanelFooter className="diff-footer"><div class="diff-toolbar">
-                    <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} on:click={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} on:click={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
+                    <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} onclick={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} onclick={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
                     <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
                 </div></PanelFooter>
             </div>

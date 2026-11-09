@@ -1,4 +1,4 @@
-import type { ComponentType, SvelteComponent } from "svelte";
+import type { Component } from "svelte";
 import { writable } from "svelte/store";
 import type { RevsResult } from "../messages/RevsResult";
 import type { RevChange } from "../messages/RevChange";
@@ -8,7 +8,7 @@ export type RevisionContext = { focused?: boolean; selectedPath?: string; onSele
 export type RevisionModule = {
     id: string;
     label: string;
-    component: ComponentType<SvelteComponent<RevisionContext>>;
+    component: Component<RevisionContext>;
     available?: (context: RevisionContext) => boolean;
 };
 
