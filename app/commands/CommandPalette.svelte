@@ -24,7 +24,7 @@
     let input: HTMLInputElement | undefined = $state();
     let dialog = $state<HTMLDialogElement>();
     let previous: HTMLElement | null = null;
-    let activeHeaders = $derived(headers ?? $selectionHeaders);
+    let activeHeaders = $derived(headers ?? ($pickedRevisions.length > 1 ? $pickedRevisions : $selectionHeaders));
     let commands = $derived([
         ...zoomCommands($appZoom, $nativeZoomEnabled),
         ...repositoryCommands("", $currentMutation, $mutationPending, $repoStatusEvent, $repoConfigEvent),

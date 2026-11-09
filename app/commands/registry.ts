@@ -3,6 +3,8 @@ import { mutationPending } from "../operations";
 import { getInput, isTauri, mutate, query, trigger } from "../ipc";
 import { chooseDestination } from "./destination";
 import { commandOperand, currentWorkspaceIdentity, destinationCandidates } from "./context";
+import type { AbandonSelectedRevisions } from "../messages/AbandonSelectedRevisions";
+import type { RebaseSelectedRevisions } from "../messages/RebaseSelectedRevisions";
 import type { OperationPreflight } from "../messages/OperationPreflight";
 import type { Operand } from "../messages/Operand";
 import type { RevHeader } from "../messages/RevHeader";
@@ -51,7 +53,6 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
     let ignore = get(ignoreToggled);
     let capabilities = revisionCapabilities(headers, ignore);
     let immutable = !ignore && headers.some(h => h.is_immutable);
-    // repository actions work on a continuous range; a scattered pick has no from::to
     let picks = get(pickedRevisions);
     let scattered = headers.length > 1 && picks.length === headers.length && headers.every(h => picks.some(p => p.id.commit.hex === h.id.commit.hex));
     let definitions: [keyof typeof capabilities | "move" | "insert" | "add_parent" | "remove_parent" | "split", string, string, number][] = [
@@ -64,18 +65,24 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
     ];
     let commands = definitions.map(([id, label, icon, group]) => {
         let permitted = id === "split" ? headers.length === 1 && !headers[0].is_immutable && !headers[0].has_conflict : id === "add_parent" ? headers.length > 0 : id === "move" || id === "insert" ? headers.length > 0 && !immutable : id === "remove_parent" ? headers.length === 1 && headers[0].parent_ids.length > 1 && !immutable : capabilities[id];
+        if (scattered && id === "move") label = "Rebase each onto…";
+        if (scattered && id === "abandon") label = "Abandon selected…";
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : !headers.length ? "Select a revision" :
-            scattered ? "Select a continuous range with Shift+click for this action" :
-            checkSelection && !selectionCurrent(headers) ? "Selection has changed" : id === "split" && headers.some(header => header.is_immutable) ? "Immutable revisions are protected" : id === "split" && headers.some(header => header.has_conflict) ? "Resolve conflicts before splitting" : !permitted ?
+            scattered && id !== "move" && id !== "abandon" ? "Select a continuous range with Shift+click for this action" :
+            checkSelection && !(scattered || selectionCurrent(headers)) ? "Selection has changed" : id === "split" && headers.some(header => header.is_immutable) ? "Immutable revisions are protected" : id === "split" && headers.some(header => header.has_conflict) ? "Resolve conflicts before splitting" : !permitted ?
             (immutable && ["move", "insert", "add_parent", "remove_parent", "new_parent", "edit", "abandon", "squash", "restore"].includes(id) ? "Immutable revisions are protected" : "This action requires a different selection or one parent") : null;
         return { id, label, icon, scope: "Revision", group, destructive: id === "abandon", reason, execute: () => {
+            // keep a stale scattered menu from turning its old picks into a range.
+            if (scattered && get(pickedRevisions) !== picks) return;
             // Re-evaluate at invocation, including after the palette has opened.
             if (revisionCommands(headers, checkSelection).find(c => c.id === id)?.reason) return;
             let status = get(repoStatusEvent);
             let config = get(repoConfigEvent);
             let selection = get(revisionSelectEvent);
+            let selectedPicks = get(pickedRevisions);
             let protection = currentProtectionVersion();
-            let valid = () => protectionVersion === protection && !get(currentMutation) && !get(mutationPending) && get(repoStatusEvent) === status && get(repoConfigEvent) === config && get(revisionSelectEvent) === selection && !revisionCommands(headers, checkSelection).find(c => c.id === id)?.reason;
+            let valid = () => protectionVersion === protection && !get(currentMutation) && !get(mutationPending) && get(repoStatusEvent) === status && get(repoConfigEvent) === config && get(revisionSelectEvent) === selection && get(pickedRevisions) === selectedPicks && !revisionCommands(headers, checkSelection).find(c => c.id === id)?.reason;
+            if (scattered && (id === "move" || id === "abandon")) return selectedAction(id, headers, valid);
             if (id === "split") return import("../splits/requestSplit").then(({ requestSplit }) => requestSplit(headers[0].id, () => { if (!valid()) throw new Error("The split context changed. Reopen the dialog."); })).then(() => {});
             if (id === "move") return moveRevisions(headers, checkSelection, valid);
             if (id === "insert" || id === "add_parent" || id === "remove_parent") return manipulateRevisions(id, headers, valid);
@@ -99,6 +106,25 @@ async function resolveDestination(title: string, valid: () => boolean): Promise<
     }
     let destination = verified.value.headers[0];
     return destination;
+}
+
+async function selectedAction(action: "move" | "abandon", headers: RevHeader[], valid: () => boolean) {
+    let ids = headers.map(header => header.id);
+    let destination = action === "move" ? await resolveDestination("Rebase each selected change onto", valid) : null;
+    if (!valid() || action === "move" && !destination) return;
+    if (destination && ids.some(id => id.commit.hex === destination.id.commit.hex)) {
+        await getInput("Cannot rebase selection", "Choose a destination outside the selected changes.", []);
+        return;
+    }
+    let details = headers.map(revisionLabel).join("\n");
+    let explanation = destination
+        ? `${headers.length} selected changes each become a separate child of ${revisionLabel(destination)}. Their descendants follow their rewritten parents. Conflicts may result.`
+        : `Only these ${headers.length} selected changes are abandoned. Their unselected descendants remain and are rebased onto the surviving parents.`;
+    let label = action === "move" ? "Rebase each" : "Abandon selected";
+    let confirmation = await getInput(`${label}?`, `${explanation}\n\n${details}`, [{ label: "Action", choices: ["Cancel", label] }]);
+    if (confirmation?.Action !== label || !valid()) return;
+    if (destination) await mutate<RebaseSelectedRevisions>("rebase_selected_revisions", { ids, destination: destination.id }, { ignoreImmutable: get(ignoreToggled) });
+    else await mutate<AbandonSelectedRevisions>("abandon_selected_revisions", { ids }, { ignoreImmutable: get(ignoreToggled) });
 }
 
 async function moveRevisions(headers: RevHeader[], checkSelection: boolean, valid: () => boolean) {

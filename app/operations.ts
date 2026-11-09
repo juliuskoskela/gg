@@ -11,6 +11,7 @@ export function operationLabel(command: string): string {
         move_changes: "Move file changes", copy_changes: "Restore file contents",
         move_hunk: "Move hunk", copy_hunk: "Restore hunk",
         undo_operation: "Undo operation", redo_operation: "Redo operation",
+        abandon_selected_revisions: "Abandon selected changes", rebase_selected_revisions: "Rebase each selected change",
         abandon_revisions: "Abandon revisions", duplicate_revisions: "Duplicate revisions",
         git_fetch: "Fetch bookmarks", git_push: "Push bookmarks",
     };

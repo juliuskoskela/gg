@@ -78,7 +78,7 @@
         {#if detail.startsWith("code:")}
             <p><code>{detail.slice(5)}</code></p>
         {:else}
-            <p>{detail}</p>
+            <p class:multiline={detail.includes("\n")}>{detail}</p>
         {/if}
     {/if}
     {#each fields as field}
@@ -120,6 +120,7 @@
 </ModalDialog>
 
 <style>
+    .multiline { white-space: pre-line; }
     p { grid-column: 1 / -1; overflow-wrap: anywhere; }
     p:has(code) { padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); }
     label { color: var(--muted); font-size: 13px; }

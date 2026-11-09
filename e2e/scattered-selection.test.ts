@@ -32,7 +32,10 @@ describe("scattered timeline selection", () => {
         await row("hunk sibling").click({ button: "right" });
         let menu = page.getByRole("menu");
         await menu.getByRole("menuitem", { name: "Annotate 3 changes…" }).waitFor();
-        expect(await menu.getByRole("menuitem", { name: "Abandon" }).count()).toBe(0);
+        // this mixed selection includes protected changes.
+        expect(await menu.getByRole("menuitem", { name: "Abandon selected…", exact: true }).count()).toBe(0);
+        expect(await menu.getByRole("menuitem", { name: "Rebase each onto…", exact: true }).count()).toBe(0);
+        expect(await menu.getByRole("menuitem", { name: "Squash into parent", exact: true }).count()).toBe(0);
         await page.keyboard.press("Escape");
 
         await row("change both").click({ modifiers: [modifier] });

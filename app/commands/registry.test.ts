@@ -8,14 +8,14 @@ import type { RevHeader } from "../messages/RevHeader";
 import { contextCommands, revisionCommands, revisionLabel, undoLabel } from "./registry";
 import BinaryMutator from "../mutators/BinaryMutator";
 import { operationState } from "../operations";
-import { currentInput, currentMutation, ignoreToggled, repoConfigEvent, revisionSelectEvent } from "../stores";
+import { currentInput, currentMutation, ignoreToggled, pickedRevisions, repoConfigEvent, revisionSelectEvent } from "../stores";
 
 let id = { change: { type: "ChangeId" as const, hex: "abcdefghijk", prefix: "a", rest: "bcdefghijk", offset: null, is_divergent: false }, commit: { type: "CommitId" as const, hex: "0123456789abcdef", prefix: "0", rest: "123456789abcdef" } };
 let header: RevHeader = { id, description: { lines: ["Fix parser", "details"] }, refs: [{ type: "LocalBookmark", bookmark_name: "main", has_conflict: false, is_synced: false, tracking_remotes: [], available_remotes: 0, potential_remotes: 0 }], parent_ids: [id.commit], is_immutable: false, is_working_copy: false, has_conflict: false, working_copy_of: null, author: { name: "Test", email: "test@example.com", timestamp: "" } };
 
 describe("command guards and labels", () => {
     let calls: string[];
-    beforeEach(() => { calls = []; setupMocks(cmd => { calls.push(cmd); return { type: "Unchanged" }; }); currentMutation.set(null); currentInput.set(null); commandOperand.set(null); operationState.set(null); ignoreToggled.set(false); revisionSelectEvent.set({ from: id, to: id }); });
+    beforeEach(() => { calls = []; pickedRevisions.set([]); setupMocks(cmd => { calls.push(cmd); return { type: "Unchanged" }; }); currentMutation.set(null); currentInput.set(null); commandOperand.set(null); operationState.set(null); ignoreToggled.set(false); revisionSelectEvent.set({ from: id, to: id }); });
     afterEach(async () => cleanupMocks());
     it("identifies both revisions and compacts operation labels", () => {
         expect(revisionLabel(header)).toBe("Fix parser · abcdefgh / 01234567 · main");
@@ -169,6 +169,58 @@ describe("command guards and labels", () => {
         get(currentInput)!.callback({ fields: { Action: "Restore" } });
         await pending;
         expect(calls).toEqual(["query_revisions", "copy_changes"]);
+    });
+
+    function scatter() {
+        let headers = [header, destination("second")];
+        pickedRevisions.set(headers);
+        revisionSelectEvent.set({ from: headers[1].id, to: headers[1].id });
+        return headers;
+    }
+    it("offers only exact abandon and independent rebase for a scattered selection", () => {
+        let commands = revisionCommands(scatter());
+        expect(commands.find(command => command.id === "move")?.label).toBe("Rebase each onto…");
+        expect(commands.find(command => command.id === "abandon")?.reason).toBeNull();
+        expect(commands.find(command => command.id === "move")?.reason).toBeNull();
+        expect(commands.find(command => command.id === "squash")?.reason).toContain("continuous range");
+    });
+    it("abandons precisely the confirmed picks without building a range", async () => {
+        let headers = scatter(); let sent: unknown;
+        setupMocks((cmd, args) => { if (cmd.startsWith("plugin:")) return; calls.push(cmd); sent = args.mutation; return { type: "Unchanged" }; });
+        let pending = revisionCommands(headers).find(command => command.id === "abandon")!.execute();
+        expect(get(currentInput)?.detail).toContain("2 selected changes");
+        expect(get(currentInput)?.detail).toContain("unselected descendants remain");
+        get(currentInput)!.callback({ fields: { Action: "Abandon selected" } });
+        await pending;
+        expect(calls).toEqual(["abandon_selected_revisions"]);
+        expect(sent).toEqual({ ids: headers.map(header => header.id) });
+    });
+    it("cancels a reviewed scattered action when picks change", async () => {
+        let headers = scatter();
+        let pending = revisionCommands(headers).find(command => command.id === "abandon")!.execute();
+        pickedRevisions.set([header]);
+        get(currentInput)!.callback({ fields: { Action: "Abandon selected" } });
+        await pending;
+        expect(calls).toEqual([]);
+    });
+    it("does not reinterpret a stale scattered menu as a continuous range", async () => {
+        let command = revisionCommands(scatter(), false).find(command => command.id === "abandon")!;
+        pickedRevisions.set([]);
+        await command.execute();
+        expect(get(currentInput)).toBeNull();
+        expect(calls).toEqual([]);
+    });
+    it("rebases precisely the confirmed picks onto one exact destination", async () => {
+        let headers = scatter(); let target = destination("target"); let sent: unknown;
+        setupMocks((cmd, args) => { if (cmd.startsWith("plugin:")) return; calls.push(cmd); if (cmd === "query_revisions") return { type: "Detail", headers: [target] }; sent = args.mutation; return { type: "Unchanged" }; });
+        let pending = revisionCommands(headers).find(command => command.id === "move")!.execute();
+        let request = get(destinationRequest)!; destinationRequest.set(null); request.resolve("target");
+        await vi.waitFor(() => expect(get(currentInput)).not.toBeNull());
+        expect(get(currentInput)?.detail).toContain("separate child");
+        get(currentInput)!.callback({ fields: { Action: "Rebase each" } });
+        await pending;
+        expect(calls).toEqual(["query_revisions", "rebase_selected_revisions"]);
+        expect(sent).toEqual({ ids: headers.map(header => header.id), destination: target.id });
     });
 
 });

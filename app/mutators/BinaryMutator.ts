@@ -34,7 +34,7 @@ export default class BinaryMutator {
     canDrag(): Eligibility {
         // revisions picked one by one have no from::to range to move
         if (this.#from.type == "Revisions" && isScatteredPick(this.#from.headers)) {
-            return { type: "maybe", hint: "(scattered selection — drag a continuous range, or right-click to annotate)" };
+            return { type: "maybe", hint: "(scattered selection — right-click for selection actions)" };
         }
         // can't change finalised commits without a gesture
         if (this.#from.type == "Revision" && this.#from.header.is_immutable) {
