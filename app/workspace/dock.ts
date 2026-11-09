@@ -1,7 +1,7 @@
 import { isPluginPanelId, type PluginPanelId } from "../plugins/contributions";
 import { writable, type Writable } from "svelte/store";
 
-export type CorePanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history" | "annotations";
+export type CorePanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history" | "annotations" | "terminal";
 export type PanelId = CorePanelId | PluginPanelId;
 export type Edge = "tab" | "tab-end" | "left" | "right" | "top" | "bottom";
 export type DockNode =
@@ -9,7 +9,7 @@ export type DockNode =
     | { type: "tabs"; active: PanelId; panels: PanelId[] };
 export type DockState = { root: DockNode | null; compactActive: PanelId | null };
 
-let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings", "evolution", "history", "annotations"];
+let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings", "evolution", "history", "annotations", "terminal"];
 const STORAGE_KEY = "gg.dock.layout";
 
 const slot: Record<CorePanelId, { beside: PanelId | null; edge: Edge }> = {
@@ -24,6 +24,7 @@ const slot: Record<CorePanelId, { beside: PanelId | null; edge: Edge }> = {
     history: { beside: "timeline", edge: "tab" },
     annotations: { beside: "description", edge: "tab" },
     settings: { beside: "timeline", edge: "tab" },
+    terminal: { beside: "diff", edge: "bottom" },
 };
 
 export function isPanelId(value: unknown): value is PanelId {

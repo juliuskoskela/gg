@@ -24,6 +24,7 @@
     import OperationHistory from "../history/OperationHistory.svelte";
     import AnnotationsPanel from "../annotations/AnnotationsPanel.svelte";
     import OperationView from "./OperationView.svelte";
+    import TerminalView from "../terminal/TerminalView.svelte";
     import SettingsPanel from "../shell/SettingsPanel.svelte";
 
     interface Props {
@@ -68,6 +69,10 @@
 
 {#if id.startsWith("plugin:")}
     <PluginPanel {id} />
+{:else if id === "terminal"}
+    {#key workspace.absolute_path}
+        <TerminalView directory={workspace.absolute_path} {active} />
+    {/key}
 {:else if id === "evolution"}
     <EvolutionPanel {headers} {active} />
 {:else if id === "history"}

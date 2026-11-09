@@ -22,6 +22,7 @@ export type WorkspaceView = {
 
 // Registration makes a view discoverable; it does not add a permanent navigation item.
 export let workspaceViews: WorkspaceView[] = [
+    { id: "terminal", label: "Terminal", panel: "terminal", scope: "repository", placement: "picker", mobile: "full" },
     { id: "history", label: "Graph", commandLabel: "Return to graph", destination: "history", scope: "repository", placement: "graph", mobile: "graph" },
     { id: "changes", label: "Changes", commandLabel: "Inspect full revision", destination: "inspect", available: context => !!context.hasSelection, scope: "revision", placement: "inspector", mobile: "sheet" },
     { id: "operation", label: "Current operation", scope: "repository", placement: "picker", desktop: "tab", mobile: "full", available: context => !!context.status, component: OperationView },

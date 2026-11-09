@@ -1,8 +1,6 @@
 <script lang="ts">
     import { owningHeaders } from "../revision/origins";
-    import { untrack } from "svelte";
-
-    import { onMount, tick } from "svelte";
+    import { onDestroy, onMount, tick, untrack } from "svelte";
     import { get } from "svelte/store";
     import type { Query } from "../events";
     import type { RepoConfig } from "../messages/RepoConfig";
@@ -21,6 +19,7 @@
     import { pluginContributions } from "../plugins/contributions";
     import { repositoryScope } from "./repository";
     import { workspaceController } from "./state";
+    import { closeTerminal } from "../terminal/session";
     import { workspaceViews } from "./views";
 
     interface Props {
@@ -34,7 +33,6 @@
     let selectedPath = $state("");
     let previousKey = $state("");
     let routedOperation = $state(false);
-
 
     function selectFile(change: RevChange) {
         selectedPath = change.path.repo_path;
@@ -105,6 +103,15 @@
         });
     });
     let panels = $derived(openPanels($dock.root));
+    let terminalDirectory = "";
+    $effect.pre(() => {
+        let hasTerminal = panels.includes("terminal"), dir = workspace.absolute_path;
+        untrack(() => {
+            if (terminalDirectory && (terminalDirectory !== dir || !hasTerminal)) closeTerminal(terminalDirectory);
+            terminalDirectory = hasTerminal ? dir : "";
+        });
+    });
+    onDestroy(() => { if (terminalDirectory) closeTerminal(terminalDirectory); });
 </script>
 
 <DockDragOverlay />
