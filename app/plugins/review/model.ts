@@ -16,11 +16,12 @@ export interface ReviewSession {
 export type ReviewEvent = { id: string; at: string } & (
     { type: "created"; session: ReviewSession } |
     { type: "verdict"; sessionId: string; person: ReviewPerson; verdict: Verdict; body: string; versions: ReviewMember[] } |
-    { type: "members"; sessionId: string; members: ReviewMember[]; receiptId: string } |
+    { type: "members"; sessionId: string; source: ReviewMember; members: ReviewMember[]; receiptId: string } |
+    { type: "split-intent"; sessionId: string; source: ReviewMember } |
     { type: "participants"; sessionId: string; participants: ReviewPerson[] }
 );
 export type VerdictEvent = Extract<ReviewEvent, { type: "verdict" }>;
-export type SessionState = ReviewSession & { verdicts: VerdictEvent[]; receipts: string[] };
+export type SessionState = ReviewSession & { verdicts: VerdictEvent[]; receipts: string[]; splitIntents: ReviewMember[] };
 export type CurrentVersions = ReadonlyMap<string, string | null>;
 export function personKey(person: ReviewPerson) { return person.email.trim().toLowerCase() || person.name.trim(); }
 export function member(header: RevHeader): ReviewMember {
@@ -37,14 +38,20 @@ export function project(events: readonly ReviewEvent[]): SessionState[] {
     let sessions = new Map<string, SessionState>();
     for (let event of [...events].sort((a, b) => Number(b.type === "created") - Number(a.type === "created") || a.at.localeCompare(b.at) || a.id.localeCompare(b.id))) {
         if (event.type === "created") {
-            if (!sessions.has(event.session.id)) sessions.set(event.session.id, { ...event.session, members: [...event.session.members], participants: [...event.session.participants], verdicts: [], receipts: [] });
+            if (!sessions.has(event.session.id)) sessions.set(event.session.id, { ...event.session, members: [...event.session.members], participants: [...event.session.participants], verdicts: [], receipts: [], splitIntents: [] });
             continue;
         }
         let session = sessions.get(event.sessionId);
         if (!session) continue;
         if (event.type === "verdict") session.verdicts.push(event);
         else if (event.type === "participants") session.participants = [...event.participants];
-        else if (!session.receipts.includes(event.receiptId)) { session.members = [...event.members]; session.receipts.push(event.receiptId); }
+        else if (event.type === "split-intent") {
+            if (!session.splitIntents.some(source => source.commitId === event.source.commitId)) session.splitIntents.push(event.source);
+        } else if (!session.receipts.includes(event.receiptId)) {
+            let index = session.members.findIndex(member => member.changeId === event.source.changeId);
+            if (index >= 0) session.members.splice(index, 1, ...event.members);
+            session.receipts.push(event.receiptId);
+        }
     }
     return [...sessions.values()];
 }
@@ -86,7 +93,9 @@ export function validateEvent(value: unknown): asserts value is ReviewEvent {
     else if (event.type === "verdict") {
         if (!person(event.person) || !["approve", "request-changes", "comment"].includes(event.verdict) || typeof event.body !== "string" || event.body.length > 100_000 || !members(event.versions)) throw new Error("Invalid review verdict");
     } else if (event.type === "members") {
-        if (!members(event.members) || !text(event.receiptId)) throw new Error("Invalid review split receipt");
+        if (!members([event.source]) || !members(event.members) || !text(event.receiptId)) throw new Error("Invalid review split receipt");
+    } else if (event.type === "split-intent") {
+        if (!members([event.source])) throw new Error("Invalid review split intent");
     } else if (event.type === "participants") {
         if (!people(event.participants)) throw new Error("Invalid review participants");
     } else throw new Error("Unknown review event");

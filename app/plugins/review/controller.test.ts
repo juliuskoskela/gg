@@ -46,6 +46,18 @@ describe("review plugin controller", () => {
         expect(values.size).toBe(1);
         controller.dispose();
     });
+    it("rejects conflicting imported event IDs before writing anything", async () => {
+        let { controller, values } = setup();
+        await controller.refresh();
+        await controller.create("Original", "");
+        let event = [...values.values()][0] as Extract<ReviewEvent, { type: "created" }>;
+        await expect(controller.importEvents([{ ...event, session: { ...event.session, title: "Replaced" } }])).rejects.toThrow("Conflicting");
+        expect(values.size).toBe(1);
+        expect(get(controller.state).sessions[0].title).toBe("Original");
+        await controller.importEvents([event]);
+        expect(values.size).toBe(1);
+        controller.dispose();
+    });
     it("ignores a pending repository read after disposal", async () => {
         let { controller, api } = setup();
         let resolve!: (keys: string[]) => void;

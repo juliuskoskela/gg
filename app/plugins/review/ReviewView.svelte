@@ -33,7 +33,7 @@
     }));
     let selectedMember = $derived(session?.members[Math.min(memberIndex, session.members.length - 1)]);
     let current = $derived(selectedMember ? $viewState.current.get(selectedMember.changeId) : null);
-    let canVerdict = $derived(session && $viewState.progress && session.participants.some(person => personKey(person) === personKey($viewState.progress!.me)) && session.members.every(member => $viewState.current.get(member.changeId)) && !$viewState.busy);
+    let canVerdict = $derived(session && $viewState.progress && session.participants.some(person => personKey(person) === personKey($viewState.progress!.me)) && session.members.every(member => $viewState.current.get(member.changeId)) && !$viewState.busy && !$viewState.error);
     async function run(action: () => Promise<unknown>) {
         error = "";
         try { await action(); } catch (problem) { error = problem instanceof Error ? problem.message : String(problem); }
@@ -64,7 +64,7 @@
 <section class="review-view" aria-label="Reviews">
     {#if error || $viewState.error}<p role="alert" class="error">{error || $viewState.error}</p>{/if}
     {#if creating}
-        <form class="review-form" onsubmit={event => { event.preventDefault(); run(async () => { await controller.create(title, emails); title = ""; emails = ""; creating = false; memberIndex = 0; }); }}>
+        <form class="review-form" onsubmit={event => { event.preventDefault(); run(async () => { await controller.create(title, emails); select($viewState.selected); title = ""; emails = ""; creating = false; memberIndex = 0; }); }}>
             <label>Title<input required bind:value={title} /></label>
             <label>Other reviewers’ email addresses<input bind:value={emails} placeholder="Separated by commas" /></label>
             <p class="muted">You are included as a reviewer. The selected changes are captured in timeline order.</p>
@@ -127,6 +127,7 @@
     {/if}
 </section>
 <style>
+    @import "../../controls/action.css";
     .review-view { display: flex; flex-direction: column; gap: var(--gap-section); padding: var(--space-4); min-width: 0; }
     .review-form { display: grid; gap: var(--gap-group); }
     label { display: grid; gap: var(--gap-row); font: var(--font-label); }

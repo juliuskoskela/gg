@@ -26,6 +26,11 @@ export function createReviewController(api: PluginAPI) {
     let alive = true, epoch = 0;
     let events: ReviewEvent[] = [];
     let writing = false;
+    let lastEventAt = 0;
+    function timestamp() {
+        lastEventAt = Math.max(Date.now(), lastEventAt + 1);
+        return new Date(lastEventAt).toISOString();
+    }
     async function load() {
         if (!alive || writing) return;
         let ticket = ++epoch;
@@ -44,6 +49,7 @@ export function createReviewController(api: PluginAPI) {
             })));
             if (!alive || ticket !== epoch) return;
             events = next;
+            lastEventAt = Math.max(lastEventAt, ...next.map(event => Date.parse(event.at)));
             state.update(value => ({ ...value, sessions, current, annotations, progress, error: "" }));
             await loadNotes();
         } catch (error) {
@@ -87,6 +93,28 @@ export function createReviewController(api: PluginAPI) {
     return {
         state: { subscribe: state.subscribe },
         refresh: load,
+        events(sessionId: string) {
+            return structuredClone(events.filter(event => event.type === "created" ? event.session.id === sessionId : event.sessionId === sessionId));
+        },
+        async importEvents(imported: ReviewEvent[]) {
+            if (!alive || writing) throw new Error("Review is busy or unavailable");
+            if (imported.length > 10_000) throw new Error("Too many review events");
+            imported.forEach(validateEvent);
+            let unique = new Map<string, ReviewEvent>();
+            for (let event of imported) {
+                let previous = unique.get(event.id) ?? await api.storage.get(`${prefix}${event.id}`);
+                if (previous && JSON.stringify(previous) !== JSON.stringify(event)) throw new Error(`Conflicting review event ${event.id}`);
+                unique.set(event.id, event);
+            }
+            writing = true; ++epoch;
+            state.update(value => ({ ...value, busy: true, error: "" }));
+            try {
+                for (let event of unique.values()) await api.storage.set(`${prefix}${event.id}`, event);
+            } finally {
+                writing = false;
+                if (alive) { state.update(value => ({ ...value, busy: false })); await load(); }
+            }
+        },
         select(id: string | null) { state.update(value => ({ ...value, selected: id, notes: null })); void loadNotes(); },
         notes: loadNotes,
         async create(title: string, emails: string, set: RevSet | null = get(state).selection) {
@@ -96,7 +124,7 @@ export function createReviewController(api: PluginAPI) {
             let progress = get(state).progress ?? await api.reviews();
             let participants = [progress.me, ...emails.split(/[,\n]/).map(email => email.trim()).filter(Boolean).map(email => ({ name: email, email }))];
             participants = [...new Map(participants.map(person => [person.email.toLowerCase() || person.name, person])).values()];
-            let id = eventId(), at = new Date().toISOString();
+            let id = eventId(), at = timestamp();
             await append({ id, at, type: "created", session: { id, title: title.trim() || "Review", createdAt: at, author: progress.me, participants, members: [...result.value.headers].reverse().map(member) } });
             if (alive) state.update(value => ({ ...value, selected: id }));
         },
@@ -113,14 +141,17 @@ export function createReviewController(api: PluginAPI) {
             }
             if (!value.progress) throw new Error("Reviewer identity is unavailable");
             if (!session.participants.some(person => personKey(person) === personKey(value.progress!.me))) throw new Error("Add yourself as a participant before recording a verdict");
-            await append({ id: eventId(), at: new Date().toISOString(), type: "verdict", sessionId: session.id, person: value.progress.me, verdict, body: body.trim(), versions: versions.map(header => member(header!)) });
+            await append({ id: eventId(), at: timestamp(), type: "verdict", sessionId: session.id, person: value.progress.me, verdict, body: body.trim(), versions: versions.map(header => member(header!)) });
         },
-        async replaceMembers(session: SessionState, members: ReviewMember[], receiptId: string) {
-            await append({ id: eventId(), at: new Date().toISOString(), type: "members", sessionId: session.id, members, receiptId });
+        async splitIntent(session: SessionState, source: ReviewMember) {
+            await append({ id: eventId(), at: timestamp(), type: "split-intent", sessionId: session.id, source });
+        },
+        async replaceMembers(session: SessionState, source: ReviewMember, members: ReviewMember[], receiptId: string) {
+            await append({ id: eventId(), at: timestamp(), type: "members", sessionId: session.id, source, members, receiptId });
         },
         async participants(session: SessionState, emails: string) {
             let participants = emails.split(/[,\n]/).map(email => email.trim()).filter(Boolean).map(email => ({ name: email, email }));
-            await append({ id: eventId(), at: new Date().toISOString(), type: "participants", sessionId: session.id, participants });
+            await append({ id: eventId(), at: timestamp(), type: "participants", sessionId: session.id, participants });
         },
         dispose() { alive = false; ++epoch; ++notesEpoch; unsubscribe(); },
     };

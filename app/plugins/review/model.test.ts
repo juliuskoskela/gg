@@ -12,6 +12,11 @@ describe("review sessions", () => {
         expect(waitingFor(session, me, new Map([["abc", "456"]]))).toBe(true);
         expect(waitingFor(session, me, new Map([["abc", null]]))).toBe(true);
     });
+    it("replays a same-time creation before its verdict regardless of UUID sort order", () => {
+        let decision = { ...approve, id: "a", at: created.at };
+        let creation = { ...created, id: "z" };
+        expect(project([decision, creation])[0].verdicts).toHaveLength(1);
+    });
     it("records each participant independently, including comments that leave review pending", () => {
         let session = project([created, { ...approve, verdict: "comment" }])[0];
         expect(waitingFor(session, me, new Map([["abc", "123"]]))).toBe(true);
@@ -19,11 +24,18 @@ describe("review sessions", () => {
         expect(personKey({ name: "Changed display name", email: " ME@example.com " })).toBe(personKey(me));
     });
     it("applies split membership once per core receipt and invalidates earlier verdict", () => {
-        let split: ReviewEvent = { id: "split", at: "2026-11-03T00:00:00Z", type: "members", sessionId: "session", receiptId: "receipt", members: [...members, { changeId: "def", commitId: "456", description: "Remainder" }] };
+        let split: ReviewEvent = { id: "split", at: "2026-11-03T00:00:00Z", type: "members", sessionId: "session", receiptId: "receipt", source: members[0], members: [...members, { changeId: "def", commitId: "456", description: "Remainder" }] };
         let session = project([created, approve, split, { ...split, id: "duplicate" }])[0];
         expect(session.members).toHaveLength(2);
         expect(session.receipts).toEqual(["receipt"]);
         expect(verdictFor(session, me, new Map([["abc", "123"], ["def", "456"]]))?.stale).toBe(true);
+    });
+    it("projects independent member splits without replacing unrelated members", () => {
+        let second = { changeId: "def", commitId: "456", description: "Second" };
+        let creation = { ...created, session: { ...created.session, members: [...members, second] } };
+        let firstSplit: ReviewEvent = { id: "split-a", at: "2026-11-03T00:00:00Z", type: "members", sessionId: "session", source: members[0], receiptId: "a", members: [...members, { changeId: "ghi", commitId: "789", description: "First remainder" }] };
+        let secondSplit: ReviewEvent = { id: "split-b", at: "2026-11-04T00:00:00Z", type: "members", sessionId: "session", source: second, receiptId: "b", members: [second, { changeId: "jkl", commitId: "abc", description: "Second remainder" }] };
+        expect(project([creation, firstSplit, secondSplit])[0].members.map(member => member.changeId)).toEqual(["abc", "ghi", "def", "jkl"]);
     });
     it("sorts pending sessions by remaining personal files with unknown totals last", () => {
         let sessions = project([created, { ...created, id: "second", session: { ...created.session, id: "second", members: [{ changeId: "def", commitId: "456", description: "Second" }] } }]);

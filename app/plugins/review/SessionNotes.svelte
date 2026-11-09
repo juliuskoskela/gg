@@ -60,6 +60,7 @@
     {/if}
 </section>
 <style>
+    @import "../../controls/action.css";
     .notes, .thread, form { display: grid; gap: var(--gap-group); min-width: 0; }
     .thread { border: 1px solid var(--border); padding: var(--space-3); border-radius: var(--radius-control); }
     .note-heading { display: flex; justify-content: space-between; gap: var(--gap-row); align-items: center; }
