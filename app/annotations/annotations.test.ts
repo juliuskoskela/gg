@@ -100,6 +100,24 @@ describe("annotations view", () => {
         await waitFor(() => expect(calls.some(call => call.cmd === "annotations" && call.args.request.type === "Reply" && call.args.request.body === "Thanks")).toBe(true));
     });
 
+    it("copies one thread for an agent and reports clipboard failure honestly", async () => {
+        let writeText = vi.fn(async () => {});
+        Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+        let { default: Panel } = await import("./AnnotationsPanel.svelte");
+        let view = render(Panel, { props: { active: true } });
+        await waitFor(() => expect(view.getByRole("list", { name: "Notes" }).querySelectorAll("li")).toHaveLength(2));
+        await fireEvent.click(view.getByRole("list", { name: "Notes" }).querySelector("li button")!);
+        await fireEvent.click(await waitFor(() => view.getByRole("button", { name: "Copy for agent" })));
+        await waitFor(() => expect(view.getByRole("status").textContent).toBe("Copied for agent"));
+        expect(calls.find(call => call.cmd === "export_annotations")?.args.ids).toEqual(["3f2a91c0aaaa"]);
+        writeText.mockRejectedValueOnce(new Error("Clipboard denied"));
+        let fallback = vi.spyOn(document, "execCommand").mockReturnValue(false);
+        await fireEvent.click(view.getByRole("button", { name: "Copy for agent" }));
+        await waitFor(() => expect(view.getByRole("status").textContent).toBe("Could not copy"));
+        fallback.mockRestore();
+        expect(calls.some(call => call.cmd.includes("mutate") || call.args?.request?.type === "Set")).toBe(false);
+    });
+
     it("opens and closes a note, and edits only your own posts", async () => {
         let { default: Panel } = await import("./AnnotationsPanel.svelte");
         let view = render(Panel, { props: { active: true } });

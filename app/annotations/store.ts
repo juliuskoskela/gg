@@ -183,9 +183,9 @@ export async function copyText(text: string): Promise<boolean> {
         area.style.opacity = "0";
         document.body.append(area);
         area.select();
-        let copied = document.execCommand("copy");
-        area.remove();
-        return copied;
+        try { return document.execCommand("copy"); }
+        catch { return false; }
+        finally { area.remove(); }
     }
 }
 

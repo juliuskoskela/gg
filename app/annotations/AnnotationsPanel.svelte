@@ -13,10 +13,12 @@
     import type { AnnotationPost } from "../messages/AnnotationPost";
     import type { AnnotationThread } from "../messages/AnnotationThread";
     import Markdown from "./Markdown.svelte";
+    import AgentDetails from "./AgentDetails.svelte";
+    import { isAgentPost, threadActivity } from "./activity";
     import NoteCheck from "./NoteCheck.svelte";
     import NoteEditor from "./NoteEditor.svelte";
     import TargetList from "./TargetList.svelte";
-    import { anchorDescription, anchorIcon, anchorLabel } from "./anchors";
+    import { anchorDescription, anchorIcon, anchorLabel, effectiveAnchor } from "./anchors";
     import { annotationError, annotationList, copyAnnotations, discardDraft, draft, draftFocus, DRAFT, justAdded, loadAnnotations, noteTitle, openAnnotation, plainLine, removeTarget, saveDraft, sendAnnotations } from "./store";
 
     interface Props {
@@ -110,13 +112,37 @@
         selected = allSelected ? new Set() : new Set(visible.map(thread => thread.id));
     }
 
-    async function copy(ids: string[]) {
+    async function copy(ids: string[], forAgent = false) {
         if (!ids.length) return;
         if (await copyAnnotations(ids)) {
-            copied = ids.length === 1 ? "Copied 1 note" : `Copied ${ids.length} notes`;
+            copied = forAgent ? "Copied for agent" : ids.length === 1 ? "Copied 1 note" : `Copied ${ids.length} notes`;
+            clearTimeout(copiedTimer);
+            copiedTimer = setTimeout(() => copied = "", 2400);
+        } else {
+            copied = "Could not copy";
             clearTimeout(copiedTimer);
             copiedTimer = setTimeout(() => copied = "", 2400);
         }
+    }
+
+    async function reviewChanges(thread: AnnotationThread) {
+        let targets = thread.targets.filter(target => target.state.type !== "missing" && !target.relocation?.reason);
+        if (!targets.length) return;
+        let labels = targets.map((target, index) => `${index + 1}. ${anchorDescription(effectiveAnchor(target), target.subject)}`);
+        let chosen = targets.length === 1 ? 0 : -1;
+        if (chosen < 0) {
+            let answer = await getInput("Review annotated change", "Choose which location to inspect. Your existing review baseline is kept.", [{ label: "Location", choices: labels }]);
+            if (!answer) return;
+            chosen = labels.indexOf(answer.Location);
+        }
+        if (chosen < 0 || current?.id !== thread.id) return;
+        let anchor = effectiveAnchor(targets[chosen]);
+        let id = { change: { type: "ChangeId" as const, hex: anchor.change_id, prefix: anchor.change_id, rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId" as const, hex: anchor.commit_id, prefix: anchor.commit_id, rest: "" } };
+        try {
+            await (await import("../review/progress")).refreshReviewProgress();
+            if (current?.id !== thread.id) return;
+            await (await import("../plugins/navigation")).selectRevision(id, "path" in anchor ? anchor.path : undefined, () => { if (current?.id !== thread.id) throw new Error("The annotation context changed."); });
+        } catch (error) { annotationError.set(String(error)); }
     }
 
     async function run(task: () => Promise<boolean>) {
@@ -229,6 +255,7 @@
                     {/if}
                     {#each visible as thread (thread.id)}
                         {@const outdated = outdatedCount(thread)}
+                        {@const activity = threadActivity(thread)}
                         <li class="row" class:current={thread.id === current?.id} class:checked={selected.has(thread.id)} class:resolved={thread.status === "resolved"}>
                             <span class="check-slot"><NoteCheck checked={selected.has(thread.id)} label="Select note: {noteTitle(thread)}" onChange={() => toggle(thread.id)} /></span>
                             <button type="button" aria-expanded={thread.id === current?.id} aria-controls="annotation-detail" onclick={() => toggleOpen(thread.id)}>
@@ -241,6 +268,7 @@
                                     {#if thread.status === "resolved"}<span class="flag" title="Resolved"><Icon name="check-circle" /><span class="sr-only">Resolved</span></span>{/if}
                                     <time class="row-age" datetime={thread.updated_at}>{age(thread.updated_at, now)}</time>
                                 </span>
+                                {#if activity.agentReplied || activity.rewritten}<span class="row-activity">{#if activity.agentReplied}<span>Agent replied</span>{/if}{#if activity.rewritten}<span>Change rewritten</span>{/if}</span>{/if}
                             </button>
                         </li>
                     {/each}
@@ -269,16 +297,22 @@
                             <div class="context">{@render context(current.targets, current.id)}</div>
                             <button type="button" class="close" aria-label="Close note" title="Close" onclick={close}><Icon name="x" /></button>
                         </header>
+                        {@const activity = threadActivity(current)}
+                        {#if activity.agentReplied || activity.rewritten}<p class="row-activity">{#if activity.agentReplied}<span>Agent replied</span>{/if}{#if activity.rewritten}<span>Change rewritten</span>{/if}</p>{/if}
                         <div class="detail-actions">
-                            <ActionWidget safe secondary onClick={() => current && copy([current.id])}><Icon name="clipboard" />Copy</ActionWidget>
+                            <ActionWidget safe secondary onClick={() => current && copy([current.id], true)}><Icon name="clipboard" />Copy for agent</ActionWidget>
+                            {#if current.targets.some(target => target.state.type !== "missing" && !target.relocation?.reason)}<ActionWidget safe secondary onClick={() => current && reviewChanges(current)}><Icon name="git-commit" />Review changes</ActionWidget>{/if}
+                            <span class="state-actions">
                             <ActionWidget safe secondary disabled={busy} onClick={() => current && setStatus(current)}><Icon name={current.status === "open" ? "check" : "rotate-ccw"} />{current.status === "open" ? "Resolve" : "Reopen"}</ActionWidget>
                             <ActionWidget safe secondary tip="Delete note" disabled={busy} onClick={() => current && remove([current.id])}><Icon name="trash-2" /></ActionWidget>
+                            </span>
                         </div>
                         <ol class="posts" aria-label="Thread">
                             {#each current.posts as post (post.id)}
                                 <li class="post" class:editing={editing?.post === post.id}>
                                     <p class="byline">
-                                        <span class="author">{post.author.name}</span>{#if post.author.kind === "agent"}<span class="agent">Agent</span>{/if}
+                                        <span class="author">{post.author.name}</span>{#if isAgentPost(post)}<span class="agent">Agent</span>{/if}
+                                        <AgentDetails metadata={post.metadata} />
                                         <time datetime={post.created_at} title={new Date(post.created_at).toLocaleString()}>{age(post.created_at, now)}</time>{#if post.edited_at}<span title={new Date(post.edited_at).toLocaleString()}>edited</span>{/if}
                                         {#if mine(post) && editing?.post !== post.id}<button type="button" class="post-edit" onclick={() => editing = { post: post.id, body: post.body }}>Edit</button>{/if}
                                     </p>
@@ -367,8 +401,10 @@
     .tip { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--muted); font: var(--font-label); --icon-size: 12px; }
 
     .posts { display: grid; gap: 20px; margin: 16px 0 0; padding: 0; list-style: none; }
-    .byline { display: flex; align-items: baseline; gap: 8px; min-height: 24px; margin: 0 0 2px; color: var(--muted); font: var(--font-label); }
+    .byline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-height: 24px; margin: 0 0 2px; color: var(--muted); font: var(--font-label); }
     .author { color: var(--text-strong); font: var(--font-emphasis); }
+    .state-actions { display: inline-flex; align-items: center; gap: var(--space-1); }
+    .row-activity { display: flex; flex-wrap: wrap; column-gap: var(--space-2); color: var(--muted); font: var(--font-label); }
     .agent { padding: 0 5px; border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 16px; }
     .post-edit { margin-inline-start: auto; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
     @media (hover: hover) and (pointer: fine) {

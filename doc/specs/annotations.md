@@ -21,12 +21,12 @@ Every annotation is the root of a thread. Its first post is the note; later post
 gg annotations list [--all] [--json]
 gg annotations show <note> [--json]
 gg annotations export [<note>...]        # markdown, all open notes by default
-gg annotations reply <note> [--agent <name>] [<text> | -]
+gg annotations reply <note> [--agent <name>] [--model <model>] [<text> | -]
 gg annotations resolve <note>
 gg annotations reopen <note>
 ```
 
-A note id may be shortened to any unambiguous prefix. Replies read standard input when the text is `-` or omitted. Without `--agent`, the author is the jj user. The open Annotations view picks up replies within a few seconds.
+A note id may be shortened to any unambiguous prefix. Replies read standard input when the text is `-` or omitted. Without `--agent`, the author is the jj user. The open Annotations view picks up replies within a few seconds. Each thread has **Copy for agent**; this copies context locally and does not dispatch work. Agent replies can include model and reported-risk metadata; see [the local agent loop](annotation-agent-loop.md) for flags, limits and the review flow.
 
 ## Anchors
 

@@ -4,6 +4,7 @@
     import type { AnnotationThread } from "../messages/AnnotationThread";
     import { dock } from "../workspace/dock";
     import { anchorLabel } from "./anchors";
+    import { threadActivity } from "./activity";
     import { noteTitle, openAnnotation } from "./store";
 
     interface Props {
@@ -16,7 +17,7 @@
     let marker = $state<HTMLElement>();
     let preview!: HTMLDivElement;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let label = $derived(notes.length === 1 ? "1 note" : `${notes.length} notes`);
+    let label = $derived([notes.length === 1 ? "1 note" : `${notes.length} notes`, notes.some(note => threadActivity(note).agentReplied) ? "Agent replied" : "", notes.some(note => threadActivity(note).rewritten) ? "Change rewritten" : ""].filter(Boolean).join(", "));
     let previews = typeof HTMLElement !== "undefined" && "showPopover" in HTMLElement.prototype;
 
     // the preview lives in the top layer, so virtualized rows and clipped panes can't cut it off
@@ -43,7 +44,7 @@
     onDestroy(hide);
 </script>
 
-{#snippet content()}<Icon name="message-square" />{#if notes.length > 1 && !buttonLabel}<span>{notes.length}</span>{/if}<span class="sr-only">, {label}</span>{/snippet}
+{#snippet content()}<Icon name="message-square" />{#if notes.length > 1 && !buttonLabel}<span>{notes.length}</span>{/if}<span class="sr-only">, {notes.length === 1 ? "1 note" : `${notes.length} notes`}</span>{#if notes.some(note => threadActivity(note).agentReplied)}<span class="sr-only">, Agent replied</span>{/if}{#if notes.some(note => threadActivity(note).rewritten)}<span class="sr-only">, Change rewritten</span>{/if}{/snippet}
 {#if buttonLabel}
     <button type="button" class="note-marker gutter-marker" bind:this={marker} aria-label={buttonLabel} title={previews ? undefined : label} onpointerenter={show} onfocus={show} onpointerleave={hide} onblur={hide} onkeydown={event => { if (event.key === "Escape") { event.stopPropagation(); hide(); } }} onpointerdown={event => event.stopPropagation()} onclick={open} ondblclick={event => event.stopPropagation()}>{@render content()}</button>
 {:else}
@@ -52,7 +53,8 @@
 {/if}
 <div class="note-preview" popover="manual" bind:this={preview} aria-hidden="true">
     {#each notes.slice(0, 3) as note (note.id)}
-        <p><span class="where">{anchorLabel(note.targets[0].anchor)}{#if note.targets.length > 1}<span class="more-places"> +{note.targets.length - 1}</span>{/if}</span><span class="what">{noteTitle(note)}</span></p>
+        {@const activity = threadActivity(note)}
+        <p><span class="where">{anchorLabel(note.targets[0].anchor)}{#if note.targets.length > 1}<span class="more-places"> +{note.targets.length - 1}</span>{/if}</span><span class="what">{noteTitle(note)}</span>{#if activity.agentReplied || activity.rewritten}<span class="activity">{[activity.agentReplied ? "Agent replied" : "", activity.rewritten ? "Change rewritten" : ""].filter(Boolean).join(" · ")}</span>{/if}</p>
     {/each}
     {#if notes.length > 3}<p class="more">{notes.length - 3} more</p>{/if}
 </div>
@@ -67,5 +69,6 @@
     .note-preview p { display: grid; margin: 4px 0; }
     .where { color: var(--muted); font-family: var(--stack-code); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .activity { color: var(--muted); font: var(--font-label); }
     .more { color: var(--muted); }
 </style>
