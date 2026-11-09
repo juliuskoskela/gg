@@ -1,14 +1,27 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     // "switch" picks one of its items; "multi" holds independent toggles. both draw the same way,
     // and the mode keeps the meaning for whoever reads the markup.
-    // size only changes rhythm, never colour, so trays of different sizes still read as one family.
-    export let label: string;
-    export let size: "sm" | "md" = "sm";
-    export let mode: "switch" | "multi" = "switch";
-    export let role: "group" | "toolbar" = "group";
+
+    interface Props {
+        // size only changes rhythm, never colour, so trays of different sizes still read as one family.
+        label: string;
+        size?: "sm" | "md";
+        mode?: "switch" | "multi";
+        role?: "group" | "toolbar";
+        children?: Snippet;
+    }
+
+    let {
+        label,
+        size = "sm",
+        mode = "switch",
+        role = "group",
+        children
+    }: Props = $props();
 </script>
 
-<div class="tray {size} {mode}" {role} aria-label={label}><slot /></div>
+<div class="tray {size} {mode}" {role} aria-label={label}>{@render children?.()}</div>
 
 <style>
     /* no frame: an outline around transparent segments reads as a dark well next to the lit one.

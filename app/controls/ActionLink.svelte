@@ -1,13 +1,24 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { dragOverWidget } from "../stores";
 
-    export let disabled = false;
-    export let tip: string = "";
-    export let onClick: (event: MouseEvent) => void;
+    interface Props {
+        disabled?: boolean;
+        tip?: string;
+        onClick: (event: MouseEvent) => void;
+        children?: Snippet;
+    }
+
+    let {
+        disabled = false,
+        tip = "",
+        onClick,
+        children
+    }: Props = $props();
 </script>
 
-<button type="button" {disabled} aria-label={tip || undefined} on:click|stopPropagation={onClick} on:dragenter={dragOverWidget} on:dragover={dragOverWidget} title={tip}>
-    <slot />
+<button type="button" {disabled} aria-label={tip || undefined} onclick={event => { event.stopPropagation(); onClick(event); }} ondragenter={dragOverWidget} ondragover={dragOverWidget} title={tip}>
+    {@render children?.()}
 </button>
 
 <style>

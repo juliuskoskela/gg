@@ -1,8 +1,14 @@
 <script lang="ts">
-    export let className = "";
+    import type { Snippet } from "svelte";
+    interface Props {
+        className?: string;
+        children?: Snippet;
+    }
+
+    let { className = "", children }: Props = $props();
 </script>
 
-<footer class="panel-footer {className}"><slot /></footer>
+<footer class="panel-footer {className}">{@render children?.()}</footer>
 
 <style>
     .panel-footer {

@@ -1,8 +1,14 @@
 <script lang="ts">
-    export let label: string;
+    import type { Snippet } from "svelte";
+    interface Props {
+        label: string;
+        children?: Snippet;
+    }
+
+    let { label, children }: Props = $props();
 </script>
 
-<div class="metadata-row"><dt>{label}</dt><dd><slot /></dd></div>
+<div class="metadata-row"><dt>{label}</dt><dd>{@render children?.()}</dd></div>
 
 <style>
     /* rows lay out in their list's grid */

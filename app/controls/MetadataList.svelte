@@ -1,9 +1,15 @@
 <script lang="ts">
-    export let label = "Revision metadata";
+    import type { Snippet } from "svelte";
+    interface Props {
+        label?: string;
+        children?: Snippet;
+    }
+
+    let { label = "Revision metadata", children }: Props = $props();
 </script>
 
 <!-- one grid for the whole list: keys share a column sized to the longest key, and keys and values share baselines -->
-<dl class="metadata-list" aria-label={label}><slot /></dl>
+<dl class="metadata-list" aria-label={label}>{@render children?.()}</dl>
 
 <style>
     .metadata-list {

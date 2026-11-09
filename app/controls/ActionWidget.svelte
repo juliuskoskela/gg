@@ -1,16 +1,32 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { dragOverWidget, hasModal } from "../stores";
 
-    export let tip: string = "";
-    export let onClick: (event: MouseEvent) => void;
-    export let isStatic = false;
-    export let safe: boolean = false;
-    export let secondary: boolean = false;
-    export let primary: boolean = false;
-    export let disabled: boolean = false;
-    export let disabledReason = "";
+    interface Props {
+        tip?: string;
+        onClick: (event: MouseEvent) => void;
+        isStatic?: boolean;
+        safe?: boolean;
+        secondary?: boolean;
+        primary?: boolean;
+        disabled?: boolean;
+        disabledReason?: string;
+        children?: Snippet;
+    }
 
-    $: isDisabled = disabled || (!safe && $hasModal);
+    let {
+        tip = "",
+        onClick,
+        isStatic = false,
+        safe = false,
+        secondary = false,
+        primary = false,
+        disabled = false,
+        disabledReason = "",
+        children
+    }: Props = $props();
+
+    let isDisabled = $derived(disabled || (!safe && $hasModal));
 </script>
 
 <button
@@ -20,12 +36,12 @@
     class:safe
     class:secondary
     class:primary
-    on:click|stopPropagation={isDisabled ? undefined : onClick}
-    on:dragenter={dragOverWidget}
-    on:dragover={dragOverWidget}
+    onclick={event => { event.stopPropagation(); if (!isDisabled) onClick(event); }}
+    ondragenter={dragOverWidget}
+    ondragover={dragOverWidget}
     title={isDisabled && disabledReason ? disabledReason : tip}
     aria-label={tip || undefined}>
-    <slot />
+    {@render children?.()}
 </button>
 
 <style>

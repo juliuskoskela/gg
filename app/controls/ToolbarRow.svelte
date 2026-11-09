@@ -1,8 +1,19 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { tick } from "svelte";
-    export let label: string;
-    export let id: string | undefined = undefined;
-    export let hidden = false;
+    interface Props {
+        label: string;
+        id?: string | undefined;
+        hidden?: boolean;
+        children?: Snippet;
+    }
+
+    let {
+        label,
+        id = undefined,
+        hidden = false,
+        children
+    }: Props = $props();
 
     async function revealControl(event: FocusEvent) {
         let strip = event.currentTarget as HTMLElement, control = event.target as HTMLElement;
@@ -14,8 +25,8 @@
     }
 </script>
 
-<div class="view-toolbar" data-panel-toolbar {id} {hidden} role="group" aria-label={label} on:focusin={revealControl}>
-    <slot />
+<div class="view-toolbar" data-panel-toolbar {id} {hidden} role="group" aria-label={label} onfocusin={revealControl}>
+    {@render children?.()}
 </div>
 
 <style>
