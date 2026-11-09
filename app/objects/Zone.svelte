@@ -23,13 +23,16 @@ A drop target for direct-manipulation objects.
     let target = $derived(match($currentTarget) || match($pendingDropTarget));
     let zone: HTMLDivElement | undefined = $state();
     let disposed = false;
+    let lastOperand: Operand | null = null;
+    // parent props can already be cleared when a conditional child is destroyed.
+    $effect.pre(() => { lastOperand = operand; });
     let dropping = $state(false);
     onMount(watchDragCancellation);
 
-    function match(target: Operand | null): boolean {
+    function match(target: Operand | null, source: Operand | null = operand): boolean {
         return (
-            (operand && target == operand) ||
-            (operand?.type == "Merge" && target?.type == "Merge" && operand.header.id.commit == target.header.id.commit)
+            (source && target == source) ||
+            (source?.type == "Merge" && target?.type == "Merge" && source.header.id.commit == target.header.id.commit)
         );
     }
 
@@ -88,8 +91,8 @@ A drop target for direct-manipulation objects.
     }
     onDestroy(() => {
         disposed = true;
-        if (match($currentTarget)) $currentTarget = null;
-        if (match($pendingDropTarget)) clearPendingDrop();
+        if (match($currentTarget, lastOperand)) $currentTarget = null;
+        if (match($pendingDropTarget, lastOperand)) clearPendingDrop();
     });
 
     $effect.pre(() => {

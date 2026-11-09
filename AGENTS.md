@@ -105,11 +105,15 @@ The log pane (`app/GraphLog.svelte`) uses virtualization. Key by slot index, not
 
 ### Reactive Props
 
-Use `$:` for derived values from props (critical in virtualized lists):
+Components use Svelte 5 runes (enforced by `svelte.config.js`). Derive values from props so reused virtual rows update:
 ```svelte
-$: label = ref.bookmark_name;  // CORRECT: reactive
-let label = ref.bookmark_name; // WRONG: computed once at mount
+let { ref }: Props = $props();
+let label = $derived(ref.bookmark_name);
 ```
+
+Use `$state` for local state and `$state.raw` for immutable repository snapshots replaced as a whole. Existing shared stores remain supported; do not convert them merely for syntax. Use typed snippets for content and callback props for events.
+
+Effects should read their intended inputs explicitly. Wrap imperative rendering or loading in `untrack` when its internal reads must not become dependencies. Clean up listeners, timers, observers and pending async work when the component is destroyed.
 
 ### Error Handling (GUI Mode)
 

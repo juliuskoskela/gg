@@ -23,7 +23,7 @@ describe("self-hosted development checkout", () => {
     it("keeps a coherent frontend when Edit and Undo rewrite the running app's source", async () => {
         extractTestRepo(ctx.tempDir);
         await cp(join(PROJECT_ROOT, "app"), join(ctx.tempDir, "app"), { recursive: true });
-        for (let file of ["index.html", "package.json", ".gitignore"]) {
+        for (let file of ["index.html", "package.json", "svelte.config.js", ".gitignore"]) {
             await cp(join(PROJECT_ROOT, file), join(ctx.tempDir, file));
         }
         await symlink(join(PROJECT_ROOT, "node_modules"), join(ctx.tempDir, "node_modules"), process.platform === "win32" ? "junction" : "dir");
@@ -80,7 +80,7 @@ describe("self-hosted development checkout", () => {
         });
         await server.listen();
         let errors: string[] = [];
-        ctx.page.on("pageerror", error => errors.push(error.message));
+        ctx.page.on("pageerror", error => errors.push(error.stack ?? error.message));
         await ctx.page.setViewportSize({ width: 1440, height: 900 });
         await ctx.page.goto(server.resolvedUrls!.local[0]);
         let filter = ctx.page.getByRole("textbox", { name: "Filter revisions with a revset" });

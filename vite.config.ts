@@ -7,7 +7,11 @@ import { playwright } from "@vitest/browser-playwright";
 export default defineConfig(async () => ({
   // editing this repository can replace components and their imports together.
   // reload the component tree instead of retaining incompatible HMR instances.
-  plugins: [neovimDemo(), svelte({ compilerOptions: { hmr: false } })],
+  plugins: [neovimDemo(), svelte({
+    compilerOptions: { hmr: false },
+    // dependencies may ship both legacy and rune components.
+    dynamicCompileOptions: ({ filename }) => filename.replaceAll("\\", "/").includes("/node_modules/") ? { runes: undefined } : undefined,
+  })],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

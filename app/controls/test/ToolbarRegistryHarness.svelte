@@ -2,8 +2,8 @@
     import PanelGroup from "../PanelGroup.svelte";
     import PanelTabs from "../PanelTabs.svelte";
     import ToolbarContribution from "./ToolbarContribution.svelte";
-    let active = "plugin";
-    let enabled = true;
+    let active = $state("plugin");
+    let enabled = $state(true);
 </script>
 
 <PanelGroup>
@@ -11,4 +11,4 @@
     {#if enabled}<ToolbarContribution id="plugin" />{/if}
     <ToolbarContribution id="other" />
 </PanelGroup>
-<button type="button" on:click={() => enabled = false}>Disable extension</button>
+<button type="button" onclick={() => enabled = false}>Disable extension</button>
