@@ -11,7 +11,7 @@
 </script>
 
 <div class="diff-tools"><PanelTools label="Diff tools" summaryVisible={!!title}>
-    <svelte:fragment slot="summary">{#if title}<h3>{title}</h3>{/if}</svelte:fragment>
+    {#snippet summary()}{#if title}<h3>{title}</h3>{/if}{/snippet}
     {#if changes.length}<DiffDisplayOptions />{/if}
 </PanelTools></div>
 

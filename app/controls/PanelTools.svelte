@@ -1,11 +1,23 @@
 <script lang="ts">
-    export let label: string;
-    export let summaryVisible = true;
+    import type { Snippet } from "svelte";
+    interface Props {
+        label: string;
+        summaryVisible?: boolean;
+        summary?: Snippet;
+        children?: Snippet;
+    }
+
+    let {
+        label,
+        summaryVisible = true,
+        summary,
+        children
+    }: Props = $props();
 </script>
 
 <div class="panel-tools" role="group" aria-label={label}>
-    {#if summaryVisible && $$slots.summary}<div class="panel-tools-summary"><slot name="summary" /></div>{/if}
-    <div class="panel-tools-controls"><slot /></div>
+    {#if summaryVisible && summary}<div class="panel-tools-summary">{@render summary?.()}</div>{/if}
+    <div class="panel-tools-controls">{@render children?.()}</div>
 </div>
 
 <style>

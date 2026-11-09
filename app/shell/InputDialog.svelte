@@ -73,7 +73,7 @@
     }
 </script>
 
-<ModalDialog {title} on:cancel={onCancel} on:default={onEnter}>
+<ModalDialog {title} onCancel={onCancel} onDefault={onEnter}>
     {#if detail != ""}
         {#if detail.startsWith("code:")}
             <p><code>{detail.slice(5)}</code></p>
@@ -113,10 +113,10 @@
             <span><CheckWidget id="field-{field.label}" checked={field.choices[0] == "true"} /></span>
         {/if}
     {/each}
-    <svelte:fragment slot="commands">
+    {#snippet commands()}
         {#if fields.length}<ActionWidget safe secondary onClick={onCancel}>Cancel</ActionWidget>{/if}
         <ActionWidget safe primary onClick={onEnter}>{fields.length ? "Enter" : "OK"}</ActionWidget>
-    </svelte:fragment>
+    {/snippet}
 </ModalDialog>
 
 <style>

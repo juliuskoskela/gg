@@ -1,6 +1,12 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { onMount } from "svelte";
     import { hasModal } from "../stores";
+    interface Props {
+        children?: Snippet;
+    }
+
+    let { children }: Props = $props();
 
     onMount(() => {
         $hasModal = true;
@@ -13,7 +19,7 @@
 <div id="overlay">
     <!-- the overlay covers the window's drag handles, so it needs its own -->
     <div class="titlebar" data-tauri-drag-region></div>
-    <slot />
+    {@render children?.()}
 </div>
 
 <style>

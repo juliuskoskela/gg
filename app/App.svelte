@@ -66,24 +66,24 @@
         </div>
     {:else if route.type === "revision"}
         <div class="standalone-content" inert={!!$workspaceController.routedTool} aria-hidden={$workspaceController.routedTool ? true : undefined}>
-        <BoundQuery query={selection} let:data>
-            {#if data.type == "Detail"}
+        <BoundQuery query={selection} >
+            {#snippet children({ data })}{#if data.type == "Detail"}
                 <RevisionPane revs={data} />
             {:else}
                 <Pane>
-                    <h2 slot="header">No revisions match</h2>
-                    <p slot="body">
+                    {#snippet header()}<h2 >No revisions match</h2>{/snippet}
+                    {#snippet body()}<p >
                         This revset matches nothing.
-                    </p>
+                    </p>{/snippet}
                 </Pane>
-            {/if}
-            <Pane slot="error" let:message>
-                <h2 slot="header">Error</h2>
-                <p slot="body">{message}</p>
-            </Pane>
-            <Pane slot="wait">
-                <h2 slot="header">Loading…</h2>
-            </Pane>
+            {/if}{/snippet}
+            {#snippet error({ message })}<Pane>
+                {#snippet header()}<h2 >Error</h2>{/snippet}
+                {#snippet body()}<p >{message}</p>{/snippet}
+            </Pane>{/snippet}
+            {#snippet wait()}<Pane >
+                {#snippet header()}<h2 >Loading…</h2>{/snippet}
+            </Pane>{/snippet}
         </BoundQuery>
         </div>
     {:else}

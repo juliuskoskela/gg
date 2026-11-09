@@ -1,20 +1,37 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import PanelFooter from "../controls/PanelFooter.svelte";
     import { hasModal } from "../stores";
 
-    export let element: HTMLDivElement;
-    export let showHeader = true;
-    export let showSummary = true;
+    interface Props {
+        element: HTMLDivElement;
+        showHeader?: boolean;
+        showSummary?: boolean;
+        header?: Snippet;
+        summary?: Snippet;
+        children?: Snippet;
+        footer?: Snippet;
+    }
+
+    let {
+        element = $bindable(),
+        showHeader = true,
+        showSummary = true,
+        header,
+        summary,
+        children,
+        footer
+    }: Props = $props();
 </script>
 
 <section class="timeline-panel" inert={$hasModal}>
-    {#if showHeader && $$slots.header}
-        <header class="timeline-header"><slot name="header" /></header>
+    {#if showHeader && header}
+        <header class="timeline-header">{@render header?.()}</header>
     {/if}
     <div class="timeline-section graph-body" class:unsummarised={!showSummary} bind:this={element}>
-        {#if showSummary}<div class="timeline-summary"><slot name="summary" /></div>{/if}
-        <div class="timeline-viewport"><slot /></div>
-        <PanelFooter className="timeline-footer"><slot name="footer" /></PanelFooter>
+        {#if showSummary}<div class="timeline-summary">{@render summary?.()}</div>{/if}
+        <div class="timeline-viewport">{@render children?.()}</div>
+        <PanelFooter className="timeline-footer">{@render footer?.()}</PanelFooter>
     </div>
 </section>
 

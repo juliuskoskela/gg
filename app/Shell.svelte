@@ -316,7 +316,7 @@
         {#if $repoConfigEvent.type == "Initial"}
             <TitlebarInset>
                 <Pane>
-                    <h2 slot="header">Loading…</h2>
+                    {#snippet header()}<h2 >Loading…</h2>{/snippet}
                 </Pane>
             </TitlebarInset>
         {:else if $repoConfigEvent.type == "Workspace"}

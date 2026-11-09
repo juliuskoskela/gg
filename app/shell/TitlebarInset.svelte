@@ -1,8 +1,14 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { onMount } from "svelte";
     import { trigger } from "../ipc";
+    interface Props {
+        children?: Snippet;
+    }
 
-    let titlebar: HTMLElement;
+    let { children }: Props = $props();
+
+    let titlebar!: HTMLElement;
 
     // the native title is drawn in this gap, so the backend shortens it to fit
     onMount(() => {
@@ -24,7 +30,7 @@
 <!-- keeps content clear of the macos traffic lights, leaving the gap as a window drag handle -->
 <div class="inset">
     <div class="titlebar" data-tauri-drag-region bind:this={titlebar}></div>
-    <slot />
+    {@render children?.()}
 </div>
 
 <style>

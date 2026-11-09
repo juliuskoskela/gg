@@ -4,27 +4,32 @@ Abstraction of dubious utility - it's only used in one place, because most IPC d
 -->
 
 <script lang="ts" generics="T">
+    import type { Snippet } from "svelte";
     import type { Query as Query } from "../ipc";
 
-    interface $$Slots {
-        wait: {};
-        error: { message: string };
-        default: { data: T };
+    interface Props {
+        query: Query<T>;
+        wait?: Snippet;
+        error?: Snippet<[{ message: string }]>;
+        children?: Snippet<[{ data: T }]>;
     }
 
-    export let query: Query<T>;
+    let {
+        query,
+        wait,
+        error,
+        children
+    }: Props = $props();
 
 </script>
 
-    {#if query.type == "wait"}
-        <slot name="wait" />
-    {:else if query.type == "error"}
-        <slot name="error" message={query.message}>
-            <span class="red">{query.message}</span>
-        </slot>
-    {:else}
-        <slot data={query.value} />
-    {/if}
+{#if query.type == "wait"}
+    {@render wait?.()}
+{:else if query.type == "error"}
+    {#if error}{@render error({ message: query.message })}{:else}<span class="red">{query.message}</span>{/if}
+{:else}
+    {@render children?.({ data: query.value })}
+{/if}
 
 <style>
     .red {

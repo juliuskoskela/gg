@@ -1,10 +1,24 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { hasModal } from "../stores";
 
-    // the header shares space with the macos titlebar
-    export let titlebar = false;
-    export let headerHeight = 40;
-    export let flexibleHeader = false;
+
+    interface Props {
+        // the header shares space with the macos titlebar
+        titlebar?: boolean;
+        headerHeight?: number;
+        flexibleHeader?: boolean;
+        header?: Snippet;
+        body?: Snippet;
+    }
+
+    let {
+        titlebar = false,
+        headerHeight = 40,
+        flexibleHeader = false,
+        header,
+        body
+    }: Props = $props();
 </script>
 
 <section inert={$hasModal} class:titlebar style="--pane-header-height: {flexibleHeader ? "auto" : `${headerHeight}px`}">
@@ -12,10 +26,10 @@
         {#if titlebar}
             <div class="drag-region" data-tauri-drag-region></div>
         {/if}
-        <slot name="header" />
+        {@render header?.()}
     </div>
     <div class="body">
-        <slot name="body" />
+        {@render body?.()}
     </div>
 </section>
 

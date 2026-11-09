@@ -476,8 +476,8 @@
 {/if}
 
 <TimelineSection bind:element={graphBody} showHeader={!integrated} showSummary={!integrated}>
-    <div slot="header" class="standalone-title"><h2 tabindex="-1">Timeline</h2><TimelineDisplayOptions /></div>
-    <div slot="footer" class="log-selector" class:editable={isCustom || isDeletable}>
+    {#snippet header()}<div  class="standalone-title"><h2 tabindex="-1">Timeline</h2><TimelineDisplayOptions /></div>{/snippet}
+    {#snippet footer()}<div  class="log-selector" class:editable={isCustom || isDeletable}>
         <SelectWidget options={choices} bind:value={entered_query} onChange={reloadLog}>
             {#snippet children({ option })}{option.label}{/snippet}
         </SelectWidget>
@@ -500,8 +500,8 @@
                 <Icon name="x-square" />
             </ActionWidget>
         {/if}
-    </div>
-    <div slot="summary" class="graph-caption"><span>{graphSummary}</span></div>
+    </div>{/snippet}
+    {#snippet summary()}<div  class="graph-caption"><span>{graphSummary}</span></div>{/snippet}
     <div class="history-measure" style:--history-base-row={$historyRowHeight} bind:clientHeight={rowMeasurement} aria-hidden="true"></div>
     <ListWidget
         type="Revision"

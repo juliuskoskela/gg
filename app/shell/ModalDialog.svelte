@@ -1,16 +1,26 @@
 <script lang="ts">
-    import { createEventDispatcher, onMount } from "svelte";
+    import type { Snippet } from "svelte";
+    import { onMount } from "svelte";
 
-    interface $$Events {
-        cancel: CustomEvent<void>;
-        default: CustomEvent<void>;
+    interface Props {
+        title: string;
+        error?: boolean;
+        children?: Snippet;
+        commands?: Snippet;
+        onCancel?: () => void;
+        onDefault?: () => void;
     }
 
-    export let title: string;
-    export let error: boolean = false;
+    let {
+        title,
+        error = false,
+        children,
+        commands,
+        onCancel,
+        onDefault
+    }: Props = $props();
 
-    let dispatch = createEventDispatcher();
-    let dialog: HTMLDivElement;
+    let dialog!: HTMLDivElement;
     let previous: HTMLElement | null;
 
     function focusable() {
@@ -31,7 +41,7 @@
         if (event.defaultPrevented || event.isComposing) return;
         if (event.key === "Escape") {
             event.preventDefault();
-            dispatch("cancel");
+            onCancel?.();
         } else if (event.key === "Tab") {
             let items = focusable();
             let index = items.indexOf(document.activeElement as HTMLElement);
@@ -40,7 +50,7 @@
             else if (!event.shiftKey && (index < 0 || index === items.length - 1)) { event.preventDefault(); items[0].focus(); }
         } else if (event.key === "Enter" && event.target instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit"].includes(event.target.type)) {
             event.preventDefault();
-            dispatch("default");
+            onDefault?.();
         }
     }
 </script>
@@ -49,11 +59,11 @@
     <h3 id="dialog-header" class:error>{title}</h3>
 
     <div id="dialog-content">
-        <slot />
+        {@render children?.()}
     </div>
 
     <div id="dialog-commands">
-        <slot name="commands" />
+        {@render commands?.()}
     </div>
 </div>
 

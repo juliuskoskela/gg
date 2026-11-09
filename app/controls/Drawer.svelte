@@ -1,25 +1,40 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import Icon from "./Icon.svelte";
 
-    export let open = false;
-    export let title: string;
-    export let side: "leading" | "trailing" = "leading";
-    export let id: string | undefined = undefined;
-    export let onClose: () => void;
-    let dialog: HTMLDialogElement;
-
-    $: if (dialog) {
-        if (open && !dialog.open) dialog.showModal();
-        else if (!open && dialog.open) dialog.close();
+    interface Props {
+        open?: boolean;
+        title: string;
+        side?: "leading" | "trailing";
+        id?: string | undefined;
+        onClose: () => void;
+        children?: Snippet;
     }
+
+    let {
+        open = false,
+        title,
+        side = "leading",
+        id = undefined,
+        onClose,
+        children
+    }: Props = $props();
+    let dialog = $state<HTMLDialogElement>();
+
+    $effect(() => {
+        if (dialog) {
+            if (open && !dialog.open) dialog.showModal();
+            else if (!open && dialog.open) dialog.close();
+        }
+    });
 </script>
 
 <!-- native dialog supplies focus containment, escape, and focus restoration. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<dialog {id} bind:this={dialog} class:trailing={side === "trailing"} aria-label={title} on:close={onClose} on:click={event => { if (event.target === dialog) dialog.close(); }}>
+<dialog {id} bind:this={dialog} class:trailing={side === "trailing"} aria-label={title} onclose={onClose} onclick={event => { if (event.target === dialog) dialog?.close(); }}>
     <div class="drawer-content">
-        <header><h2>{title}</h2><button type="button" aria-label={`Close ${title.toLowerCase()}`} on:click={() => dialog.close()}><Icon name="x" /></button></header>
-        <div class="drawer-body"><slot /></div>
+        <header><h2>{title}</h2><button type="button" aria-label={`Close ${title.toLowerCase()}`} onclick={() => dialog?.close()}><Icon name="x" /></button></header>
+        <div class="drawer-body">{@render children?.()}</div>
     </div>
 </dialog>
 
