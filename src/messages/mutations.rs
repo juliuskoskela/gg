@@ -114,6 +114,21 @@ pub struct MoveRevisions {
     pub parent_ids: Vec<RevId>,
 }
 
+/// Abandons an explicit selection without including intervening commits.
+#[derive(Deserialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct AbandonSelectedRevisions {
+    pub ids: Vec<RevId>,
+}
+
+/// Rebases each selected commit directly onto the same destination.
+#[derive(Deserialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct RebaseSelectedRevisions {
+    pub ids: Vec<RevId>,
+    pub destination: RevId,
+}
+
 /// Sets a revision's parents (used to add/remove parents from merge commits)
 #[derive(Deserialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]

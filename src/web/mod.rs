@@ -44,12 +44,12 @@ use tokio::sync::{broadcast, oneshot};
 
 use crate::config::{self, GGSettings, read_config};
 use crate::messages::mutations::{
-    AbandonRevisions, AdoptRevision, BackoutRevisions, CheckoutRevision, CopyChanges, CopyHunk,
-    CreateRef, CreateRevision, CreateRevisionBetween, DeleteRef, DescribeRevision,
-    DuplicateRevisions, ExternalDiff, ExternalResolve, ForgetWorkspace, GitFetch, GitPush,
-    InsertRevisions, MoveChanges, MoveHunk, MoveRef, MoveRevisions, MutationOptions,
-    MutationResult, OpenWorkspace, RedoOperation, RenameBookmark, RenameWorkspace, TrackBookmark,
-    UndoOperation, UntrackBookmark,
+    AbandonRevisions, AbandonSelectedRevisions, AdoptRevision, BackoutRevisions, CheckoutRevision,
+    CopyChanges, CopyHunk, CreateRef, CreateRevision, CreateRevisionBetween, DeleteRef,
+    DescribeRevision, DuplicateRevisions, ExternalDiff, ExternalResolve, ForgetWorkspace, GitFetch,
+    GitPush, InsertRevisions, MoveChanges, MoveHunk, MoveRef, MoveRevisions, MutationOptions,
+    MutationResult, OpenWorkspace, RebaseSelectedRevisions, RedoOperation, RenameBookmark,
+    RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark,
 };
 use crate::worker::{Mutation, Session, SessionEvent, WorkerSession};
 use sink::{SseEvent, SseSink};
@@ -283,6 +283,8 @@ async fn handle_mutate(
     log::debug!("mutation: {command}");
 
     match command.as_str() {
+        "abandon_selected_revisions" => execute_mutation::<AbandonSelectedRevisions>(&state, body),
+        "rebase_selected_revisions" => execute_mutation::<RebaseSelectedRevisions>(&state, body),
         "abandon_revisions" => execute_mutation::<AbandonRevisions>(&state, body),
         "backout_revisions" => execute_mutation::<BackoutRevisions>(&state, body),
         "checkout_revision" => execute_mutation::<CheckoutRevision>(&state, body),

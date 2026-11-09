@@ -32,12 +32,13 @@ use gg_lib::config::GGSettings;
 use gg_lib::messages::{
     self,
     mutations::{
-        AbandonRevisions, AdoptRevision, BackoutRevisions, CheckoutRevision, CloneRepository,
-        CopyChanges, CopyHunk, CreateRef, CreateRevision, CreateRevisionBetween, DeleteRef,
-        DescribeRevision, DuplicateRevisions, ExternalDiff, ExternalResolve, ForgetWorkspace,
-        GitFetch, GitPush, InitRepository, InsertRevisions, MoveChanges, MoveHunk, MoveRef,
-        MoveRevisions, MutationOptions, MutationResult, OpenWorkspace, RedoOperation,
-        RenameBookmark, RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark,
+        AbandonRevisions, AbandonSelectedRevisions, AdoptRevision, BackoutRevisions,
+        CheckoutRevision, CloneRepository, CopyChanges, CopyHunk, CreateRef, CreateRevision,
+        CreateRevisionBetween, DeleteRef, DescribeRevision, DuplicateRevisions, ExternalDiff,
+        ExternalResolve, ForgetWorkspace, GitFetch, GitPush, InitRepository, InsertRevisions,
+        MoveChanges, MoveHunk, MoveRef, MoveRevisions, MutationOptions, MutationResult,
+        OpenWorkspace, RebaseSelectedRevisions, RedoOperation, RenameBookmark, RenameWorkspace,
+        TrackBookmark, UndoOperation, UntrackBookmark,
     },
 };
 use gg_lib::worker::{Mutation, Session, SessionEvent, WorkerSession};
@@ -344,6 +345,8 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_snapshot,
             query_current_status,
             abandon_revisions,
+            abandon_selected_revisions,
+            rebase_selected_revisions,
             backout_revisions,
             checkout_revision,
             create_revision,
@@ -930,6 +933,26 @@ fn query_current_status(
     rx.recv()
         .map_err(InvokeError::from_error)?
         .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn abandon_selected_revisions(
+    window: Window,
+    app_state: State<AppState>,
+    mutation: AbandonSelectedRevisions,
+    options: MutationOptions,
+) -> Result<MutationResult, InvokeError> {
+    try_mutate(window, app_state, mutation, options)
+}
+
+#[tauri::command(async)]
+fn rebase_selected_revisions(
+    window: Window,
+    app_state: State<AppState>,
+    mutation: RebaseSelectedRevisions,
+    options: MutationOptions,
+) -> Result<MutationResult, InvokeError> {
+    try_mutate(window, app_state, mutation, options)
 }
 
 #[tauri::command(async)]

@@ -1,6 +1,7 @@
 mod change;
 mod r#ref;
 mod revision;
+mod selected;
 
 use std::collections::HashMap;
 use std::sync::Arc;
