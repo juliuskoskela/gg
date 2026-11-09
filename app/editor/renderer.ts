@@ -52,6 +52,7 @@ export class GridRenderer {
         let changed = fontSize !== this.fontSize || family !== this.fontFamily || scale !== this.scale || !this.atlas.width;
         this.fontSize = fontSize; this.fontFamily = family; this.scale = scale;
         let context = this.atlas.getContext("2d")!;
+        /* design-token-allow typography: canvas measurement uses the computed editor font */
         context.font = `${fontSize}px ${family}`;
         this.cellWidth = context.measureText("M").width;
         this.cellHeight = parseFloat(style.lineHeight) || fontSize * 1.6667;
@@ -85,7 +86,9 @@ export class GridRenderer {
                 if (this.glyphs.size >= 2048) continue;
                 index = this.glyphs.size; this.glyphs.set(key, index); dirty = true;
                 let context = this.atlas.getContext("2d")!;
+                /* design-token-allow typography: grid glyphs use Neovim attributes and the computed editor font */
                 context.font = `${hl.italic ? "italic " : ""}${hl.bold ? "600 " : "400 "}${this.fontSize * this.scale}px ${this.fontFamily}`;
+                /* design-token-allow color: the glyph atlas stores alpha masks; final color comes from Neovim */
                 context.fillStyle = "white"; context.textBaseline = "alphabetic";
                 context.fillText(cell.text, index % 32 * this.tileWidth + 2, Math.floor(index / 32) * this.tileHeight + 2 + (this.cellHeight - this.fontSize) / 2 * this.scale + this.fontSize * this.scale * .8);
             }

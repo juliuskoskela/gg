@@ -126,6 +126,8 @@ Use macros from `src/gui/handler.rs`:
 
 Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--font-emphasis`, `--font-body`, `--font-prose`, `--font-label`, `--font-id`) with `font:`; don't set `font-size`, `line-height` or `font-weight` by hand. Key/value data uses `MetadataList`/`MetadataRow`, history-like entries use `LogList`, in-content navigation uses `.text-link`, and toolbar search fields and summaries take `.toolbar-lead`. See `doc/reviews/typography.md`.
 
+`npm run check` enforces design-token rules against the recorded legacy baseline. Use semantic tokens for new styles and remove stale allowances when fixing old ones; see `doc/design-token-lint.md` for narrowly scoped renderer exceptions.
+
 ### Colour
 
 Hues come from `--palette-*` tokens in `app/display/palettes.css`; components use the semantic roles in `app/global.css` and never hex values. Each colour vision block (protan, deutan, tritan, achromat) must define every hue token, and `app/display/vision/palettes.test.ts` checks them against colour vision simulations in every family and light level. See `doc/specs/color-vision.md`.

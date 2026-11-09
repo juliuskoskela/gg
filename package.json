@@ -7,13 +7,15 @@
     "dev": "tauri dev -- -- gui --foreground",
     "dev:frontend": "vite",
     "dev:backend": "cargo watch -w src -w res -w Cargo.toml -w Cargo.lock -w build.rs -w Tauri.toml -x \"run --locked -- web --port 6974 --no-launch --foreground\"",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check": "npm run test:design && npm run lint:design && svelte-check --tsconfig ./tsconfig.json",
     "prebuild": "npm run check",
     "build": "vite build",
     "test": "vitest run",
     "tauri": "tauri",
     "pretest:visual": "npm run build",
-    "test:visual": "playwright test --config e2e/visual/playwright.config.ts"
+    "test:visual": "playwright test --config e2e/visual/playwright.config.ts",
+    "lint:design": "node scripts/design-tokens/check.mjs",
+    "test:design": "node --test scripts/design-tokens/lint.test.mjs"
   },
   "dependencies": {
     "@catppuccin/palette": "^1.0.3",
