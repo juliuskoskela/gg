@@ -14,6 +14,7 @@ use super::state::AppState;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/annotations", post(annotations))
+        .route("/review_progress", post(review_progress))
         .route("/export_annotations", post(export_annotations))
 }
 
@@ -47,5 +48,22 @@ async fn export_annotations(
     state
         .worker_tx
         .send(SessionEvent::ExportAnnotations { tx, ids: req.ids })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct ReviewProgressRequest {
+    request: crate::messages::review::ReviewRequest,
+}
+
+async fn review_progress(
+    State(state): State<AppState>,
+    Json(req): Json<ReviewProgressRequest>,
+) -> Result<Json<crate::messages::review::ReviewProgress>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::ReviewProgress {
+        tx,
+        request: req.request,
+    })?;
     Ok(Json(rx.recv()??))
 }

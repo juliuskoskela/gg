@@ -91,6 +91,10 @@ pub enum SessionEvent {
         id: messages::RevId,
         offset: usize,
     },
+    ReviewProgress {
+        tx: Sender<Result<messages::review::ReviewProgress>>,
+        request: messages::review::ReviewRequest,
+    },
     Annotations {
         tx: Sender<Result<messages::annotations::AnnotationList>>,
         request: messages::annotations::AnnotationRequest,
@@ -345,6 +349,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryEvolution { tx, id, offset } => {
                     tx.send(super::history::evolution_page(&self, id, offset).await)?
                 }
+                SessionEvent::ReviewProgress { tx, request } => {
+                    tx.send(super::review::handle(&self, request).await)?
+                }
                 SessionEvent::Annotations { tx, request } => {
                     tx.send(super::annotations::handle(&self, request))?
                 }
@@ -580,6 +587,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryEvolution { tx, id, offset }) => {
                     tx.send(super::history::evolution_page(self.ws, id, offset).await)?
+                }
+                Ok(SessionEvent::ReviewProgress { tx, request }) => {
+                    tx.send(super::review::handle(self.ws, request).await)?
                 }
                 Ok(SessionEvent::Annotations { tx, request }) => {
                     tx.send(super::annotations::handle(self.ws, request))?

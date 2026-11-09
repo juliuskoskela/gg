@@ -14,6 +14,7 @@ pub mod annotations;
 pub mod askpass;
 pub mod config;
 pub mod messages;
+pub mod review;
 pub mod web;
 pub mod worker;
 

@@ -923,7 +923,7 @@ async fn get_value_contents(
     }
 }
 
-fn get_unified_hunks(
+pub(super) fn get_unified_hunks(
     num_context_lines: usize,
     left_content: &[u8],
     right_content: &[u8],

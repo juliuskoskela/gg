@@ -2,6 +2,7 @@ mod annotations;
 mod colocated;
 mod history;
 mod queries;
+mod review;
 mod session;
 
 use anyhow::Result;

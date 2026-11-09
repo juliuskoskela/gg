@@ -500,7 +500,7 @@ impl AnnotationStore {
     }
 }
 
-fn write_atomic(path: &Path, content: &[u8], replace: bool) -> Result<()> {
+pub(crate) fn write_atomic(path: &Path, content: &[u8], replace: bool) -> Result<()> {
     let parent = path
         .parent()
         .ok_or_else(|| anyhow!("{} has no parent", path.display()))?;

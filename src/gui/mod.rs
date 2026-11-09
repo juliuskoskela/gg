@@ -331,6 +331,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_evolution,
             query_operation_history,
             annotations,
+            review_progress,
             export_annotations,
             query_operation_detail,
             query_revision_diff,
@@ -1738,4 +1739,20 @@ fn query_recent_workspaces(
         }
         Err(_) => Ok(vec![]),
     }
+}
+
+#[tauri::command(async)]
+fn review_progress(
+    window: Window,
+    app_state: State<AppState>,
+    request: messages::review::ReviewRequest,
+) -> Result<messages::review::ReviewProgress, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::ReviewProgress { tx, request })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
 }
