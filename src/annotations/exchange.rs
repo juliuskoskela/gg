@@ -71,7 +71,10 @@ fn validate_archive(archive: &AnnotationArchive, context: &AnnotationContext) ->
             bail!("Invalid or duplicate annotation event id");
         }
         match &event.kind {
-            EventKind::Post { body } => {
+            EventKind::Post { body, metadata } => {
+                if let Some(metadata) = metadata {
+                    super::agents::validate(metadata)?;
+                }
                 validate_body(body)?;
                 posts.insert(&event.id, &event.author);
             }
@@ -303,6 +306,7 @@ mod tests {
             .find(|item| item.header.id == thread.id)
             .unwrap();
         conflict.events[0].kind = EventKind::Post {
+            metadata: None,
             body: "tampered".into(),
         };
         assert!(destination.import_context(&scope, bundle).is_err());

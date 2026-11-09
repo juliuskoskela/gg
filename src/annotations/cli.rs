@@ -8,6 +8,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use jj_lib::settings::UserSettings;
 
 use super::{AnnotationStore, describe_anchor, export_markdown, short_id};
+use crate::messages::annotation_agents::{AgentIdentity, AgentRiskScore, AnnotationMetadata};
 use crate::messages::annotations::{
     AnnotationAuthor, AnnotationStatus, AnnotationThread, AuthorKind,
 };
@@ -39,6 +40,18 @@ pub enum Action {
         /// Reply as an agent with this name, instead of as your jj user.
         #[arg(long)]
         agent: Option<String>,
+        /// Model used by the agent (recorded as attribution, not verified).
+        #[arg(long, requires = "agent")]
+        model: Option<String>,
+        /// Agent-reported risk: 1 low, 2 typical, 3 high, 4 very high.
+        #[arg(long, requires = "agent", value_parser = clap::value_parser!(u8).range(1..=4))]
+        risk_level: Option<u8>,
+        /// Optional 40-character Git SHA to which the risk score applies.
+        #[arg(long, requires = "risk_level")]
+        risk_sha: Option<String>,
+        /// Repeat for up to eight short reasons for the risk score.
+        #[arg(long, requires = "risk_level")]
+        risk_explanation: Vec<String>,
         #[arg(long)]
         json: bool,
     },
@@ -109,13 +122,29 @@ pub fn run(workspace: Option<&Path>, settings: &UserSettings, action: Action) ->
             id,
             text,
             agent,
+            model,
+            risk_level,
+            risk_sha,
+            risk_explanation,
             json,
         } => {
             let body = match text.as_deref() {
                 Some("-") | None => read_stdin()?,
                 Some(text) => text.to_owned(),
             };
-            let thread = store.reply(&id, author(agent), &body)?;
+            let identity = author(agent.clone());
+            let metadata = agent.map(|agent| AnnotationMetadata {
+                on_behalf_of: Some(AgentIdentity {
+                    agent: agent.trim().to_owned(),
+                    model,
+                }),
+                risk_score: risk_level.map(|level| AgentRiskScore {
+                    level,
+                    sha: risk_sha,
+                    explanations: (!risk_explanation.is_empty()).then_some(risk_explanation),
+                }),
+            });
+            let thread = store.reply_with_metadata(&id, identity, &body, metadata)?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&thread)?);
             } else {
@@ -217,4 +246,69 @@ fn print_row(thread: &AnnotationThread) {
             ),
         }
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    #[derive(Parser)]
+    struct Arguments {
+        #[command(subcommand)]
+        action: Action,
+    }
+    #[test]
+    fn reply_keeps_agent_syntax_and_validates_dependent_flags() {
+        assert!(
+            Arguments::try_parse_from(["gg", "reply", "note", "--agent", "codex", "answer"])
+                .is_ok()
+        );
+        assert!(
+            Arguments::try_parse_from(["gg", "reply", "note", "--model", "gpt-test", "answer"])
+                .is_err()
+        );
+        assert!(
+            Arguments::try_parse_from([
+                "gg",
+                "reply",
+                "note",
+                "--agent",
+                "codex",
+                "--risk-level",
+                "5",
+                "answer"
+            ])
+            .is_err()
+        );
+        assert!(
+            Arguments::try_parse_from([
+                "gg",
+                "reply",
+                "note",
+                "--agent",
+                "codex",
+                "--risk-explanation",
+                "reason",
+                "answer"
+            ])
+            .is_err()
+        );
+        assert!(
+            Arguments::try_parse_from([
+                "gg",
+                "reply",
+                "note",
+                "--agent",
+                "codex",
+                "--model",
+                "gpt-test",
+                "--risk-level",
+                "3",
+                "--risk-explanation",
+                "reason",
+                "answer"
+            ])
+            .is_ok()
+        );
+    }
 }

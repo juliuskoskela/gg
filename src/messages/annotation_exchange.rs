@@ -78,11 +78,25 @@ fn export_bindings_annotationevent() {
 #[serde(tag = "type", rename_all = "snake_case")]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub enum AnnotationEventKind {
-    Post { body: String },
-    Edit { post: String, body: String },
-    Status { status: AnnotationStatus },
-    AddTargets { targets: Vec<TargetInput> },
-    RemoveTarget { anchor: AnnotationAnchor },
+    Post {
+        body: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        metadata: Option<super::annotation_agents::AnnotationMetadata>,
+    },
+    Edit {
+        post: String,
+        body: String,
+    },
+    Status {
+        status: AnnotationStatus,
+    },
+    AddTargets {
+        targets: Vec<TargetInput>,
+    },
+    RemoveTarget {
+        anchor: AnnotationAnchor,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

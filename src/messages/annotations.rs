@@ -142,6 +142,9 @@ pub struct AnnotationPost {
     #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub edited_at: Option<DateTime<Utc>>,
     pub body: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub metadata: Option<super::annotation_agents::AnnotationMetadata>,
 }
 
 /// An annotation with its posts and current status, assembled from events.

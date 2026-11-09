@@ -16,6 +16,7 @@
 //! Each event is its own file, created atomically and never rewritten, so the
 //! app and the command line can add to the same thread concurrently.
 
+pub mod agents;
 pub mod cli;
 mod exchange;
 pub(crate) use exchange::validate_context;
@@ -267,7 +268,14 @@ impl AnnotationStore {
             &serde_json::to_vec_pretty(&header)?,
             false,
         )?;
-        self.append(&id, author, EventKind::Post { body })?;
+        self.append(
+            &id,
+            author,
+            EventKind::Post {
+                body,
+                metadata: None,
+            },
+        )?;
         self.get(&id)
     }
 
@@ -277,9 +285,22 @@ impl AnnotationStore {
         author: AnnotationAuthor,
         body: &str,
     ) -> Result<AnnotationThread> {
+        self.reply_with_metadata(id, author, body, None)
+    }
+
+    pub fn reply_with_metadata(
+        &self,
+        id: &str,
+        author: AnnotationAuthor,
+        body: &str,
+        metadata: Option<crate::messages::annotation_agents::AnnotationMetadata>,
+    ) -> Result<AnnotationThread> {
         let id = self.resolve_id(id)?;
         let body = validate_body(body)?;
-        self.append(&id, author, EventKind::Post { body })?;
+        if let Some(metadata) = &metadata {
+            agents::validate(metadata)?;
+        }
+        self.append(&id, author, EventKind::Post { body, metadata })?;
         self.get(&id)
     }
 
@@ -433,12 +454,13 @@ impl AnnotationStore {
         for event in events {
             updated_at = updated_at.max(event.at);
             match event.kind {
-                EventKind::Post { body } => posts.push(AnnotationPost {
+                EventKind::Post { body, metadata } => posts.push(AnnotationPost {
                     id: event.id,
                     author: event.author,
                     created_at: event.at,
                     edited_at: None,
                     body,
+                    metadata,
                 }),
                 EventKind::Edit { post, body } => {
                     if let Some(target) = posts
@@ -657,7 +679,8 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "{} from GG. Ids are jj change and commit ids; paths are relative to the repository root.\n\
-         Reply to a note with `gg annotations reply <note> --agent <your name> \"<text>\"`.\n",
+         Reply to a note with `gg annotations reply <note> --agent <your name> \"<text>\"`.\n\
+         Add `--model <model>` when known. Optional risk: `--risk-level 1..4 --risk-explanation <reason>`.\n",
         if threads.len() == 1 {
             "A note".to_owned()
         } else {
@@ -674,6 +697,7 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
                 ""
             }
         ));
+        out.push_str(&format!("Note ID: `{}`.\n", thread.id));
         let several = thread.targets.len() > 1;
         if several {
             out.push_str("Points at:\n");
@@ -686,6 +710,11 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
             }
             out.push('\n');
             let indent = if several { "  " } else { "" };
+            out.push_str(&format!(
+                "{indent}Original source: change `{}`, commit `{}`.\n",
+                target.anchor.change_id(),
+                target.anchor.commit_id()
+            ));
             if let Some(relocation) = &target.relocation {
                 if let Some(owner) = &relocation.owner {
                     out.push_str(&format!("{indent}Moved by split to change `{}` at commit `{}` (receipts {}). Original anchor retained.\n", owner.change.hex, owner.commit.hex, relocation.receipts.join(", ")));
@@ -732,6 +761,12 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
                     author_label(&post.author),
                     post.body
                 ));
+            }
+            if let Some(metadata) = &post.metadata {
+                let extension = agents::linear_extension(metadata);
+                if !extension.is_empty() {
+                    out.push_str(&format!("\n{extension}\n"));
+                }
             }
         }
     }
