@@ -9,6 +9,7 @@
     import { parseRoute } from "./route.js";
     import Shell from "./Shell.svelte";
     import LogPane from "./LogPane.svelte";
+    import SelectionReview from "./revision/SelectionReview.svelte";
     import RevisionPane from "./RevisionPane.svelte";
     import BoundQuery from "./controls/BoundQuery.svelte";
     import Pane from "./shell/Pane.svelte";
@@ -79,7 +80,7 @@
             <div class="standalone-content" inert={!!$workspaceController.routedTool} aria-hidden={$workspaceController.routedTool ? true : undefined}>
             <BoundQuery query={selection} >
                 {#snippet children({ data })}{#if data.type == "Detail"}
-                    <RevisionPane revs={data} />
+                    {#if data.range_unavailable}<SelectionReview headers={data.headers} reason={data.range_unavailable} />{:else}<RevisionPane revs={data} />{/if}
                 {:else}
                     <Pane>
                         {#snippet header()}<h2 >No revisions match</h2>{/snippet}

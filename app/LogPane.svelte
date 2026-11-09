@@ -122,16 +122,7 @@
             setSelection(row, row);
             if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
         },
-        extendSelection(row: number) {
-            if (!graphRows || selectionAnchorIdx === undefined) return;
-            clearPicks();
-
-            const limitIdx = findLinearLimit(selectionAnchorIdx, row);
-            if (limitIdx === row) {
-                setSelection(undefined, row); // keep anchor, extend to new row
-                if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
-            }
-        },
+        extendSelection(row: number) { extendSelectionTo(row); },
         moveFocus(row: number) {
             focusRow(row);
         },
@@ -268,9 +259,22 @@
             return;
         }
 
-        const limitIdx = findLinearLimit(selectionAnchorIdx, clickedIdx);
-        setSelection(undefined, limitIdx); // keep anchor, extend to limit
-        if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
+        extendSelectionTo(clickedIdx);
+    }
+
+    function extendSelectionTo(row: number) {
+        if (!graphRows || selectionAnchorIdx === undefined) return;
+        clearPicks();
+        let anchor = selectionAnchorIdx;
+        if (findLinearLimit(anchor, row) !== row) {
+            let first = Math.min(anchor, row), last = Math.max(anchor, row);
+            pickedRevisions.set(graphRows.slice(first, last + 1).map(row => row.revision));
+            focusRow(row);
+            selectionAnchorIdx = anchor;
+        } else {
+            setSelection(undefined, row);
+            if ($revisionSelectEvent) workspaceController.selectRevision($revisionSelectEvent);
+        }
     }
 
     function getChoices(query: string, presetList: typeof presets) {

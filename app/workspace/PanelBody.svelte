@@ -13,11 +13,12 @@
     import LogPane from "../LogPane.svelte";
     import NeovimEditor from "../editor/NeovimEditor.svelte";
     import RevisionTools from "../revision/RevisionTools.svelte";
+    import SelectionReview from "../revision/SelectionReview.svelte";
     import RevisionChanges from "../revision/RevisionChanges.svelte";
     import RevisionFiles from "../revision/RevisionFiles.svelte";
     import RevisionOverviewPanel from "../revision/RevisionOverviewPanel.svelte";
     import SelectionRecovery from "../revision/SelectionRecovery.svelte";
-    import { repoConfigEvent, repoStatusEvent } from "../stores";
+    import { repoConfigEvent, repoStatusEvent, pickedRevisions } from "../stores";
     import type { PanelId } from "./dock";
     import EvolutionPanel from "../history/EvolutionPanel.svelte";
     import OperationHistory from "../history/OperationHistory.svelte";
@@ -59,10 +60,11 @@
         untrack(() => { comparison = null; });
     });
     let headers = $derived(detail?.headers ?? []);
+    let separate = $derived($pickedRevisions.length > 1 ? $pickedRevisions : detail?.range_unavailable ? detail.headers : []);
     let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
-{#if id === "diff" && detail && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} /></ViewToolbar>{/if}
+{#if id === "diff" && detail && !separate.length && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} /></ViewToolbar>{/if}
 
 {#if id.startsWith("plugin:")}
     <PluginPanel {id} />
@@ -101,13 +103,15 @@
         <RevisionTools {headers} />
     {/if}
 {:else if id === "diff"}
-    {#if detail}
+    {#if separate.length}<SelectionReview headers={separate} reason={detail?.range_unavailable ?? "Each selected change is reviewed against its own parents."} />
+    {:else if detail}
         <RevisionChanges revs={detail} {changes} {selectedPath} {onSelectFile} focused={true} showTools={false} {comparison} onCompare={compare} onCloseComparison={() => comparison = null} />
     {:else}
         <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : selection.type === "error" ? selection.message : "This revset matches nothing."}</p>
     {/if}
 {:else if id === "tree"}
-    {#if detail}
+    {#if separate.length}<p class="panel-status">Each selected change has its own files in the Diff view.</p>
+    {:else if detail}
         <RevisionFiles {changes} {headers} {selectedPath} {reviewKey} visible={true} overlay={false} onSelect={onSelectFile} onClose={null} showHeading={false} />
     {:else}
         <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : "This revset matches nothing."}</p>
