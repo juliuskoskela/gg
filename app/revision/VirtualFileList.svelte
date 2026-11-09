@@ -1,20 +1,36 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { tick } from "svelte";
     import type { RevChange } from "../messages/RevChange";
     import type { RevHeader } from "../messages/RevHeader";
     import ChangeObject from "../objects/ChangeObject.svelte";
-    export let changes: RevChange[];
-    export let headers: RevHeader[];
-    export let selectedPath: string;
-    export let onSelect: (change: RevChange) => void;
-    let viewport: HTMLElement;
-    let height = 440;
-    let top = 0;
-    let previousChanges: RevChange[];
-    let rowHeight = 24;
-    $: if (changes !== previousChanges) { previousChanges = changes; top = 0; if (viewport) viewport.scrollTop = 0; }
-    $: start = Math.max(0, Math.floor(top / rowHeight) - 4);
-    $: end = Math.min(changes.length, start + Math.ceil(height / rowHeight) + 8);
+    interface Props {
+        changes: RevChange[];
+        headers: RevHeader[];
+        selectedPath: string;
+        onSelect: (change: RevChange) => void;
+    }
+
+    let {
+        changes,
+        headers,
+        selectedPath,
+        onSelect
+    }: Props = $props();
+    let viewport = $state<HTMLElement>();
+    let height = $state(440);
+    let top = $state(0);
+    let previousChanges: RevChange[] | undefined;
+    let rowHeight = $state(24);
+    $effect.pre(() => {
+        let files = changes;
+        untrack(() => {
+            if (files !== previousChanges) { previousChanges = files; top = 0; if (viewport) viewport.scrollTop = 0; }
+        });
+    });
+    let start = $derived(Math.max(0, Math.floor(top / rowHeight) - 4));
+    let end = $derived(Math.min(changes.length, start + Math.ceil(height / rowHeight) + 8));
     async function navigate(event: KeyboardEvent) {
         let item = (event.target as HTMLElement).closest<HTMLElement>('[data-file-index]');
         if (!item || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -29,14 +45,14 @@
         let y = index * rowHeight;
         if (y < top) top = y;
         else if (y + rowHeight > top + height) top = y + rowHeight - height;
-        viewport.scrollTop = top;
+        if (viewport) viewport.scrollTop = top;
         await tick();
-        viewport.querySelector<HTMLElement>(`[data-file-index="${index}"] button`)?.focus({ preventScroll: true });
+        viewport?.querySelector<HTMLElement>(`[data-file-index="${index}"] button`)?.focus({ preventScroll: true });
     }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions (arrow keys move focus between file options) -->
-<div class="virtual-files" role="listbox" tabindex="-1" aria-label="Changed files" bind:this={viewport} bind:clientHeight={height} on:scroll={event => top = event.currentTarget.scrollTop} on:keydown={navigate}>
+<div class="virtual-files" role="listbox" tabindex="-1" aria-label="Changed files" bind:this={viewport} bind:clientHeight={height} onscroll={event => top = event.currentTarget.scrollTop} onkeydown={navigate}>
     <div class="row-measure" aria-hidden="true" bind:clientHeight={rowHeight}></div>
     <div class="file-space" style:height={`${changes.length * rowHeight}px`}>
         {#each changes.slice(start, end) as change, i (change.path.repo_path)}
