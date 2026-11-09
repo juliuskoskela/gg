@@ -1,11 +1,12 @@
 <script lang="ts">
     import Icon from "../controls/Icon.svelte";
     import type { AnchorState } from "../messages/AnchorState";
+    import type { AnnotationRelocation } from "../messages/AnnotationRelocation";
     import type { AnnotationAnchor } from "../messages/AnnotationAnchor";
-    import { anchorDescription, anchorIcon, anchorLabel, sameAnchor } from "./anchors";
+    import { anchorDescription, anchorIcon, anchorLabel, sameAnchor, effectiveAnchor } from "./anchors";
 
     interface Props {
-        targets: { anchor: AnnotationAnchor; subject: string; state?: AnchorState }[];
+        targets: { anchor: AnnotationAnchor; subject: string; state?: AnchorState; relocation?: AnnotationRelocation }[];
         removable?: boolean;
         highlight?: AnnotationAnchor[];
         onRemove?: (anchor: AnnotationAnchor) => void;
@@ -28,12 +29,14 @@
 
 <ul class="targets" aria-label="Points at">
     {#each targets as target (JSON.stringify(target.anchor))}
-        {@const warning = outdated(target.state)}
+        {@const display = effectiveAnchor(target)}
+        {@const warning = target.relocation?.reason ?? outdated(target.state)}
         <li class="target" class:added={highlight.some(anchor => sameAnchor(anchor, target.anchor))} class:warned={!!warning} title={anchorDescription(target.anchor, target.subject)}>
-            <Icon name={anchorIcon(target.anchor)} />
-            <span class="label">{anchorLabel(target.anchor)}</span>
-            {#if target.anchor.kind !== "revision"}<span class="change">{target.anchor.change_id.slice(0, 4)}</span>{/if}
+            <Icon name={anchorIcon(display)} />
+            <span class="label">{anchorLabel(display)}</span>
+            {#if target.anchor.kind !== "revision"}<span class="change">{display.change_id.slice(0, 4)}</span>{/if}
             {#if target.anchor.kind === "lines" && target.anchor.side === "old"}<span class="side" title="Before the change">old</span>{/if}
+            {#if target.relocation?.owner}<span class="relocated" title={`Originally ${anchorDescription(target.anchor)}. Split receipts: ${target.relocation.receipts.join(", ")}`}>Moved by split</span>{/if}
             {#if warning}<span class="warning" role="img" aria-label={warning} title={warning}><Icon name="alert-triangle" /></span>{/if}
             <span class="sr-only">{anchorDescription(target.anchor, target.subject)}</span>
             {#if removable}<button type="button" class="remove" aria-label="Stop pointing at {anchorLabel(target.anchor)}" title="Remove" onclick={() => onRemove(target.anchor)}><Icon name="x" /></button>{/if}
@@ -47,6 +50,7 @@
     .target > :global(svg) { flex: none; color: var(--muted); }
     .label { min-width: 0; overflow: hidden; font: var(--font-id); text-overflow: ellipsis; white-space: nowrap; }
     .change, .side { flex: none; color: var(--muted); font: 11px/1 var(--stack-code); }
+    .relocated { font: var(--font-label); color: var(--muted); }
     .warning { display: inline-flex; color: var(--warning); --icon-size: 12px; }
     .target.warned { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
     /* revealed on hover, but always reachable by keyboard and screen readers */

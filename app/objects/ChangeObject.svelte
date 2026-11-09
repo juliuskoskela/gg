@@ -17,6 +17,7 @@
     import { mutate } from "../ipc";
     import ActionLink from "../controls/ActionLink.svelte";
     import NoteMarker from "../annotations/NoteMarker.svelte";
+    import { effectiveAnchor } from "../annotations/anchors";
     import { openNotesByChange } from "../annotations/store";
 
     interface Props {
@@ -69,7 +70,10 @@
     let owners = $derived(headers ? fileOwners(change, headers) : []);
     let operand = $derived(owners.length ? { type: "Change", headers: owners, path: change.path, hunk: null } as Operand : null);
     // notes on the file or its lines, in the one revision shown
-    let notes = $derived(owners.length === 1 ? ($openNotesByChange.get(owners[0].id.change.hex) ?? []).filter(note => note.targets.some(target => target.anchor.change_id === owners[0].id.change.hex && "path" in target.anchor && target.anchor.path === change.path.repo_path)) : []);
+    let notes = $derived(owners.length === 1 ? ($openNotesByChange.get(owners[0].id.change.hex) ?? []).filter(note => note.targets.some(target => {
+        let anchor = effectiveAnchor(target);
+        return anchor.change_id === owners[0].id.change.hex && "path" in anchor && anchor.path === change.path.repo_path;
+    })) : []);
     let hasDiffTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool);
     let hasMergeTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool);
     let insertions = $derived(change.stat?.added ?? countLines(change, "+"));

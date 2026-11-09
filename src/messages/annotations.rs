@@ -171,6 +171,15 @@ pub struct TargetInput {
     pub subject: String,
 }
 
+/// A computed owner after a verified split; the stored anchor remains unchanged.
+#[derive(Serialize, Clone, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct AnnotationRelocation {
+    pub owner: Option<super::RevId>,
+    pub receipts: Vec<String>,
+    pub reason: Option<String>,
+}
+
 /// A place a note points at, with how it relates to the repository now.
 #[derive(Serialize, Clone, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
@@ -178,6 +187,9 @@ pub struct AnnotationTarget {
     pub anchor: AnnotationAnchor,
     pub subject: String,
     pub state: AnchorState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub relocation: Option<AnnotationRelocation>,
 }
 
 #[derive(Serialize, Clone, Debug)]

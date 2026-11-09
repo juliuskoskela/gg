@@ -1,3 +1,4 @@
+import type { AnnotationTarget } from "../messages/AnnotationTarget";
 import type { AnnotationAnchor } from "../messages/AnnotationAnchor";
 import type { ChangeHunk } from "../messages/ChangeHunk";
 import type { Operand } from "../messages/Operand";
@@ -117,4 +118,11 @@ export async function linesAnchor(header: RevHeader, change: RevChange, side: "a
         quote = (side === "additions" ? files.after : files.before).split(/\r?\n/).slice(start - 1, end).join("\n");
     }
     return { kind: "lines", ...ids(header), path: change.path.repo_path, side: side === "additions" ? "new" : "old", start, end, quote };
+}
+
+
+/** display the verified owner without rewriting the original stored anchor */
+export function effectiveAnchor(target: Pick<AnnotationTarget, "anchor" | "relocation">): AnnotationAnchor {
+    let owner = target.relocation?.owner;
+    return owner ? { ...target.anchor, change_id: owner.change.hex, commit_id: owner.commit.hex } : target.anchor;
 }

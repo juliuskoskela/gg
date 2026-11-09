@@ -9,11 +9,14 @@ import type { SplitOutcome } from "../app/messages/SplitOutcome";
 import type { SplitReceiptState } from "../app/messages/SplitReceiptState";
 import type { MutationResult } from "../app/messages/MutationResult";
 import type { ReviewProgress } from "../app/messages/ReviewProgress";
+import type { AnnotationList } from "../app/messages/AnnotationList";
+import type { AnnotationAnchor } from "../app/messages/AnnotationAnchor";
 import type { ReviewDelta } from "../app/messages/ReviewDelta";
 
 describe("guarded review split", () => {
     let ctx: TestContext, url: string, source: RevId;
     let errors: string[] = [];
+    let originalAnchor: AnnotationAnchor;
     async function request<T>(endpoint: string, body: object = {}): Promise<T> {
         let response = await fetch(`${url}/api/${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         if (!response.ok) throw new Error(`${endpoint}: ${await response.text()}`);
@@ -31,6 +34,8 @@ describe("guarded review split", () => {
         let revisions = await request<RevsResult>("query/query_revisions", { set: { from: alias, to: alias } });
         if (revisions.type !== "Detail") throw new Error("Missing revision");
         source = revisions.headers[0].id;
+        originalAnchor = { kind: "lines", change_id: source.change.hex, commit_id: source.commit.hex, path: "second.txt", side: "new", start: 1, end: 1, quote: "second file" };
+        await request("annotate/annotations", { request: { type: "Create", targets: [{ anchor: originalAnchor, subject: "Second file" }], body: "Check the second part" } });
         await request("annotate/review_progress", { request: { type: "Set", id: source, path: null, reviewed: true } });
     });
     afterAll(async () => { if (ctx) await destroyContext(ctx); });
@@ -69,6 +74,18 @@ describe("guarded review split", () => {
         expect(await request<SplitOutcome[]>("query/query_split_receipts", { ids: [{ ...source, commit: receipt.selected.commit }] })).toEqual([]);
         await ctx.page.reload();
         expect((await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] }))[0].receipt_id).toBe(receipt.receipt_id);
+        let notes = await request<AnnotationList>("annotate/annotations", { request: { type: "List" } });
+        let target = notes.threads[0].targets[0];
+        expect(target.anchor).toEqual(originalAnchor);
+        expect(target.relocation?.owner).toEqual(receipt.remainder);
+        expect(target.state.type).toBe("rewritten");
+        if (target.state.type === "rewritten") expect(target.state.matches).toBe(true);
+        let remainder = ctx.page.locator(".graph .selection-item").filter({ hasText: "Second part" });
+        await expect.poll(() => remainder.locator(".note-marker").count()).toBe(1);
+        await remainder.locator(".note-marker").click();
+        await ctx.page.locator("#annotation-detail").getByText("Moved by split", { exact: true }).waitFor();
+        expect(await ctx.page.locator("#annotation-detail").getByText("Moved by split", { exact: true }).getAttribute("title")).toContain(source.commit.hex.slice(0, 12));
+        await ctx.page.screenshot({ path: "e2e/results/review-split/phone-moved-note.png", fullPage: true });
         let reviews = await request<ReviewProgress>("annotate/review_progress", { request: { type: "List" } });
         let moved = reviews.changes.find(change => change.change_id === receipt.remainder.change.hex)!.files[0];
         expect(moved.path).toBe("second.txt"); expect(moved.reviewed_commit_id).toBe(source.commit.hex); expect(moved.reviewed_change_id).toBe(source.change.hex);
@@ -78,7 +95,13 @@ describe("guarded review split", () => {
         expect((await request<MutationResult>("mutate/undo_operation", { mutation: {}, options: { ignore_immutable: false } })).type).toBe("Updated");
         expect(await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] })).toEqual([]);
         expect((await request<SplitReceiptState[]>("query/query_split_receipt_states", { ids: [source] }))[0].state).toBe("inactive");
+        notes = await request<AnnotationList>("annotate/annotations", { request: { type: "List" } });
+        expect(notes.threads[0].targets[0].anchor).toEqual(originalAnchor);
+        expect(notes.threads[0].targets[0].relocation).toBeUndefined();
         expect((await request<MutationResult>("mutate/redo_operation", { mutation: {}, options: { ignore_immutable: false } })).type).toBe("Updated");
         expect((await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] }))[0].receipt_id).toBe(receipt.receipt_id);
+        notes = await request<AnnotationList>("annotate/annotations", { request: { type: "List" } });
+        expect(notes.threads[0].targets[0].anchor).toEqual(originalAnchor);
+        expect(notes.threads[0].targets[0].relocation?.owner).toEqual(receipt.remainder);
     });
 });

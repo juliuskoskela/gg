@@ -64,6 +64,7 @@ pub fn handle(ws: &WorkspaceSession, request: AnnotationRequest) -> Result<Annot
             target.state = anchor_state(ws, &target.anchor);
         }
     }
+    super::annotation_ownership::apply(ws, &mut threads).block_on()?;
     Ok(AnnotationList {
         location: store.location().display().to_string(),
         me: author(ws),
@@ -80,6 +81,7 @@ pub fn export(ws: &WorkspaceSession, ids: Vec<String>) -> Result<String> {
             target.state = anchor_state(ws, &target.anchor);
         }
     }
+    super::annotation_ownership::apply(ws, &mut threads).block_on()?;
     Ok(annotations::export_markdown(&threads))
 }
 

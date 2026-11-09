@@ -43,3 +43,19 @@ ID remains available for an ownership-proven, path-filtered comparison.
 Receipts never rewrite annotation anchors or pretend that a new commit was reviewed.
 Annotation projection must retain original provenance. Change-wide and ambiguous
 partial-file anchors need an explicit unresolved state rather than a guessed owner.
+
+## Annotation projection
+
+File and line notes follow active receipts through the source's evolution history.
+Their stored anchor remains unchanged. The returned target carries a separate
+`relocation` with the current owner and traversed receipt IDs; the interface labels
+it **Moved by split** and keeps the original revision in its provenance tooltip.
+Timeline counts and file markers use that owner. Quote matching still uses the
+original commit basis, so moving a note never implies its text was rechecked.
+
+Repeated splits follow predecessor order, not receipt timestamps. Competing
+receipts from the same source are ambiguous. Change-wide notes, files outside the
+split patch, and conflicting histories stay at the original anchor with an explicit
+reason. Unavailable history also retains the note and reports that ownership cannot
+be established. Undo removes the computed relocation; redo restores it. Export
+retains the original anchors and describes computed ownership separately.

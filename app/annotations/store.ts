@@ -7,7 +7,7 @@ import type { AnnotationRequest } from "../messages/AnnotationRequest";
 import type { AnnotationThread } from "../messages/AnnotationThread";
 import type { TargetInput } from "../messages/TargetInput";
 import type { Command } from "../commands/registry";
-import { mergeTargets, sameAnchor } from "./anchors";
+import { effectiveAnchor, mergeTargets, sameAnchor } from "./anchors";
 
 export let annotationList = writable<AnnotationList | null>(null);
 export let annotationError = writable("");
@@ -49,7 +49,7 @@ export let openNotesByChange = derived(annotations, threads => {
     let byChange = new Map<string, AnnotationThread[]>();
     for (let thread of threads) {
         if (thread.status !== "open") continue;
-        for (let key of new Set(thread.targets.map(target => target.anchor.change_id))) byChange.set(key, [...(byChange.get(key) ?? []), thread]);
+        for (let key of new Set(thread.targets.map(target => effectiveAnchor(target).change_id))) byChange.set(key, [...(byChange.get(key) ?? []), thread]);
     }
     return byChange;
 });

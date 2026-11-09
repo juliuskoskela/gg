@@ -482,6 +482,7 @@ impl AnnotationStore {
                     anchor: target.anchor,
                     subject: target.subject,
                     state: AnchorState::Unknown,
+                    relocation: None,
                 })
                 .collect(),
             workspace: header.workspace,
@@ -685,6 +686,15 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
             }
             out.push('\n');
             let indent = if several { "  " } else { "" };
+            if let Some(relocation) = &target.relocation {
+                if let Some(owner) = &relocation.owner {
+                    out.push_str(&format!("{indent}Moved by split to change `{}` at commit `{}` (receipts {}). Original anchor retained.\n", owner.change.hex, owner.commit.hex, relocation.receipts.join(", ")));
+                } else if let Some(reason) = &relocation.reason {
+                    out.push_str(&format!(
+                        "{indent}Split ownership needs attention: {reason}\n"
+                    ));
+                }
+            }
             match &target.state {
                 AnchorState::Rewritten { commit_id, matches } => out.push_str(&format!(
                     "{indent}The change has been rewritten since; it is now commit `{}`{}.\n",
