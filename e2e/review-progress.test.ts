@@ -49,8 +49,8 @@ describe("personal review progress", () => {
         mkdirSync("e2e/results/review-progress", { recursive: true });
         await page.screenshot({ path: "e2e/results/review-progress/reviewed-desktop.png" });
         await page.setViewportSize({ width: 390, height: 844 });
-        let diffTab = page.getByRole("tab", { name: "Diff", exact: true });
-        if (await diffTab.isVisible()) await diffTab.click();
+        await page.locator(".workspace-dock.compact").waitFor();
+        await page.getByRole("tab", { name: "Diff", exact: true }).click();
         await page.getByRole("button", { name: "Unmark change as reviewed", exact: true }).waitFor();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await page.screenshot({ path: "e2e/results/review-progress/reviewed-mobile.png" });
