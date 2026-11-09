@@ -82,7 +82,7 @@
     {#if singleton}
         {#if showEditor}
             <div class="description-editor">
-            <TextAreaField id="revision-description" className="description-field" bind:element={textarea} label="Revision description" placeholder="Describe this change…" spellcheck="false" disabled={!canEdit} bind:value={editableDescription} on:input={() => editing = true} on:dragenter={dragOverWidget} on:dragover={dragOverWidget} on:keydown={event => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); save(); } if (event.key === "Escape") { event.stopPropagation(); cancel(); } }} />
+            <TextAreaField id="revision-description" className="description-field" bind:element={textarea} label="Revision description" placeholder="Describe this change…" spellcheck="false" disabled={!canEdit} bind:value={editableDescription} oninput={() => editing = true} ondragenter={dragOverWidget} ondragover={dragOverWidget} onkeydown={event => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); save(); } if (event.key === "Escape") { event.stopPropagation(); cancel(); } }} />
             {#if editing || changed}<div class="description-commands">
                 <label class="reset-author"><input type="checkbox" bind:checked={resetAuthor} disabled={immutable} />Reset author</label>
                 <ActionWidget secondary tip="Cancel description edit" onClick={cancel}>Cancel</ActionWidget>

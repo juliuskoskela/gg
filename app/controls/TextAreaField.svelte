@@ -1,23 +1,27 @@
 <script lang="ts">
-    export let value = "";
-    export let element: HTMLTextAreaElement | undefined = undefined;
-    export let label: string | undefined = undefined;
-    export let className = "";
+    import type { HTMLTextareaAttributes } from "svelte/elements";
+    interface Props extends Omit<HTMLTextareaAttributes, "value"> {
+        value?: string;
+        element?: HTMLTextAreaElement | undefined;
+        label?: string | undefined;
+        className?: string;
+    }
+
+    let {
+        value = $bindable(""),
+        element = $bindable(undefined),
+        label = undefined,
+        className = "",
+        ...rest
+    }: Props = $props();
 </script>
 
 <textarea
-    {...$$restProps}
+    {...rest}
     class="text-area-field {className}"
-    aria-label={label ?? $$restProps["aria-label"]}
+    aria-label={label ?? rest["aria-label"]}
     bind:this={element}
     bind:value
-    on:input
-    on:change
-    on:keydown
-    on:focus
-    on:blur
-    on:dragenter
-    on:dragover
 ></textarea>
 
 <style>

@@ -329,7 +329,7 @@
                     <p>Open a Jujutsu repository to start working in GG+.</p>
                     <p class="workspace-error">{$repoConfigEvent.message}</p>
                     <label for="workspace-path">Repository path</label>
-                    <TextField id="workspace-path" bind:value={workspacePath} placeholder="/path/to/repository" on:keydown={(event) => { if (event.key === "Enter" && workspacePath.trim()) initialize(workspacePath.trim()); }} />
+                    <TextField id="workspace-path" bind:value={workspacePath} placeholder="/path/to/repository" onkeydown={(event) => { if (event.key === "Enter" && workspacePath.trim()) initialize(workspacePath.trim()); }} />
                     <ActionWidget safe primary disabled={!workspacePath.trim()} onClick={() => initialize(workspacePath.trim())}>Open workspace</ActionWidget>
                     {#if isTauri()}
                         <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: false })}>Choose repository…</ActionWidget>

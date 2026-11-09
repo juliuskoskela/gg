@@ -30,7 +30,7 @@
             <div class="appearance-default"><button type="button" on:click={useDefaultAppearance} disabled={$themePreference === null}>Use repository or system appearance</button>{#if $themePreference === null}<span>Automatic · {$effectiveTheme === "light" ? "Light" : $effectiveAppearance === "twilight" ? "Twilight" : "Midnight"}</span>{/if}</div>
             <div class="setting-row vision-row">
                 <div class="setting-copy"><h3>Color vision</h3><p>{$colorVision === "typical" ? "Use the family’s own hues." : `${vision.description}. Hues are replaced with a palette checked against simulations of this vision, and diffs mark changed lines with + and −.`}</p></div>
-                <div class="vision-choice"><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(option => ({ value: option.id, label: option.label }))} on:change={event => colorVision.set((event.detail.target as HTMLSelectElement).value as ColorVision)} let:option>{option.label}</SelectWidget></div>
+                <div class="vision-choice"><SelectWidget label="Color vision" value={$colorVision} options={colorVisions.map(option => ({ value: option.id, label: option.label }))} onChange={event => colorVision.set((event.target as HTMLSelectElement).value as ColorVision)} >{#snippet children({ option })}{option.label}{/snippet}</SelectWidget></div>
             </div>
         </section>
         <section aria-labelledby="zoom-heading">

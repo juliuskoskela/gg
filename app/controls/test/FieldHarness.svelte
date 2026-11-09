@@ -9,9 +9,9 @@
 </script>
 
 {#if multiline}
-    <TextAreaField label="Description" placeholder="Describe this change" rows={4} bind:element={textarea} bind:value className="description-field" on:input={onEvent} on:change={onEvent} on:keydown={onEvent} on:focus={onEvent} on:blur={onEvent} on:dragenter={onEvent} on:dragover={onEvent} />
+    <TextAreaField label="Description" placeholder="Describe this change" rows={4} bind:element={textarea} bind:value className="description-field" oninput={onEvent} onchange={onEvent} onkeydown={onEvent} onfocus={onEvent} onblur={onEvent} ondragenter={onEvent} ondragover={onEvent} />
 {:else}
-    <TextField label="Find a file" type="search" placeholder="Find a file…" bind:element={input} bind:value className="search-field" on:input={onEvent} on:change={onEvent} on:keydown={onEvent} on:focus={onEvent} on:blur={onEvent} on:dragenter={onEvent} on:dragover={onEvent} />
+    <TextField label="Find a file" type="search" placeholder="Find a file…" bind:element={input} bind:value className="search-field" oninput={onEvent} onchange={onEvent} onkeydown={onEvent} onfocus={onEvent} onblur={onEvent} ondragenter={onEvent} ondragover={onEvent} />
 {/if}
 <output aria-label="Bound value">{value}</output>
 <button on:click={() => value = "Updated text"}>Replace value</button>

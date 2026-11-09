@@ -90,7 +90,7 @@
     <div class="sync-actions" role="group" aria-label="Remote synchronization">
         <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || busy} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
         <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || busy} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
-        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}><svelte:fragment let:option>{option.value || "No remote"}</svelte:fragment></SelectWidget></div>
+        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}>{#snippet children({ option })}{option.value || "No remote"}{/snippet}</SelectWidget></div>
     </div>
     <div class="history-actions" role="group" aria-label="Operation history">
         <ActionWidget secondary tip="Undo the latest operation" disabled={busy} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>

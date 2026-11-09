@@ -1,18 +1,34 @@
 <script lang="ts">
     import Icon from "./Icon.svelte";
     // one item inside a ToggleTray.
-    // kind decides the aria contract: "pressed" for toggles and segments, "disclosure" for panels,
-    // "menu" for a trigger whose icon mirrors the choice made in its popup.
-    export let on = false;
-    export let kind: "pressed" | "disclosure" | "menu" = "pressed";
-    export let label: string | undefined = undefined;
-    export let tip: string | undefined = label;
-    export let icon: string | undefined = undefined;
-    export let text: string | undefined = undefined;
-    export let controls: string | undefined = undefined;
-    export let disabled = false;
-    export let element: HTMLButtonElement | undefined = undefined;
-    export let onClick: () => void = () => {};
+    // kind decides the aria contract for toggles, panels and menu triggers.
+    interface Props {
+        on?: boolean;
+        kind?: "pressed" | "disclosure" | "menu";
+        label?: string | undefined;
+        tip?: string | undefined;
+        icon?: string | undefined;
+        text?: string | undefined;
+        controls?: string | undefined;
+        disabled?: boolean;
+        element?: HTMLButtonElement | undefined;
+        onClick?: () => void;
+        onKeyDown?: (event: KeyboardEvent) => void;
+    }
+
+    let {
+        on = false,
+        kind = "pressed",
+        label = undefined,
+        tip = undefined,
+        icon = undefined,
+        text = undefined,
+        controls = undefined,
+        disabled = false,
+        element = $bindable(undefined),
+        onClick = () => {},
+        onKeyDown
+    }: Props = $props();
 </script>
 
 <button
@@ -23,13 +39,13 @@
     bind:this={element}
     {disabled}
     aria-label={label}
-    title={tip}
+    title={tip ?? label}
     aria-pressed={kind === "pressed" ? on : undefined}
     aria-expanded={kind !== "pressed" ? on : undefined}
     aria-haspopup={kind === "menu" ? "menu" : undefined}
     aria-controls={controls}
-    on:click={onClick}
-    on:keydown>
+    onclick={onClick}
+    onkeydown={onKeyDown}>
     {#if icon}<Icon name={icon} />{/if}
     {#if text}<span>{text}</span>{/if}
     {#if kind === "menu"}<span class="caret"><Icon name="chevron-down" /></span>{/if}

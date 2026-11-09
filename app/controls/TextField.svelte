@@ -1,25 +1,30 @@
 <script lang="ts">
-    export let value = "";
-    export let element: HTMLInputElement | undefined = undefined;
-    export let label: string | undefined = undefined;
-    export let type: "text" | "search" | "email" | "url" | "tel" | "password" = "text";
-    export let className = "";
+    import type { HTMLInputAttributes } from "svelte/elements";
+    interface Props extends Omit<HTMLInputAttributes, "value" | "type"> {
+        value?: string;
+        element?: HTMLInputElement | undefined;
+        label?: string | undefined;
+        type?: "text" | "search" | "email" | "url" | "tel" | "password";
+        className?: string;
+    }
+
+    let {
+        value = $bindable(""),
+        element = $bindable(undefined),
+        label = undefined,
+        type = "text",
+        className = "",
+        ...rest
+    }: Props = $props();
 </script>
 
 <input
-    {...$$restProps}
+    {...rest}
     class="text-field {className}"
     {type}
-    aria-label={label ?? $$restProps["aria-label"]}
+    aria-label={label ?? rest["aria-label"]}
     bind:this={element}
     bind:value
-    on:input
-    on:change
-    on:keydown
-    on:focus
-    on:blur
-    on:dragenter
-    on:dragover
 />
 
 <style>

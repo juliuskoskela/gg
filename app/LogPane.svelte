@@ -478,8 +478,8 @@
 <TimelineSection bind:element={graphBody} showHeader={!integrated} showSummary={!integrated}>
     <div slot="header" class="standalone-title"><h2 tabindex="-1">Timeline</h2><TimelineDisplayOptions /></div>
     <div slot="footer" class="log-selector" class:editable={isCustom || isDeletable}>
-        <SelectWidget options={choices} bind:value={entered_query} on:change={reloadLog}>
-            <svelte:fragment let:option>{option.label}</svelte:fragment>
+        <SelectWidget options={choices} bind:value={entered_query} onChange={reloadLog}>
+            {#snippet children({ option })}{option.label}{/snippet}
         </SelectWidget>
         <TextField
             dir="ltr" label="Filter revisions with a revset"
@@ -490,7 +490,7 @@
             autocomplete="off"
             spellcheck="false"
             bind:value={entered_query}
-            on:change={reloadLog} />
+            onchange={reloadLog} />
         {#if isCustom}
             <ActionWidget secondary tip="Save revset" onClick={handleSavePreset}>
                 <Icon name="save" />

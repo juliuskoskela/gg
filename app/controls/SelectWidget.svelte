@@ -1,34 +1,40 @@
 <script lang="ts" generics="T extends {value: string, separator?: boolean, disabled?: boolean}">
-    import { createEventDispatcher } from "svelte";
+    import type { Snippet } from "svelte";
     import Icon from "./Icon.svelte";
 
-    interface $$Slots {
-        default: { option: T };
+    interface Props {
+        disabled?: boolean;
+        id?: string | null;
+        label?: string;
+        title?: string | undefined;
+        options: T[];
+        value: string;
+        children?: Snippet<[{ option: T }]>;
+        onChange?: (event: Event) => void;
     }
 
-    interface $$Events {
-        change: CustomEvent<Event>;
-    }
+    let {
+        disabled = false,
+        id = null,
+        label = "Saved revset",
+        title = undefined,
+        options,
+        value = $bindable(),
+        children,
+        onChange
+    }: Props = $props();
 
-    export let disabled = false;
-    export let id: string | null = null;
-    export let label = "Saved revset";
-    export let title: string | undefined = undefined;
-    export let options: T[];
-    export let value: string;
-
-    let dispatch = createEventDispatcher();
 </script>
 
 <div class="wrapper" class:disabled>
-    <select {id} {disabled} {title} aria-label={label} bind:value on:change={(event) => dispatch("change", event)}>
+    <select {id} {disabled} {title} aria-label={label} bind:value onchange={onChange}>
         <button type="button" class="select-trigger"><selectedcontent></selectedcontent></button>
         {#each options as option}
             {#if option.separator}
                 <hr class="separator" />
             {:else}
                 <option selected={value == option.value} value={option.value} disabled={option.disabled}>
-                    <slot {option}>{option.value}</slot>
+                    {#if children}{@render children({ option, })}{:else}{option.value}{/if}
                 </option>
             {/if}
         {/each}
