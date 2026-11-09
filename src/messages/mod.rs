@@ -260,6 +260,9 @@ pub enum RepoConfig {
     LoadError {
         absolute_path: DisplayPath,
         message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        git_root: Option<DisplayPath>,
     },
     WorkerError {
         message: String,

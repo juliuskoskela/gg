@@ -1028,3 +1028,30 @@ async fn clone_workspace_checks_out_file_content() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn git_only_load_explains_setup_without_initializing() -> Result<()> {
+    let dir = tempfile::tempdir()?;
+    gix::init(dir.path())?;
+    std::fs::create_dir(dir.path().join("nested"))?;
+    let (tx, rx) = channel::<SessionEvent>();
+    let (reply, result) = channel();
+    tx.send(SessionEvent::OpenWorkspace {
+        tx: reply,
+        wd: Some(dir.path().join("nested")),
+    })?;
+    tx.send(SessionEvent::EndSession)?;
+    WorkerSession::default().handle_events(&rx).await?;
+    let config = result.recv()??;
+    assert_matches!(config, RepoConfig::LoadError { git_root: Some(root), .. } => {
+        assert_eq!(PathBuf::from(root.0), dir.path());
+    });
+    assert!(!dir.path().join(".jj").exists());
+    std::fs::create_dir(dir.path().join(".jj"))?;
+    let broken =
+        crate::worker::workspace_load_error(dir.path().to_owned(), "broken jj metadata".into());
+    assert_matches!(broken, RepoConfig::LoadError { git_root: None, .. });
+    let missing = crate::worker::workspace_load_error(dir.path().join("missing"), "missing".into());
+    assert_matches!(missing, RepoConfig::LoadError { git_root: None, .. });
+    Ok(())
+}

@@ -53,6 +53,22 @@ use git_util::AuthContext;
 pub use gui_util::WorkspaceSession;
 pub use session::{Session, SessionEvent};
 
+/// A failed load can offer explicit initialization only for a Git checkout without jj metadata.
+pub fn workspace_load_error(path: PathBuf, message: String) -> crate::messages::RepoConfig {
+    let git_root = (!path.as_os_str().is_empty())
+        .then(|| gix::discover(&path).ok())
+        .flatten()
+        .and_then(|repo| repo.workdir().map(PathBuf::from))
+        .filter(|root| !root.join(".jj").exists())
+        .map(Into::into);
+    log::warn!("load workspace {} failed: {message}", path.display());
+    crate::messages::RepoConfig::LoadError {
+        absolute_path: path.into(),
+        message,
+        git_root,
+    }
+}
+
 /// A repository-modifying operation (e.g. abandon, rebase, bookmark create).
 ///
 /// Concrete mutation types live in [`crate::messages`] and are deserialized

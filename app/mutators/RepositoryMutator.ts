@@ -60,7 +60,7 @@ export default class RepositoryMutator {
             { label: "Colocated", choices: hasGit ? ["true", "false"] : ["false", "true"] },
         ];
 
-        let result = await getInput("Initialize Repository", "", fields);
+        let result = await getInput("Initialize Repository", hasGit ? "Add a Jujutsu workspace to this Git repository. Colocated keeps the existing Git repository and history." : "Create a new Jujutsu repository.", fields);
         if (!result) return;
 
         let path = result["Destination"];

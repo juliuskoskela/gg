@@ -66,15 +66,14 @@ async fn query_workspace(
 
     let config = match rx.recv()? {
         Ok(config) => {
-            log::debug!("load workspace succeeded");
+            if matches!(&config, RepoConfig::Workspace { .. }) {
+                log::debug!("load workspace succeeded");
+            }
             config
         }
         Err(err) => {
             log::warn!("load workspace failed: {err}");
-            RepoConfig::LoadError {
-                absolute_path: path.unwrap_or_default().into(),
-                message: format!("{:#}", err),
-            }
+            crate::worker::workspace_load_error(path.unwrap_or_default(), format!("{err:#}"))
         }
     };
 

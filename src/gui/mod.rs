@@ -1504,15 +1504,14 @@ fn try_open_repository(window: &Window, cwd: Option<PathBuf>) -> Result<messages
 
     let config = match call_rx.recv()? {
         Ok(config) => {
-            log::debug!("load workspace succeeded");
+            if matches!(&config, messages::RepoConfig::Workspace { .. }) {
+                log::debug!("load workspace succeeded");
+            }
             config
         }
         Err(err) => {
             log::warn!("load workspace failed: {err}");
-            messages::RepoConfig::LoadError {
-                absolute_path: cwd.unwrap_or_default().into(),
-                message: format!("{:#}", err),
-            }
+            gg_lib::worker::workspace_load_error(cwd.unwrap_or_default(), format!("{err:#}"))
         }
     };
 

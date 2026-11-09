@@ -2,7 +2,7 @@
     import ReviewLifecycle from "./review/ReviewLifecycle.svelte";
     import { pluginHost } from "./plugins/runtime";
     import { focusModality } from "./display/focus";
-    import TextField from "./controls/TextField.svelte";
+    import WorkspaceLoadError from "./shell/WorkspaceLoadError.svelte";
     import { effectiveTheme, themeFamily, darkDepth, colorVision } from "./display/theme";
     import { selectionRecovery } from "./revision/recovery";
     import type { RevisionSelectionResult } from "./messages/RevisionSelectionResult";
@@ -87,7 +87,6 @@
     });
     onDestroy(() => pluginHost.update({ repository: "", workspace: "", status: undefined }));
 
-    let workspacePath = $state("");
     async function initialize(path?: string) {
         let result = await query<RepoConfig>("query_workspace", path ? { path } : null);
         if ($repoConfigEvent.type === "TimeoutError") {
@@ -339,20 +338,12 @@
             </WorkspaceChrome>
         {:else if $repoConfigEvent.type == "LoadError"}
             <ModalOverlay>
-                <ErrorDialog title="No workspace loaded">
-                    <p>Open a Jujutsu repository to start working in GG+.</p>
-                    <p class="workspace-error">{$repoConfigEvent.message}</p>
-                    <label for="workspace-path">Repository path</label>
-                    <TextField id="workspace-path" bind:value={workspacePath} placeholder="/path/to/repository" onkeydown={(event) => { if (event.key === "Enter" && workspacePath.trim()) initialize(workspacePath.trim()); }} />
-                    <ActionWidget safe primary disabled={!workspacePath.trim()} onClick={() => initialize(workspacePath.trim())}>Open workspace</ActionWidget>
-                    {#if isTauri()}
-                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: false })}>Choose repository…</ActionWidget>
-                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "n", ctrl: true, shift: true })}>Initialize repository…</ActionWidget>
-                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: true })}>Clone repository…</ActionWidget>
-                        <ActionWidget safe onClick={() => trigger("forward_accelerator", { key: "f5", ctrl: false, shift: false })}>Reopen repository</ActionWidget>
-                    {/if}
-                    <RecentWorkspaces workspaces={recentWorkspaces} />
-                </ErrorDialog>
+                <WorkspaceLoadError config={$repoConfigEvent} desktop={isTauri()} {recentWorkspaces}
+                    onOpen={initialize}
+                    onChoose={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: false })}
+                    onInitialize={path => path ? new RepositoryMutator().handle({ type: "InitConfirm", path, has_git: true }) : trigger("forward_accelerator", { key: "n", ctrl: true, shift: true })}
+                    onClone={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: true })}
+                    onReopen={() => trigger("forward_accelerator", { key: "f5", ctrl: false, shift: false })} />
             </ModalOverlay>
         {:else if $repoConfigEvent.type == "TimeoutError"}
             <ModalOverlay>

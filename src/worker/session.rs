@@ -273,10 +273,10 @@ impl Session for WorkerSession {
                             Ok(wd) => wd,
                             Err(err) => {
                                 latest_wd = None;
-                                tx.send(Ok(messages::RepoConfig::LoadError {
-                                    absolute_path: PathBuf::new().into(),
-                                    message: format!("{err:#}"),
-                                }))?;
+                                tx.send(Ok(super::workspace_load_error(
+                                    PathBuf::new(),
+                                    format!("{err:#}"),
+                                )))?;
                                 break;
                             }
                         },
@@ -286,10 +286,10 @@ impl Session for WorkerSession {
                         Ok(ws) => ws,
                         Err(err) => {
                             latest_wd = None;
-                            tx.send(Ok(messages::RepoConfig::LoadError {
-                                absolute_path: resolved_wd.into(),
-                                message: format!("{err:#}"),
-                            }))?;
+                            tx.send(Ok(super::workspace_load_error(
+                                resolved_wd,
+                                format!("{err:#}"),
+                            )))?;
                             break;
                         }
                     };
