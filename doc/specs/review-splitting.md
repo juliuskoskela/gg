@@ -30,6 +30,9 @@ their current versions retain the recorded split versions in their evolution.
 Undo deactivates it; redo reactivates it. Merely reusing a change ID does not prove
 ownership. `query_split_receipts` returns active receipts for exact source members,
 so a review session can recover after a crash between the split and its own save.
+`query_split_receipt_states` also returns known inactive receipts. An empty result
+means no local evidence, rather than an undo; imported session memberships must
+remain unverified until their receipt is available.
 
 Review events are replayed in time order with active receipts. The split distributes
 whole-file marks while preserving their actual reviewed commit, timestamp, hash,

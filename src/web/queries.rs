@@ -26,6 +26,10 @@ pub fn router() -> Router<AppState> {
         .route("/query_evolution", post(query_evolution))
         .route("/query_review_delta", post(query_review_delta))
         .route("/query_split_receipts", post(query_split_receipts))
+        .route(
+            "/query_split_receipt_states",
+            post(query_split_receipt_states),
+        )
         .route("/query_operation_history", post(query_operation_history))
         .route("/query_operation_detail", post(query_operation_detail))
         .route("/query_revision_summary", post(query_revision_summary))
@@ -329,5 +333,16 @@ async fn query_split_receipts(
     state
         .worker_tx
         .send(SessionEvent::QuerySplitReceipts { tx, ids: req.ids })?;
+    Ok(Json(rx.recv()??))
+}
+
+async fn query_split_receipt_states(
+    State(state): State<AppState>,
+    Json(req): Json<QuerySplitReceipts>,
+) -> Result<Json<Vec<crate::messages::splits::SplitReceiptState>>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QuerySplitReceiptStates { tx, ids: req.ids })?;
     Ok(Json(rx.recv()??))
 }

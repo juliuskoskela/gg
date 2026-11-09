@@ -22,7 +22,7 @@ export interface PluginManifest {
     apiVersion: 1;
     capabilities: Capability[];
 }
-export type ReadCommand = "query_revisions" | "query_revision_summary" | "query_revision_diff" | "query_review_delta" | "query_evolution" | "query_operation_history" | "query_operation_detail" | "query_remotes" | "resolve_revision_selection" | "query_split_receipts";
+export type ReadCommand = "query_revisions" | "query_revision_summary" | "query_revision_diff" | "query_review_delta" | "query_evolution" | "query_operation_history" | "query_operation_detail" | "query_remotes" | "resolve_revision_selection" | "query_split_receipts" | "query_split_receipt_states";
 export type PluginContext = { repository: string; workspace: string; status: RepoStatus | undefined; selection?: RevSet | null };
 export interface PluginAPI {
     readonly context: Readable<PluginContext>;

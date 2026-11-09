@@ -6,12 +6,14 @@ import type { RepoConfig } from "../app/messages/RepoConfig";
 import type { RevsResult } from "../app/messages/RevsResult";
 import type { RevId } from "../app/messages/RevId";
 import type { SplitOutcome } from "../app/messages/SplitOutcome";
+import type { SplitReceiptState } from "../app/messages/SplitReceiptState";
 import type { MutationResult } from "../app/messages/MutationResult";
 import type { ReviewProgress } from "../app/messages/ReviewProgress";
 import type { ReviewDelta } from "../app/messages/ReviewDelta";
 
 describe("guarded review split", () => {
     let ctx: TestContext, url: string, source: RevId;
+    let errors: string[] = [];
     async function request<T>(endpoint: string, body: object = {}): Promise<T> {
         let response = await fetch(`${url}/api/${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         if (!response.ok) throw new Error(`${endpoint}: ${await response.text()}`);
@@ -19,6 +21,7 @@ describe("guarded review split", () => {
     }
     beforeAll(async () => {
         ctx = await createContext(); extractTestRepo(ctx.tempDir);
+        ctx.page.on("pageerror", error => errors.push(error.message));
         await writeFile(join(ctx.tempDir, "first.txt"), "first file\n");
         await writeFile(join(ctx.tempDir, "second.txt"), "second file\n");
         url = await startGG(ctx);
@@ -34,7 +37,13 @@ describe("guarded review split", () => {
     it("shows a phone-size confirmation, splits once, and recovers exact ownership after reload and undo", async () => {
         await ctx.page.setViewportSize({ width: 390, height: 900 });
         await ctx.page.goto(`${url}/?inspect=${source.commit.hex}`);
-        await ctx.page.locator(".graph .selection-item").first().click();
+        await expect.poll(() => errors, { timeout: 1000 }).toEqual([]);
+        try { await ctx.page.locator(".graph .selection-item").first().click(); }
+        catch (error) {
+            await mkdir("e2e/results/review-split", { recursive: true });
+            await ctx.page.screenshot({ path: "e2e/results/review-split/startup-failure.png", fullPage: true });
+            throw new Error(`${String(error)}\nBrowser errors: ${errors.join("; ")}\nPage: ${await ctx.page.locator("body").innerText()}`);
+        }
         await ctx.page.keyboard.press("Control+k");
         let commands = ctx.page.getByRole("dialog", { name: "Commands", exact: true });
         await commands.getByRole("textbox", { name: "Commands" }).fill("Split change");
@@ -54,6 +63,7 @@ describe("guarded review split", () => {
         await confirmation.getByRole("button", { name: "Enter", exact: true }).click();
         await expect.poll(async () => (await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] })).length).toBe(1);
         let [receipt] = await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] });
+        expect((await request<SplitReceiptState[]>("query/query_split_receipt_states", { ids: [source] }))[0].state).toBe("active");
         expect(receipt.selected.change.hex).toBe(source.change.hex);
         expect(receipt.remainder.change.hex).not.toBe(source.change.hex);
         expect(await request<SplitOutcome[]>("query/query_split_receipts", { ids: [{ ...source, commit: receipt.selected.commit }] })).toEqual([]);
@@ -67,6 +77,7 @@ describe("guarded review split", () => {
         expect((await request<ReviewDelta>("query/query_review_delta", { request: { from: source, to: receipt.remainder, path: null, full_context: false } })).type).toBe("Unavailable");
         expect((await request<MutationResult>("mutate/undo_operation", { mutation: {}, options: { ignore_immutable: false } })).type).toBe("Updated");
         expect(await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] })).toEqual([]);
+        expect((await request<SplitReceiptState[]>("query/query_split_receipt_states", { ids: [source] }))[0].state).toBe("inactive");
         expect((await request<MutationResult>("mutate/redo_operation", { mutation: {}, options: { ignore_immutable: false } })).type).toBe("Updated");
         expect((await request<SplitOutcome[]>("query/query_split_receipts", { ids: [source] }))[0].receipt_id).toBe(receipt.receipt_id);
     });

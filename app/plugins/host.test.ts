@@ -181,6 +181,7 @@ describe("bundled plugin host", () => {
         host.enable("review", true);
         await vi.waitFor(() => expect(get(host.statuses)[0].active).toBe(true));
         await expect(api.query("query_split_receipts", { ids: [] })).resolves.toMatchObject({ type: "data" });
+        await expect(api.query("query_split_receipt_states", { ids: [] })).resolves.toMatchObject({ type: "data" });
         let pending = api.navigation.split({} as never);
         host.enable("review", false); confirm();
         await expect(pending).rejects.toThrow("no longer active");

@@ -38,3 +38,20 @@ pub struct SplitOutcome {
     pub operation_id: String,
     pub ownership: Vec<SplitOwnership>,
 }
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub enum SplitReceiptStatus {
+    Active,
+    Inactive,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct SplitReceiptState {
+    pub receipt_id: String,
+    pub source: RevId,
+    pub state: SplitReceiptStatus,
+    pub outcome: SplitOutcome,
+}

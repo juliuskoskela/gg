@@ -3,7 +3,7 @@ use crate::{
     messages::{
         mutations::{MutationOptions, MutationResult, RedoOperation, UndoOperation},
         review::ReviewPerson,
-        splits::{SplitOwner, SplitRevision},
+        splits::{SplitOwner, SplitReceiptStatus, SplitRevision},
     },
     review::{FileFingerprint, ReviewEvent, ReviewStore},
     splits::SplitStore,
@@ -59,9 +59,20 @@ async fn split_keeps_identity_tree_and_receipt_through_undo_redo() -> Result<()>
         SplitOwner::Selected
     );
     assert_eq!(splits::active_receipts_in(&ws, &store).await?.len(), 1);
+    let states = splits::query_receipt_states_in(&ws, vec![outcome.source.clone()], &store).await?;
+    assert_eq!(states[0].state, SplitReceiptStatus::Active);
+    assert!(
+        splits::query_receipt_states_in(&ws, vec![outcome.selected.clone()], &store)
+            .await?
+            .is_empty()
+    );
     UndoOperation.execute_unboxed(&mut ws).await?;
     assert_eq!(ws.wc_id(), source.id());
     assert!(splits::active_receipts_in(&ws, &store).await?.is_empty());
+    assert_eq!(
+        splits::query_receipt_states_in(&ws, vec![outcome.source.clone()], &store).await?[0].state,
+        SplitReceiptStatus::Inactive
+    );
     RedoOperation.execute_unboxed(&mut ws).await?;
     assert_eq!(ws.wc_id(), second.id());
     assert_eq!(splits::active_receipts_in(&ws, &store).await?.len(), 1);

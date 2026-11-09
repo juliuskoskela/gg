@@ -30,9 +30,36 @@ pub(crate) async fn query_receipts(
     ws: &WorkspaceSession<'_>,
     ids: Vec<crate::messages::RevId>,
 ) -> Result<Vec<crate::messages::splits::SplitOutcome>> {
-    let operation = ws.repo().operation().id().hex();
-    Ok(active_receipts(ws)
+    Ok(query_receipt_states(ws, ids)
         .await?
+        .into_iter()
+        .filter(|entry| entry.state == crate::messages::splits::SplitReceiptStatus::Active)
+        .map(|entry| entry.outcome)
+        .collect())
+}
+
+pub(crate) async fn query_receipt_states(
+    ws: &WorkspaceSession<'_>,
+    ids: Vec<crate::messages::RevId>,
+) -> Result<Vec<crate::messages::splits::SplitReceiptState>> {
+    let store = SplitStore::for_repo(ws.workspace.repo_path(), ws.workspace.workspace_root())?;
+    query_receipt_states_in(ws, ids, &store).await
+}
+
+pub(super) async fn query_receipt_states_in(
+    ws: &WorkspaceSession<'_>,
+    ids: Vec<crate::messages::RevId>,
+    store: &SplitStore,
+) -> Result<Vec<crate::messages::splits::SplitReceiptState>> {
+    use crate::messages::splits::{SplitReceiptState, SplitReceiptStatus};
+    let active: std::collections::HashSet<_> = active_receipts_in(ws, store)
+        .await?
+        .into_iter()
+        .map(|receipt| receipt.id)
+        .collect();
+    let operation = ws.repo().operation().id().hex();
+    Ok(store
+        .list()?
         .into_iter()
         .filter(|receipt| {
             ids.iter().any(|id| {
@@ -40,7 +67,16 @@ pub(crate) async fn query_receipts(
                     && id.commit.hex == receipt.source.commit.hex
             })
         })
-        .map(|receipt| receipt.outcome(operation.clone()))
+        .map(|receipt| SplitReceiptState {
+            receipt_id: receipt.id.clone(),
+            source: receipt.source.clone(),
+            state: if active.contains(&receipt.id) {
+                SplitReceiptStatus::Active
+            } else {
+                SplitReceiptStatus::Inactive
+            },
+            outcome: receipt.outcome(operation.clone()),
+        })
         .collect())
 }
 

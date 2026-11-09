@@ -331,6 +331,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_evolution,
             query_review_delta,
             query_split_receipts,
+            query_split_receipt_states,
             query_operation_history,
             annotations,
             review_progress,
@@ -1830,6 +1831,22 @@ fn query_split_receipts(
     app_state
         .get_session(window.label())
         .send(SessionEvent::QuerySplitReceipts { tx, ids })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_split_receipt_states(
+    window: Window,
+    app_state: State<AppState>,
+    ids: Vec<messages::RevId>,
+) -> Result<Vec<messages::splits::SplitReceiptState>, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QuerySplitReceiptStates { tx, ids })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?

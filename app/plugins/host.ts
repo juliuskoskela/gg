@@ -11,7 +11,7 @@ import { registerContributions, pluginPanelId } from "./contributions";
 import type { BundledPlugin, Capability, PluginAPI, PluginContext, PluginActivation, ReadCommand } from "./types";
 
 let capabilities: Capability[] = ["queries.read", "navigation", "annotations.write", "annotations.exchange", "annotations.read", "reviews.read", "storage", "facts.publish"];
-let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes", "resolve_revision_selection", "query_split_receipts"];
+let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes", "resolve_revision_selection", "query_split_receipts", "query_split_receipt_states"];
 export interface PluginStatus { manifest: BundledPlugin["manifest"]; enabled: boolean; active: boolean; starting: boolean; error?: string; }
 export interface HostServices {
     query: PluginAPI["query"];
