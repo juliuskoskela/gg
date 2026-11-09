@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import WebSocket from "ws";
 import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness";
@@ -11,9 +11,9 @@ describe("workspace terminal", () => {
     beforeAll(async () => {
         ctx = await createContext();
         extractTestRepo(ctx.tempDir);
-        // shell rc files belong to the user, not the integration fixture.
+        // exercise the managed Bash startup and line editor through real key events.
         let shell = process.env.SHELL;
-        if (process.platform !== "win32") process.env.SHELL = "/bin/sh";
+        if (process.platform !== "win32") process.env.SHELL = "bash";
         let started = startGG(ctx);
         if (shell === undefined) delete process.env.SHELL;
         else process.env.SHELL = shell;
@@ -57,6 +57,27 @@ describe("workspace terminal", () => {
         await expect.poll(() => screen().textContent()).toContain("SESSION=kept");
         await ctx.page.keyboard.press("Control+Shift+F6");
         await expect.poll(() => ctx.page.locator("#terminal-restart button").evaluate(node => node === document.activeElement)).toBe(true);
+    });
+
+    it("completes filenames with Tab and keeps history and cursor editing in the shell", async () => {
+        await writeFile(join(ctx.tempDir, "gg-tab-completion.txt"), "");
+        let input = ctx.page.getByRole("textbox", { name: /^Workspace terminal/ });
+        await input.focus();
+        await ctx.page.keyboard.type("printf '\\nCOMPLETED:%s\\n' gg-tab-comp");
+        await ctx.page.keyboard.press("Tab");
+        expect(await input.evaluate(node => node === document.activeElement)).toBe(true);
+        await ctx.page.keyboard.press("Enter");
+        await expect.poll(() => screen().textContent()).toContain("COMPLETED:gg-tab-completion.txt");
+        let count = (text: string | null) => text?.split("COMPLETED:gg-tab-completion.txt").length ?? 0;
+        let previous = count(await screen().textContent());
+        await ctx.page.keyboard.press("ArrowUp");
+        await ctx.page.keyboard.press("Enter");
+        await expect.poll(async () => count(await screen().textContent())).toBeGreaterThan(previous);
+        await ctx.page.keyboard.type("printf '\\nEDITED:%s\\n' ac");
+        await ctx.page.keyboard.press("ArrowLeft");
+        await ctx.page.keyboard.type("b");
+        await ctx.page.keyboard.press("Enter");
+        await expect.poll(() => screen().textContent()).toContain("EDITED:abc");
     });
 
     it("refreshes repository state after shell writes and handles resize and shell exit", async () => {

@@ -32,7 +32,9 @@ impl Terminal {
         let shell = std::env::var_os(if cfg!(windows) { "COMSPEC" } else { "SHELL" })
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }.into());
+        let shell = prompt::interactive_shell(shell);
         let mut command = CommandBuilder::new(&shell);
+        command.env("SHELL", &shell);
         command.cwd(directory);
         command.env("TERM", "xterm-256color");
         command.env("COLORTERM", "truecolor");

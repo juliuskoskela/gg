@@ -10,6 +10,16 @@ notation. GG loads the shell's normal configuration first, then applies its prom
 for this session only. Your shell configuration files are not modified. The
 toolbar shows the starting folder name; its tooltip keeps the full path.
 
+Tab completes file paths and command names. Bash enables programmable completion
+and loads an installed `bash-completion` package when available; Zsh initializes
+its completion system if your configuration has not already done so. Fish uses
+its built-in completion. Up/Down recall command history, Left/Right edit the
+current line, and Ctrl+R uses the shell's history search. GG keeps these keys in
+the shell, including while it shows completion choices.
+
+If a development environment supplies a Bash build without Readline, GG finds
+an interactive Bash on `PATH`, falling back to the account's login shell.
+
 The view supports the same tabs, splits, resizing and compact layout as the
 other workspace views. Its shell, terminal state and scrollback survive tab
 switching and moving the panel. Closing the view, changing workspace, reloading
