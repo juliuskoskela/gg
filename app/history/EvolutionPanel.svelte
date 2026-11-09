@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { compactDescription } from "./format";
     import { onDestroy } from "svelte";
     import { query } from "../ipc";
@@ -9,20 +11,19 @@
     import { repositoryScope } from "../workspace/repository";
     import HistoryBrowser from "./HistoryBrowser.svelte";
     import VersionPatch from "./VersionPatch.svelte";
-    export let headers: RevHeader[] = [];
-    export let active = true;
-    let entries: EvolutionEntry[] = [];
-    let selected = "";
-    let loading = false;
-    let error = "";
-    let more = false;
+    interface Props {
+        headers?: RevHeader[];
+        active?: boolean;
+    }
+
+    let { headers = [], active = true }: Props = $props();
+    let entries: EvolutionEntry[] = $state.raw([]);
+    let selected = $state("");
+    let loading = $state(false);
+    let error = $state("");
+    let more = $state(false);
     let request = 0;
-    let loadedKey = "";
-    $: source = headers.length === 1 ? headers[0].id : null;
-    $: sourceKey = JSON.stringify([repositoryScope($repoConfigEvent), source?.commit.hex, source?.change.hex]);
-    $: if (active && sourceKey !== loadedKey) { loadedKey = sourceKey; reset(); }
-    $: entry = entries.find(entry => entry.revision.id.commit.hex === selected);
-    $: rows = entries.map(entry => ({ id: entry.revision.id.commit.hex, title: entry.revision.description.lines[0] || "No description set", code: entry.revision.id.commit.hex.slice(0, 8), who: entry.revision.author.name, time: entry.operation?.finished_at ?? entry.revision.author.timestamp, badge: entry.revision.id.commit.hex === source?.commit.hex ? "Selected" : entry.revision.id.change.hex !== source?.change.hex ? "Contributed" : undefined, tone: entry.revision.id.commit.hex === source?.commit.hex ? "default" as const : "muted" as const }));
+    let loadedKey = $state("");
     onDestroy(() => request++);
     function reset(id = source, _status?: unknown, _repo?: unknown) {
         request++; entries = []; selected = ""; error = ""; more = false; loading = false;
@@ -38,6 +39,14 @@
         else { entries = [...entries, ...result.value.entries]; more = result.value.has_more; if (!selected) selected = entries[0]?.revision.id.commit.hex ?? ""; }
         loading = false;
     }
+    let source = $derived(headers.length === 1 ? headers[0].id : null);
+    let sourceKey = $derived(JSON.stringify([repositoryScope($repoConfigEvent), source?.commit.hex, source?.change.hex]));
+    $effect.pre(() => {
+        let key = sourceKey, enabled = active;
+        untrack(() => { if (enabled && key !== loadedKey) { loadedKey = key; reset(); } });
+    });
+    let entry = $derived(entries.find(entry => entry.revision.id.commit.hex === selected));
+    let rows = $derived(entries.map(entry => ({ id: entry.revision.id.commit.hex, title: entry.revision.description.lines[0] || "No description set", code: entry.revision.id.commit.hex.slice(0, 8), who: entry.revision.author.name, time: entry.operation?.finished_at ?? entry.revision.author.timestamp, badge: entry.revision.id.commit.hex === source?.commit.hex ? "Selected" : entry.revision.id.change.hex !== source?.change.hex ? "Contributed" : undefined, tone: entry.revision.id.commit.hex === source?.commit.hex ? "default" as const : "muted" as const })));
 </script>
 
 {#if !source}

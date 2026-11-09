@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onDestroy } from "svelte";
     import type { RevId } from "../messages/RevId";
     import type { RevChange } from "../messages/RevChange";
@@ -7,18 +9,18 @@
     import { repoConfigEvent } from "../stores";
     import { repositoryScope } from "../workspace/repository";
     import DiffViewer from "../DiffViewer.svelte";
-    export let id: RevId;
-    let detail: RevisionDetail | null = null;
-    let selected = "";
-    let change: RevChange | null = null;
-    let loading = true;
-    let error = "";
+    interface Props {
+        id: RevId;
+    }
+
+    let { id }: Props = $props();
+    let detail: RevisionDetail | null = $state.raw(null);
+    let selected = $state("");
+    let change: RevChange | null = $state.raw(null);
+    let loading = $state(true);
+    let error = $state("");
     let request = 0;
     let fileRequest = 0;
-    $: repository = repositoryScope($repoConfigEvent);
-    $: load(id, repository);
-    $: file = detail?.changes.find(file => file.path.repo_path === selected);
-    $: loadFile(detail, file, repository);
     onDestroy(() => { request++; fileRequest++; });
     async function load(version: RevId, _repository: string) {
         let generation = ++request;
@@ -46,12 +48,22 @@
         let lines = result.value.hunks.flatMap(hunk => hunk.lines.lines).filter(line => !line.startsWith("\\"));
         return { before: lines.filter(line => !line.startsWith("+")).map(line => line.slice(1)).join(""), after: lines.filter(line => !line.startsWith("-")).map(line => line.slice(1)).join("") };
     }
+    let repository = $derived(repositoryScope($repoConfigEvent));
+    $effect.pre(() => {
+        let version = id, scope = repository;
+        untrack(() => load(version, scope));
+    });
+    let file = $derived.by(() => detail?.changes.find(file => file.path.repo_path === selected));
+    $effect.pre(() => {
+        let revision = detail, selectedFile = file, scope = repository;
+        untrack(() => loadFile(revision, selectedFile, scope));
+    });
 </script>
 
 <section class="version-patch" aria-label="Version patch">
     <h3>Version patch</h3><p class="history-copy">Changes against this version’s own parents.</p>
     {#if loading}<p role="status">Loading version…</p>
-    {:else if error}<p role="alert">{error}</p><button class="history-button" type="button" on:click={() => load(id, repository)}>Retry version</button>
+    {:else if error}<p role="alert">{error}</p><button class="history-button" type="button" onclick={() => load(id, repository)}>Retry version</button>
     {:else if detail && !detail.changes.length}<p class="history-empty">This version has no file changes.</p>
     {:else if detail}
         <label class="file-choice"><span>File</span><select aria-label="Version file" bind:value={selected}>{#each detail.changes as file}<option value={file.path.repo_path}>{file.path.relative_path}</option>{/each}</select></label>

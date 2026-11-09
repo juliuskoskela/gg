@@ -2,18 +2,24 @@
     import ProgressWidget from "../controls/ProgressWidget.svelte";
     import type { ProgressEvent } from "../messages/ProgressEvent";
 
-    export let progress: ProgressEvent | undefined;
-
-    let label = "Working…";
-    let value: number | undefined = undefined;
-
-    $: if (progress) {
-        if (progress.type === "Progress") {
-            value = progress.overall_percent;
-        } else if (progress.type === "Message") {
-            label = progress.text;
-        }
+    interface Props {
+        progress: ProgressEvent | undefined;
     }
+
+    let { progress }: Props = $props();
+
+    let label = $state("Working…");
+    let value: number | undefined = $state(undefined);
+
+    $effect.pre(() => {
+        if (progress) {
+            if (progress.type === "Progress") {
+                value = progress.overall_percent;
+            } else if (progress.type === "Message") {
+                label = progress.text;
+            }
+        }
+    });
 </script>
 
 <div id="progress-chrome" role="status" aria-live="polite">

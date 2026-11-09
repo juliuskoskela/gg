@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onDestroy } from "svelte";
     import type { RepoStatus } from "../messages/RepoStatus";
     import type { OperationPreflight } from "../messages/OperationPreflight";
@@ -6,12 +8,15 @@
     import { repositoryCommands } from "../commands/registry";
     import { currentMutation } from "../stores";
     import { mutationPending } from "../operations";
-    export let status: RepoStatus | undefined = undefined;
-    let undo: OperationPreflight | null = null;
-    let redo: OperationPreflight | null = null;
-    let error = "";
-    let request = 0;
-    $: if (status) load(status); else { request++; undo = null; redo = null; }
+    interface Props {
+        status?: RepoStatus | undefined;
+    }
+
+    let { status = undefined }: Props = $props();
+    let undo: OperationPreflight | null = $state.raw(null);
+    let redo: OperationPreflight | null = $state.raw(null);
+    let error = $state("");
+    let request = $state(0);
     onDestroy(() => request++);
     async function load(_status: RepoStatus) {
         let current = ++request;
@@ -26,6 +31,10 @@
     }
     function short(text: string): string { return text.replace(/\b[0-9a-f]{12,}\b/gi, value => value.slice(0, 8)); }
     function execute(id: string) { repositoryCommands().find(command => command.id === id)?.execute(); }
+    $effect.pre(() => {
+        let snapshot = status;
+        untrack(() => { if (snapshot) load(snapshot); else { request++; undo = null; redo = null; } });
+    });
 </script>
 
 <section aria-label="Current operation">
@@ -34,7 +43,7 @@
     <p class="hint">Working-copy changes are recorded before Undo.</p>
     {#if error}<p role="alert">Couldn’t check operation availability: {error}</p>{/if}
     {#each [{ name: "Undo", id: "repository.undo", result: undo }, { name: "Redo", id: "repository.redo", result: redo }] as action}
-        <div class="operation-action"><button type="button" disabled={!action.result?.eligible || !!$currentMutation || $mutationPending} on:click={() => execute(action.id)}>{action.name}</button>
+        <div class="operation-action"><button type="button" disabled={!action.result?.eligible || !!$currentMutation || $mutationPending} onclick={() => execute(action.id)}>{action.name}</button>
             {#if action.result?.description}<span title={action.result.description}>{short(action.result.description)}</span>{/if}
             {#if action.result && !action.result.eligible}<small>{action.result.reason ?? "Unavailable"}</small>{:else if !action.result && !error}<small>Checking…</small>{/if}
         </div>

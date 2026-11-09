@@ -1,4 +1,4 @@
-import type { ComponentType, SvelteComponent } from "svelte";
+import type { Component } from "svelte";
 import type { PanelId } from "./dock";
 import type { RepoStatus } from "../messages/RepoStatus";
 import OperationView from "./OperationView.svelte";
@@ -17,7 +17,7 @@ export type WorkspaceView = {
     available?: (context: ViewContext) => boolean;
     initialState?: unknown;
     validateState?: (value: unknown) => boolean;
-    component?: ComponentType<SvelteComponent<ViewContext>>;
+    component?: Component<ViewContext>;
 };
 
 // Registration makes a view discoverable; it does not add a permanent navigation item.
