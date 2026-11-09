@@ -20,6 +20,7 @@
     import TimelineDisplayOptions from "../timeline/TimelineDisplayOptions.svelte";
     import PanelFooter from "../controls/PanelFooter.svelte";
     import TimelineSection from "../timeline/TimelineSection.svelte";
+    import OptionsMenu from "../controls/OptionsMenu.svelte";
     import SelectWidget from "../controls/SelectWidget.svelte";
     import type { RevChange } from "../messages/RevChange";
     import HistoryColors from "./HistoryColors.svelte";
@@ -30,6 +31,7 @@
     let active = $state("diff");
     let currentQuery = $state("all()");
     let wrap = $state(true);
+    let showMetadata = $state(true);
     let editingSample = $state(false);
     let sampleDescription = $state("Keep revision descriptions readable");
     let sampleSearch = $state("");
@@ -104,6 +106,7 @@
             </section>
             <section><h2>Selection</h2><p>Use a neutral surface and stronger text. Underlines and side stripes are prohibited for active tabs, navigation and selected rows. Focus uses a complete outline.</p><div class="row-example" role="listbox" aria-label="Example files"><button class="selection-item" role="option" aria-selected="true"><Icon name="file-text" />workspace.svelte</button><button class="selection-item" role="option" aria-selected="false"><Icon name="file-text" />global.css</button></div></section>
             <section id="states"><h2>Feedback and field states</h2><p>Production controls retain native hover, keyboard focus and pressed behavior. Tab through this page to inspect focus in either theme.</p><div class="state-fields"><TextField label="Disabled field" value="Unavailable while loading" disabled /><TextField label="Invalid revset" value="ancestors(" aria-invalid="true" aria-describedby="example-error" /><p id="example-error" class="error-text">Close the parenthesis to complete this revset.</p><ProgressWidget label="Loading revisions…" /><ProgressWidget label="3 of 4 files loaded" value={75} /><p role="status">No matching files. Try a different file name.</p></div></section>
+            <section><h2>Menus</h2><p>Open with Enter or Space. Arrow keys, Home, End and typing move through actions. Escape closes and restores focus; Tab continues to the next control.</p><div class="control-example"><OptionsMenu label="Example display options" icon="sliders" options={[{ id: "metadata", label: "Show metadata", checked: showMetadata, onToggle: () => showMetadata = !showMetadata }, { id: "wrap", label: "Wrap lines", checked: wrap, onToggle: () => wrap = !wrap }]} /><span>{showMetadata ? "Metadata shown" : "Metadata hidden"}</span></div></section>
             <section><h2>Surfaces and type</h2><p>IBM Plex Sans for controls; JetBrains Mono for code. Semantic colors belong to changes and repository data.</p><div class="swatches">{#each ["ground", "surface", "raised", "text", "muted", "rule"] as token}<div><span style="background: var(--{token})"></span><code>--{token}</code></div>{/each}</div></section>
         </div>
     </main>

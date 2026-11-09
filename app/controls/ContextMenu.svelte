@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { menuBehavior, menuPosition } from "./menu";
     import { currentWorkspaceIdentity } from "../commands/context";
     import type { Operand } from "../messages/Operand";
     import { currentMutation, ignoreToggled } from "../stores";
@@ -10,30 +10,6 @@
     import { openViewCommands } from "../workspace/viewCommands";
 
     let menuElement!: HTMLDivElement;
-    let previous = document.activeElement as HTMLElement | null;
-    // like native menus, nothing is highlighted until the pointer moves or arrow keys pick an item;
-    // a menu that opens under a resting pointer mustn't select whatever lies beneath it
-    onMount(() => menuElement?.focus());
-    onDestroy(() => { if (document.activeElement === document.body || menuElement?.contains(document.activeElement)) previous?.focus({ preventScroll: true }); });
-    function key(event: KeyboardEvent) {
-        if (event.key === "Escape" || event.key === "Tab") { onClose(); if (event.key === "Escape") { event.stopPropagation(); event.preventDefault(); } return; }
-        let items = Array.from(menuElement.querySelectorAll<HTMLButtonElement>("button"));
-        let index = items.indexOf(document.activeElement as HTMLButtonElement);
-        if (event.key === "ArrowDown") index = (index + 1) % items.length;
-        else if (event.key === "ArrowUp") index = (index - 1 + items.length) % items.length;
-        else if (event.key === "Home") index = 0;
-        else if (event.key === "End") index = items.length - 1;
-        else if (event.key.length === 1 && /\S/.test(event.key) && !event.metaKey && !event.ctrlKey && !event.altKey) {
-            // type-select, as in native menus
-            let letter = event.key.toLowerCase();
-            let match = [...items.slice(index + 1), ...items.slice(0, index + 1)].find(item => item.textContent?.trim().toLowerCase().startsWith(letter));
-            if (!match) return;
-            index = items.indexOf(match);
-        }
-        else return;
-        event.preventDefault(); items[index]?.focus();
-    }
-
     // apple hig: context menus hide unavailable items rather than dimming them; the palette still lists them with reasons.
     function sections(all: Command[]): Command[][] {
         let available = all.filter(command => !command.reason);
@@ -85,20 +61,20 @@
     $effect(() => {
         if (menuElement) {
             let rect = menuElement.getBoundingClientRect();
-            let left = placement === "above-end" ? x - rect.width : x;
-            let top = placement === "above-end" ? y - rect.height - 4 : y;
-            menuElement.style.left = `${Math.max(8, Math.min(left, window.innerWidth - rect.width - 8))}px`;
-            menuElement.style.top = `${Math.max(8, Math.min(top, window.innerHeight - rect.height - 8))}px`;
+            let position = menuPosition({ x, y }, rect, placement);
+            menuElement.style.left = `${position.left}px`;
+            menuElement.style.top = `${position.top}px`;
         }
     });
 </script>
 <svelte:window onclick={onClose} onblur={onClose} onresize={onClose} />
-<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="-1" aria-label={title ?? "Actions"} onclick={event => event.stopPropagation()} oncontextmenu={event => { event.stopPropagation(); event.preventDefault(); }} onkeydown={key} onmouseleave={() => menuElement.focus({ preventScroll: true })} bind:this={menuElement}>
+<!-- svelte-ignore a11y_click_events_have_key_events (menuBehavior provides keyboard interaction) -->
+<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="-1" aria-label={title ?? "Actions"} onclick={event => event.stopPropagation()} oncontextmenu={event => { event.stopPropagation(); event.preventDefault(); }} use:menuBehavior={{ onClose, initialFocus: "menu", followPointer: true }} bind:this={menuElement}>
     {#if title}<p class="menu-title" role="presentation">{title}</p>{/if}
     {#each grouped as section, index}
         {#if index > 0}<hr />{/if}
         {#each section as command (command.id)}
-            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" onmousemove={event => { if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }} onclick={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
+            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" onclick={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
         {/each}
     {/each}
     {#if unavailable}<p class="menu-empty" role="presentation">{unavailable}</p>{/if}

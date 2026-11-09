@@ -1,5 +1,6 @@
 <script lang="ts">
     import { tick } from "svelte";
+    import { menuBehavior, menuPosition } from "./menu";
     import Icon from "./Icon.svelte";
 
     interface Props {
@@ -14,7 +15,7 @@
 
     let open = $state(false);
     let root!: HTMLDivElement;
-    let trigger!: HTMLButtonElement;
+    let trigger = $state<HTMLButtonElement>();
     let list: HTMLDivElement | undefined = $state();
     let id = `options-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -23,9 +24,10 @@
     async function show(focusFirst = false) {
         open = true;
         await tick();
-        let bounds = trigger.getBoundingClientRect(), width = list?.offsetWidth ?? 180;
-        let left = Math.max(8, Math.min(bounds.right - width, window.innerWidth - width - 8));
-        position = `top: ${bounds.bottom + 4}px; left: ${left}px;`;
+        if (!trigger) return;
+        let bounds = trigger.getBoundingClientRect();
+        let placed = menuPosition({ x: bounds.right, y: bounds.bottom }, { width: list?.offsetWidth ?? 180, height: list?.offsetHeight ?? 0 }, "below-end");
+        position = `top: ${placed.top}px; left: ${placed.left}px;`;
         // focus moves into the menu, so arrows and Escape work however it was opened
         if (focusFirst) list?.querySelector<HTMLButtonElement>("button")?.focus();
         else list?.focus();
@@ -36,15 +38,7 @@
         if (restoreFocus) trigger?.focus();
     }
 
-    function key(event: KeyboardEvent) {
-        let items = [...(list?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
-        let index = items.indexOf(document.activeElement as HTMLButtonElement);
-        if (event.key === "Escape" || event.key === "Tab") { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); } close(event.key === "Escape"); return; }
-        let next = event.key === "ArrowDown" ? (index + 1) % items.length : event.key === "ArrowUp" ? (index - 1 + items.length) % items.length : event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : -1;
-        if (next < 0) return;
-        event.preventDefault();
-        items[next]?.focus();
-    }
+
 </script>
 
 <svelte:window
@@ -58,10 +52,10 @@
         <Icon name={icon} /><span class="caret"><Icon name="chevron-down" /></span>
     </button>
     {#if open}
-        <div {id} class="menu" role="menu" tabindex="-1" aria-label={label} style={position} bind:this={list} onkeydown={key}>
+        <div {id} class="menu" role="menu" tabindex="-1" aria-label={label} style={position} bind:this={list} use:menuBehavior={{ onClose: () => close(), returnFocus: trigger }}>
             {#each options as option, index (option.id)}
                 {#if index > 0 && (option.group ?? 0) !== (options[index - 1].group ?? 0)}<hr />{/if}
-                <button type="button" role="menuitemcheckbox" aria-checked={option.checked} onclick={option.onToggle}>
+                <button type="button" role="menuitemcheckbox" tabindex="-1" aria-checked={option.checked} onclick={option.onToggle}>
                     <span class="check" aria-hidden="true">{#if option.checked}<Icon name="check" />{/if}</span>{option.label}
                 </button>
             {/each}
@@ -77,7 +71,7 @@
     @media (hover: hover) { .trigger:not(.open):hover { background: var(--hover); color: var(--text); } }
     .trigger:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     /* opens below the button, aligned to its trailing edge where the toolbar keeps its tools */
-    .menu { position: fixed; z-index: 70; display: grid; gap: 1px; min-width: 180px; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); }
+    .menu { position: fixed; max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; z-index: 70; display: grid; gap: 1px; min-width: 180px; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); }
     .menu button { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 10px 4px 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: var(--font-body); text-align: start; cursor: pointer; }
     .menu hr { margin: 4px 8px; border: 0; border-block-start: 1px solid var(--popover-rule); }
     .check { display: inline-grid; place-items: center; width: 16px; color: var(--text-strong); --icon-size: 14px; }
