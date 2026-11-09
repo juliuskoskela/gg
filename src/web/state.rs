@@ -30,6 +30,8 @@ pub struct AppState {
     has_ever_connected: Arc<Mutex<bool>>,
     pending_disconnects: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
     client_timeout: Option<Duration>,
+    pub terminal_token: String,
+    pub terminal_slots: Arc<tokio::sync::Semaphore>,
 }
 
 impl AppState {
@@ -50,6 +52,8 @@ impl AppState {
             has_ever_connected: Arc::new(Mutex::new(false)),
             pending_disconnects: Arc::new(Mutex::new(HashMap::new())),
             client_timeout,
+            terminal_token: uuid::Uuid::new_v4().to_string(),
+            terminal_slots: Arc::new(tokio::sync::Semaphore::new(8)),
         }
     }
 

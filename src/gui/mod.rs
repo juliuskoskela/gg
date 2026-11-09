@@ -3,6 +3,7 @@ mod menu;
 #[cfg(target_os = "macos")]
 mod recent_items;
 mod sink;
+mod terminal;
 #[cfg(all(test, not(feature = "ts-rs")))]
 mod tests;
 
@@ -254,7 +255,15 @@ fn enable_menu_items(app_handle: &AppHandle) -> Result<()> {
 pub fn run_gui(options: super::RunOptions) -> Result<()> {
     let initial_recent = options.settings.ui_recent_workspaces();
 
-    let app = tauri::Builder::default();
+    let app = tauri::Builder::default()
+        .manage(terminal::Terminals::default())
+        .on_page_load(|webview, payload| {
+            if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+                webview
+                    .state::<terminal::Terminals>()
+                    .close_window(webview.label());
+            }
+        });
 
     // must be first - a second instance exits during this plugin's setup
     #[cfg(any(target_os = "macos", windows))]
@@ -311,6 +320,10 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            terminal::terminal_open,
+            terminal::terminal_input,
+            terminal::terminal_resize,
+            terminal::terminal_close,
             forward_accelerator,
             forward_clone_url,
             set_modifier_state,
@@ -1681,6 +1694,7 @@ fn handle_window_event(window: &Window, event: &WindowEvent) -> Result<()> {
             window.remove_menu()?;
         }
         WindowEvent::Destroyed => {
+            terminal::close_window(window);
             let app_state = window.state::<AppState>();
             app_state.windows.lock().unwrap().remove(window.label());
 

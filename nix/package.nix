@@ -38,7 +38,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       ../README.md
     ];
   };
-  cargoHash = "sha256-DzMvX8Lc/a11yFbLeX3gcxPzCERwqOOu1AIskrTNOcs=";
+  cargoHash = "sha256-LuFU7sZQ2FFlqTP2DTOPM59/l7v1ZBPgWhSrmJvX6i4=";
   npmDeps = fetchNpmDeps {
     inherit (finalAttrs) src;
     hash = "sha256-2ZlBsT0BLX2uLdLEVgrBK7dreE7zjkckRbygJpOYqVI=";

@@ -15,6 +15,7 @@ mod annotations;
 mod queries;
 mod sink;
 mod state;
+mod terminal;
 #[cfg(all(test, not(feature = "ts-rs")))]
 mod tests;
 mod triggers;
@@ -199,6 +200,7 @@ pub fn create_app(
         .route("/api/mutate/{command}", post(handle_mutate))
         .route("/api/events", get(stream_events))
         .route("/api/query/github_public", post(github_public))
+        .route("/api/terminal", get(terminal::connect))
         .with_state(state.clone());
 
     if client_timeout.is_some() {
@@ -224,7 +226,10 @@ async fn serve_index(State(state): State<AppState>) -> Result<impl IntoResponse,
 
     // used to track open tabs; done here so that it works for both vite and static assets
     let client_id = uuid::Uuid::new_v4().to_string();
-    let injected_script = format!(r#"<script>window.__GG_CLIENT_ID__="{client_id}";</script>"#);
+    let token = &state.terminal_token;
+    let injected_script = format!(
+        r#"<script>window.__GG_CLIENT_ID__="{client_id}";window.__GG_TERMINAL_TOKEN__="{token}";</script>"#
+    );
     let asset_html = String::from_utf8_lossy(asset.data());
     let modified_html = asset_html.replace("</head>", &format!("{injected_script}</head>"));
 
