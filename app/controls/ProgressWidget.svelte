@@ -1,6 +1,10 @@
 <script lang="ts">
-    export let label: string = "Working…";
-    export let value: number | undefined = undefined;
+    interface Props {
+        label?: string;
+        value?: number | undefined;
+    }
+
+    let { label = "Working…", value = undefined }: Props = $props();
 </script>
 
 <div class="progress-bar">

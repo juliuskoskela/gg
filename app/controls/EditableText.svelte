@@ -1,16 +1,28 @@
 <script lang="ts">
     import Icon from "./Icon.svelte";
-    export let text: string;
-    export let label: string;
-    export let editable = true;
-    /** shows the pencil at rest; use it on the one field that names the edit, not on every paragraph */
-    export let affordance = false;
-    export let onEdit: () => void;
-    export let element: HTMLButtonElement | undefined = undefined;
+
+    interface Props {
+        text: string;
+        label: string;
+        editable?: boolean;
+        /** shows the pencil at rest; use it on the one field that names the edit, not on every paragraph */
+        affordance?: boolean;
+        onEdit: () => void;
+        element?: HTMLButtonElement | undefined;
+    }
+
+    let {
+        text,
+        label,
+        editable = true,
+        affordance = false,
+        onEdit,
+        element = $bindable(undefined)
+    }: Props = $props();
 </script>
 
 {#if editable}
-    <button class="editable-text" class:affordance type="button" aria-label={label} title={label} bind:this={element} on:click={onEdit}>{text}{#if affordance}<span class="edit-glyph" aria-hidden="true"><Icon name="edit-2" /></span>{/if}</button>
+    <button class="editable-text" class:affordance type="button" aria-label={label} title={label} bind:this={element} onclick={onEdit}>{text}{#if affordance}<span class="edit-glyph" aria-hidden="true"><Icon name="edit-2" /></span>{/if}</button>
 {:else}
     <span class="read-only-text">{text}</span>
 {/if}

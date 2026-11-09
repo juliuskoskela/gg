@@ -3,17 +3,21 @@
     import type { CommitId } from "../messages/CommitId";
     import { currentTarget } from "../stores";
     import { tooltip } from "./tooltip";
-    export let id: ChangeId | CommitId;
-    export let pronoun: boolean = false;
-    export let selectable: boolean = false;
+    interface Props {
+        id: ChangeId | CommitId;
+        pronoun?: boolean;
+        selectable?: boolean;
+    }
 
-    $: suffix = id.rest.substring(0, 8 - id.prefix.length);
-    $: category = id.type == "CommitId" ? "commit" : id.is_divergent ? "divergent" : id.offset ? "hidden" : "change";
-    $: details = id.type === "CommitId"
+    let { id, pronoun = false, selectable = false }: Props = $props();
+
+    let suffix = $derived(id.rest.substring(0, 8 - id.prefix.length));
+    let category = $derived(id.type == "CommitId" ? "commit" : id.is_divergent ? "divergent" : id.offset ? "hidden" : "change");
+    let details = $derived(id.type === "CommitId"
         ? { label: "Commit ID", value: id.hex, description: "Identifies this exact snapshot, parents and metadata. Changes when rewritten." }
         : { label: id.is_divergent ? "Divergent change ID" : "Change ID", value: id.hex,
             description: id.is_divergent ? `Multiple visible commits share this change ID. Use a commit ID or change offset /${id.offset ?? 0} to select one version.`
-                : "Identifies the logical change across edits and rebases. Stays the same when rewritten." };
+                : "Identifies the logical change across edits and rebases. Stays the same when rewritten." });
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (selectable identifiers expose the full ID on keyboard focus) -->

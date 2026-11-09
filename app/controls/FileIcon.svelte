@@ -1,8 +1,12 @@
 <script lang="ts">
     import { fileIconName, fileIconUrl } from "./fileIcons";
-    export let path: string;
-    $: icon = fileIconName(path);
-    $: source = fileIconUrl(path);
+    interface Props {
+        path: string;
+    }
+
+    let { path }: Props = $props();
+    let icon = $derived(fileIconName(path));
+    let source = $derived(fileIconUrl(path));
 </script>
 
 <img class="file-icon" src={source} data-file-icon={icon} alt="" aria-hidden="true" draggable="false" width="18" height="18" />

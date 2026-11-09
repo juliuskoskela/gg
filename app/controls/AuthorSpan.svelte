@@ -1,6 +1,10 @@
 <script lang="ts">
     import type { RevAuthor } from "../messages/RevAuthor";
-    export let author: RevAuthor;
+    interface Props {
+        author: RevAuthor;
+    }
+
+    let { author }: Props = $props();
 </script>
 
 <span class="author" title={author.email}>

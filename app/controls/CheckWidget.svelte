@@ -1,11 +1,15 @@
 <script lang="ts">
     import { dragOverWidget } from "../stores";
 
-    export let id: string | null = null;
-    export let checked: boolean;
+    interface Props {
+        id?: string | null;
+        checked: boolean;
+    }
+
+    let { id = null, checked = $bindable() }: Props = $props();
 </script>
 
-<input {id} type="checkbox" bind:checked on:dragenter={dragOverWidget} on:dragover={dragOverWidget} />
+<input {id} type="checkbox" bind:checked ondragenter={dragOverWidget} ondragover={dragOverWidget} />
 
 <style>
     input:focus-visible {

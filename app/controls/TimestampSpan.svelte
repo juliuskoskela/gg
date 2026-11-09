@@ -1,8 +1,12 @@
 <script lang="ts">
     import { lastFocus } from "../stores";
-    export let timestamp: string;
+    interface Props {
+        timestamp: string;
+    }
 
-    $: datetime = new Date(timestamp);
+    let { timestamp }: Props = $props();
+
+    let datetime = $derived(new Date(timestamp));
 
     function relativeDate(now: number, datetime: Date) {
         const cutoffs = [60, 3600, 86400, 86400 * 7, 86400 * 30, 86400 * 365, Infinity];

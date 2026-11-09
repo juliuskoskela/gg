@@ -3,8 +3,12 @@
     import { currentTarget } from "../stores";
     import IdSpan from "./IdSpan.svelte";
 
-    export let set: RevSet;
-    export let selectable: boolean = false;
+    interface Props {
+        set: RevSet;
+        selectable?: boolean;
+    }
+
+    let { set, selectable = false }: Props = $props();
 </script>
 
 <!-- prettier-ignore -->

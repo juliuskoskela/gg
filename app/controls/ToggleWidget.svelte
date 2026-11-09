@@ -2,17 +2,31 @@
     import { dragOverWidget, hasModal } from "../stores";
     import Icon from "./Icon.svelte";
 
-    export let tip: string = "";
-    export let checked: boolean;
-    export let isStatic = false;
-    export let safe: boolean = false;
-    export let secondary: boolean = false;
-    export let primary: boolean = false;
-    export let disabled: boolean = false;
-    export let on: string;
-    export let off: string;
+    interface Props {
+        tip?: string;
+        checked: boolean;
+        isStatic?: boolean;
+        safe?: boolean;
+        secondary?: boolean;
+        primary?: boolean;
+        disabled?: boolean;
+        on: string;
+        off: string;
+    }
 
-    $: isDisabled = disabled || (!safe && $hasModal);
+    let {
+        tip = "",
+        checked = $bindable(),
+        isStatic = false,
+        safe = false,
+        secondary = false,
+        primary = false,
+        disabled = false,
+        on,
+        off
+    }: Props = $props();
+
+    let isDisabled = $derived(disabled || (!safe && $hasModal));
 
     function toggle() {
         if (!isDisabled) {
@@ -30,9 +44,9 @@
     class:secondary
     class:primary
     class:checked
-    on:click={toggle}
-    on:dragenter={dragOverWidget}
-    on:dragover={dragOverWidget}
+    onclick={toggle}
+    ondragenter={dragOverWidget}
+    ondragover={dragOverWidget}
     title={tip}
     aria-label={tip || undefined}>
     <Icon name={checked ? on : off} />

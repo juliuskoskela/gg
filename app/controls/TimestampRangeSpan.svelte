@@ -1,9 +1,13 @@
 <script lang="ts">
-    export let from: string;
-    export let to: string;
+    interface Props {
+        from: string;
+        to: string;
+    }
 
-    $: fromDatetime = new Date(from);
-    $: toDatetime = new Date(to);
+    let { from, to }: Props = $props();
+
+    let fromDatetime = $derived(new Date(from));
+    let toDatetime = $derived(new Date(to));
 
     const formatter = new Intl.DateTimeFormat(undefined, {
         dateStyle: "short",
