@@ -1,4 +1,4 @@
-<script lang="ts" context="module">
+<script lang="ts" module>
     export interface Selection {
         from: number;
         to: number;
@@ -18,7 +18,7 @@
 </script>
 
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, type Snippet } from "svelte";
 
     import type { Operand } from "../messages/Operand";
     import { currentSource } from "../stores";
@@ -28,21 +28,32 @@
     let dragScrollBand = 30;
     let dragScrollSpeed = 1000;
 
-    interface $$Slots {
-        default: {};
+    interface Props {
+        rowHeight?: number;
+        list: List;
+        type: Operand["type"];
+        descendant?: string | undefined;
+        clientHeight?: number;
+        clientWidth?: number;
+        scrollTop?: number;
+        scrollPaddingBottom?: number;
+        children?: Snippet;
     }
 
-    export let rowHeight = 30;
-    export let list: List;
-    export let type: Operand["type"];
-    export let descendant: string | undefined = undefined;
-    export let clientHeight = 0;
-    export let clientWidth = 0;
-    export let scrollTop = 0;
-    export let scrollPaddingBottom = 0;
+    let {
+        rowHeight = 30,
+        list,
+        type,
+        descendant = undefined,
+        clientHeight = $bindable(0),
+        clientWidth = $bindable(0),
+        scrollTop = $bindable(0),
+        scrollPaddingBottom = 0,
+        children
+    }: Props = $props();
 
-    $: activedescendant = descendant ? `${type}-${descendant}` : undefined;
-    let box: HTMLElement;
+    let activedescendant = $derived(descendant ? `${type}-${descendant}` : undefined);
+    let box!: HTMLElement;
     let pollFrame: number;
     let lastFrame: number | undefined;
     let dragPoint: { x: number; y: number } | null = null;
@@ -230,11 +241,11 @@
 
 <!-- capture phase, because zones stop propagation -->
 <svelte:window
-    on:dragenter|capture={onDragMove}
-    on:dragover|capture={onDragMove}
-    on:drop|capture={onDragFinish}
-    on:dragend|capture={onDragFinish}
-    on:mousemove={onDragFinish} />
+    ondragentercapture={onDragMove}
+    ondragovercapture={onDragMove}
+    ondropcapture={onDragFinish}
+    ondragendcapture={onDragFinish}
+    onmousemove={onDragFinish} />
 
 <ol
     class="listbox"
@@ -246,8 +257,8 @@
     bind:this={box}
     bind:clientHeight
     bind:clientWidth
-    on:keydown={onKeyDown}>
-    <slot />
+    onkeydown={onKeyDown}>
+    {@render children?.()}
 </ol>
 
 <style>
