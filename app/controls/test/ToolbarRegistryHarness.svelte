@@ -4,11 +4,17 @@
     import ToolbarContribution from "./ToolbarContribution.svelte";
     let active = $state("plugin");
     let enabled = $state(true);
+    let extra = $state(false);
+    let local = $state(false);
 </script>
 
 <PanelGroup>
     <PanelTabs items={[{ id: "plugin", label: "Plugin" }, { id: "other", label: "Other" }]} {active} onSelect={id => active = id} />
-    {#if enabled}<ToolbarContribution id="plugin" />{/if}
+    {#if enabled}<ToolbarContribution id="plugin" {local} />{/if}
+    {#if extra}<ToolbarContribution id="plugin" extra />{/if}
     <ToolbarContribution id="other" />
 </PanelGroup>
 <button type="button" onclick={() => enabled = false}>Disable extension</button>
+
+<button type="button" onclick={() => extra = !extra}>Toggle contribution</button>
+<button type="button" onclick={() => local = !local}>Toggle local</button>

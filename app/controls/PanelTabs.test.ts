@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import { hiddenToolbars } from "../workspace/toolbars";
+import { hiddenToolbars } from "./toolbars";
 import ToolbarRegistryHarness from "./test/ToolbarRegistryHarness.svelte";
+import ToolbarContribution from "./test/ToolbarContribution.svelte";
 import PanelTabs from "./PanelTabs.svelte";
 import PanelTabsHarness from "./test/PanelTabsHarness.svelte";
 
@@ -110,4 +111,26 @@ describe("panel header tabs", () => {
         expect(queryByRole("button", { name: "Hide Plugin toolbar" })).toBeNull();
         expect(queryByRole("button", { name: "Count 1" })).toBeNull();
     });
+    it("renders sibling contributions without replacing controls or removing them during cleanup", async () => {
+        let { getByRole, queryByRole } = render(ToolbarRegistryHarness);
+        let first = getByRole("button", { name: "Count 0" });
+        await fireEvent.click(getByRole("button", { name: "Toggle contribution" }));
+        let extra = getByRole("button", { name: "Extra action" });
+        expect(getByRole("button", { name: "Count 0" })).toBe(first);
+        expect(first.closest("[data-panel-toolbar]")).toBe(extra.closest("[data-panel-toolbar]"));
+        await fireEvent.click(getByRole("button", { name: "Toggle contribution" }));
+        expect(queryByRole("button", { name: "Extra action" })).toBeNull();
+        expect(getByRole("button", { name: "Count 0" })).toBe(first);
+        await fireEvent.click(getByRole("button", { name: "Toggle local" }));
+        expect(queryByRole("button", { name: "Hide Plugin toolbar" })).toBeNull();
+        expect(getByRole("button", { name: "Count 0" }).closest('[role="group"]')?.getAttribute("aria-label")).toBe("View tools");
+        await fireEvent.click(getByRole("button", { name: "Toggle local" }));
+        expect(getByRole("button", { name: "Hide Plugin toolbar" })).toBeTruthy();
+    });
+
+    it("renders a view's controls locally when there is no panel registry", () => {
+        let { getByRole } = render(ToolbarContribution, { id: "plugin" });
+        expect(getByRole("group", { name: "View tools" }).contains(getByRole("button", { name: "Count 0" }))).toBe(true);
+    });
+
 });

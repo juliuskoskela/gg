@@ -8,6 +8,8 @@
     import TextField from "../controls/TextField.svelte";
     import TextAreaField from "../controls/TextAreaField.svelte";
     import EditableText from "../controls/EditableText.svelte";
+    import ToolbarExample from "./ToolbarExample.svelte";
+    import PanelGroup from "../controls/PanelGroup.svelte";
     import PanelTabs from "../controls/PanelTabs.svelte";
     import PanelHeader from "../controls/PanelHeader.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
@@ -29,6 +31,7 @@
     setContext("settings", { markUnpushedBookmarks: true });
     let theme = $derived($effectiveTheme);
     let active = $state("diff");
+    let localTools = $state(false);
     let currentQuery = $state("all()");
     let wrap = $state(true);
     let showMetadata = $state(true);
@@ -97,6 +100,7 @@
         </section>
         <div class="specimens">
             <section><h2>Timeline panel</h2><p>View controls share a collapsible toolbar below the title line. Preset and filter fields stay at the bottom, outside the graph's scroll area.</p><div class="sample"><PanelTabs items={[{ id: "timeline", label: "Timeline" }]} active="timeline" prefix="single" onSelect={() => {}}>{#snippet tools()}<TimelineDisplayOptions />{/snippet}</PanelTabs><div class="timeline-example" id="single-timeline" role="region" aria-labelledby="single-tab-timeline"><TimelineSection showHeader={false} bind:element={timelineExample}>{#snippet summary()}<span >2 revisions</span>{/snippet}<div class="timeline-example-rows"><p>Keep revision descriptions readable</p><p>Unify panel chrome</p></div>{#snippet footer()}<div  class="timeline-example-fields"><SelectWidget options={[{ label: "Default", value: "all()" }]} bind:value={sampleQuery}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><TextField label="Example revset" bind:value={sampleQuery} /></div>{/snippet}</TimelineSection></div></div></section>
+            <section id="toolbar-contract"><h2>Toolbar contributions</h2><p>A view owns its controls; the panel frame chooses their placement. Independent contributions share one row and retain their own state. Standalone views use the same controls locally.</p><button type="button" onclick={() => localTools = !localTools}>{localTools ? "Host in panel" : "Render standalone"}</button><PanelGroup><PanelTabs items={[{ id: "toolbar-example", label: "Example view" }]} active="toolbar-example" prefix="toolbar-example" onSelect={() => {}} /><ToolbarExample local={localTools} /></PanelGroup></section>
             <section><h2>Controls</h2><p>Independent toggles and exclusive choices share the workspace control components.</p><div class="control-example"><ToggleTray label="Example wrapping"><ToggleItem icon="corner-down-left" text="Wrap lines" label="Wrap example lines" on={wrap} onClick={() => wrap = !wrap} /></ToggleTray><ActionWidget onClick={() => {}}><Icon name="refresh-cw" />Refresh</ActionWidget><ActionWidget primary onClick={() => {}}>Save description</ActionWidget><ActionWidget disabled disabledReason="Select a revision first" onClick={() => {}}>Unavailable</ActionWidget></div></section>
             <section><h2>Revision tools</h2><p>Commands live in their own dockable panel, available from Views. They follow the selected revision.</p><div class="tools-specimen"><PanelTabs items={[{ id: "tools", label: "Revision tools" }]} active="tools" prefix="tools-specimen" onSelect={() => {}} /><div id="tools-specimen-tools" role="region" aria-labelledby="tools-specimen-tab-tools"><RevisionTools headers={[]} /></div></div></section>
             <section id="selects"><h2>Dropdowns</h2><p>Remote and revset choices use the same native select, inset Feather chevron and keyboard behavior.</p><div class="control-example"><SelectWidget label="Example remote" options={[{ value: "origin" }, { value: "upstream" }]} bind:value={sampleRemote} /><SelectWidget label="Example preset" options={[{ value: "custom", label: "Custom" }, { value: "default", label: "Default" }]} bind:value={samplePreset}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget></div></section>

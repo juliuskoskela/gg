@@ -1,6 +1,6 @@
 <script lang="ts">
     import { untrack } from "svelte";
-    import { provideToolbarOwner } from "./toolbars";
+    import { provideToolbarOwner } from "../controls/toolbars";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
     import DiffTools from "../revision/DiffTools.svelte";
     import { enabled as neovimEnabled } from "virtual:gg-neovim";

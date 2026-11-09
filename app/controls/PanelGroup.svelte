@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { Snippet } from "svelte";
-    import { provideToolbars } from "../workspace/toolbars";
+    import { provideToolbars } from "./toolbars";
     interface Props {
         children?: Snippet;
     }

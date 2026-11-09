@@ -1,8 +1,8 @@
 <script lang="ts" generics="Id extends string">
     import { untrack } from "svelte";
     import { tick, type Snippet } from "svelte";
-    import { writable } from "svelte/store";
-    import { hiddenToolbars, toggleToolbar, useToolbars } from "../workspace/toolbars";
+    import { readable } from "svelte/store";
+    import { hiddenToolbars, toggleToolbar, useToolbars } from "./toolbars";
     import ToolbarRow from "./ToolbarRow.svelte";
     import Icon from "./Icon.svelte";
     import { panelDraggable } from "../workspace/panelDrag";
@@ -34,7 +34,7 @@
         onMove = () => {}
     }: Props = $props();
 
-    let toolbars = useToolbars() ?? writable(new Map());
+    let toolbars = useToolbars() ?? readable(new Map());
 
     async function revealActive(id: Id) {
         await tick();
@@ -73,11 +73,11 @@
         onSelect(id);
         document.getElementById(`${prefix}-tab-${id}`)?.focus({ preventScroll: true });
     }
-    let contribution = $derived(active ? $toolbars.get(active) : undefined);
+    let contributions = $derived((active ? $toolbars.get(active) : undefined) ?? []);
     let activeLabel = $derived(items.find(item => item.id === active)?.label ?? label);
     let toolbarHidden = $derived(!!active && $hiddenToolbars.has(active));
     let single = $derived(items.length === 1);
-    let hasTools = $derived(!!contribution || (toolsVisible && !!tools));
+    let hasTools = $derived(contributions.length > 0 || (toolsVisible && !!tools));
     $effect(() => {
         let id = active;
         if (id && !single) untrack(() => void revealActive(id));
@@ -137,7 +137,7 @@
     {/if}
     {#if hasTools}
         <ToolbarRow id={`${prefix}-toolbar-${active}`} label={`${activeLabel} toolbar`} hidden={toolbarHidden}>
-            {#if contribution}{@render contribution()}{:else}{@render tools?.()}{/if}
+            {#if contributions.length}{#each contributions as contribution (contribution.id)}{@render contribution.content()}{/each}{:else}{@render tools?.()}{/if}
         </ToolbarRow>
     {/if}
     {#if draggable && items.length}<span id="{prefix}-drag-help-{items[0].id}" hidden>Space to pick up, Tab to choose a panel, arrows to split, Enter to drop, Escape to cancel.</span>{/if}
