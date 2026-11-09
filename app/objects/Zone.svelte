@@ -4,27 +4,26 @@ A drop target for direct-manipulation objects.
 -->
 
 <script lang="ts">
-    import { onDestroy, onMount } from "svelte";
+    import { type Snippet, onDestroy, onMount } from "svelte";
     import { mutationPending } from "../operations";
     import { clearDrag, clearPendingDrop, pendingDropSource, pendingDropTarget, watchDragCancellation } from "../motion/dropLifecycle";
     import type { Operand } from "../messages/Operand";
     import BinaryMutator from "../mutators/BinaryMutator";
     import { currentSource, currentTarget, ignoreToggled } from "../stores";
 
-    interface $$Slots {
-        default: { target: boolean; hint: string | null };
+    interface Props {
+        operand: Operand | null;
+        alwaysTarget?: boolean;
+        children?: Snippet<[{ target: boolean; hint: string | null }]>;
     }
 
-    export let operand: Operand | null;
-    export let alwaysTarget: boolean = false;
+    let { operand, alwaysTarget = false, children }: Props = $props();
 
-    let dropHint: string | null = null;
-    let target = false;
-    $: target = match($currentTarget) || match($pendingDropTarget);
-    let zone: HTMLDivElement;
+    let dropHint: string | null = $state(null);
+    let target = $derived(match($currentTarget) || match($pendingDropTarget));
+    let zone: HTMLDivElement | undefined = $state();
     let disposed = false;
-    let dropping = false;
-    $: if (!$currentSource && !dropping) dropHint = null;
+    let dropping = $state(false);
     onMount(watchDragCancellation);
 
     function match(target: Operand | null): boolean {
@@ -62,7 +61,7 @@ A drop target for direct-manipulation objects.
     }
 
     function onDragLeave(event: DragEvent) {
-        if (event.relatedTarget instanceof Node && zone.contains(event.relatedTarget)) return;
+        if (event.relatedTarget instanceof Node && zone?.contains(event.relatedTarget)) return;
         if (match($currentTarget)) $currentTarget = null;
         dropHint = null;
     }
@@ -93,6 +92,9 @@ A drop target for direct-manipulation objects.
         if (match($pendingDropTarget)) clearPendingDrop();
     });
 
+    $effect.pre(() => {
+        if (!$currentSource && !dropping) dropHint = null;
+    });
 </script>
 
 <div
@@ -101,11 +103,11 @@ A drop target for direct-manipulation objects.
     class="zone"
     data-drop-state={dropping ? "pending" : target ? "target" : undefined}
     class:hint={dropHint}
-    on:dragenter={onDragOver}
-    on:dragover={onDragOver}
-    on:dragleave={onDragLeave}
-    on:drop={onDrop}>
-    <slot {target} hint={dropHint} />
+    ondragenter={onDragOver}
+    ondragover={onDragOver}
+    ondragleave={onDragLeave}
+    ondrop={onDrop}>
+    {@render children?.({ target, hint: dropHint, })}
 </div>
 
 <style>

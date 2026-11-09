@@ -56,10 +56,10 @@
     /*
      * Select this revision by default, or callback to a list that needs more complex behaviour.
      */
-    function onSelect(event: CustomEvent<MouseEvent>) {
-        if ((event.detail.ctrlKey || event.detail.metaKey) && onToggle) {
+    function onSelect(event: MouseEvent) {
+        if ((event.ctrlKey || event.metaKey) && onToggle) {
             onToggle(header);
-        } else if (event.detail.shiftKey) {
+        } else if (event.shiftKey) {
             if (onShiftClick) {
                 onShiftClick(header);
             } else {
@@ -89,10 +89,11 @@
     conflicted={header.has_conflict}
     {selected}
     label={accessibleLabel}
-    on:click={onSelect}
-    on:dblclick={onEdit}
-    let:context
-    let:hint={dragHint}>
+    onClick={onSelect}
+    onDoubleClick={onEdit}
+
+>
+    {#snippet children({ context, hint: dragHint })}
     {#if child}
         <!-- Parents aren't a drop target -->
         <div class="layout compact" class:expanded>
@@ -129,7 +130,8 @@
             </span>
         </div>
     {:else}
-        <Zone {operand} let:target let:hint={dropHint}>
+        <Zone {operand}>
+    {#snippet children({ target, hint: dropHint })}
             <div class="layout" class:target class:tall class:no-ids={!showChange && !showCommit} class:workspace={header.is_working_copy} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-title-height={`${revisionTitleHeight * textScale}px`} style:--history-author-height={`${revisionAuthorHeight * textScale}px`} style:--history-row-gap={`${revisionRowGap * textScale}px`}>
                 {#if showChange || showCommit}<span class="ids">{#if showChange}<IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />{/if}{#if showCommit}<span class="commit-id"><IdSpan id={header.id.commit} /></span>{/if}</span>{/if}
 
@@ -163,8 +165,12 @@
                     {/if}
                 </span>
             </div>
-        </Zone>
+
+    {/snippet}
+</Zone>
     {/if}
+
+    {/snippet}
 </Object>
 
 <style>
@@ -202,7 +208,7 @@
         color: var(--text);
     }
 
-    .layout > :global(span) {
+    .layout> :global(span) {
         line-height: 1.54;
     }
 
@@ -231,7 +237,7 @@
         color: var(--text);
     }
 
-    .refs > div { flex-shrink: 0; }
+    .refs> div { flex-shrink: 0; }
 
     /* multiple elements can have these */
     .truncate {
@@ -244,16 +250,16 @@
         pointer-events: none;
     }
 
-    .ids > :global(.id) { font-size: var(--type-caption); color: var(--muted); }
-    .ids > :global(.id .change), .ids > :global(.id .hidden) { color: var(--text); }
+    .ids> :global(.id) { font-size: var(--type-caption); color: var(--muted); }
+    .ids> :global(.id .change), .ids> :global(.id .hidden) { color: var(--text); }
     /* lane colors are graded for text, including hovered selections. */
     .layout { --id-tint: var(--lane, var(--text)); }
     .layout.workspace { --id-tint: var(--brand); }
     .layout.conflicted { --id-tint: var(--negative); }
-    .ids > :global(.id .prefix:is(.change, .hidden)) { color: var(--id-tint); }
+    .ids> :global(.id .prefix:is(.change, .hidden)) { color: var(--id-tint); }
     .desc { font-size: var(--type-ui); font-weight: 400; color: var(--text); }
     :global(.selection-item[aria-selected="true"]) .desc:not(.indescribable) { color: var(--text-strong); font-weight: 500; }
-    :global(.selection-item[aria-selected="true"]) .ids > :global(.id .change:not(.prefix)) { color: var(--text-strong); }
+    :global(.selection-item[aria-selected="true"]) .ids> :global(.id .change:not(.prefix)) { color: var(--text-strong); }
     @media (hover: hover) { :global(.selection-item:hover) .desc:not(.indescribable) { color: var(--text-strong); } }
     :global(.selection-item.conflict[role]) .desc.text { color: var(--negative); }
     .compact { height: auto; min-height: max(36px, 2.75em); grid-template-areas: "id desc refs"; grid-template-rows: 1fr; padding-right: 0; }
@@ -264,7 +270,7 @@
         .layout.no-ids:not(.compact) { grid-template-columns: minmax(0, 1fr) fit-content(25%); }
         .layout:not(.compact) .refs { max-width: 64px; }
         .layout:not(.compact) .refs :global(.chip) { padding-inline: 4px; }
-        .layout:not(.compact) .refs :global(.chip > span),
-        .layout:not(.compact) .refs :global(.chip > svg:not(:first-child)) { display: none; }
+        .layout:not(.compact) .refs :global(.chip> span),
+        .layout:not(.compact) .refs :global(.chip> svg:not(:first-child)) { display: none; }
     }
 </style>

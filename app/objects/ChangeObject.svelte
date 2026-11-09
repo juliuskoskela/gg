@@ -81,10 +81,12 @@
     suffix={change.path.repo_path}
     conflicted={change.has_conflict}
     label={change.path.relative_path}
-    on:click={onSelect}
-    let:context
-    let:hint>
-    <Zone {operand} let:target>
+    onClick={onSelect}
+
+>
+    {#snippet children({ context, hint })}
+    <Zone {operand}>
+    {#snippet children({ target })}
         <div class="layout" class:tree class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
             <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
@@ -109,7 +111,11 @@
                 </ActionLink></span>
             {/if}
         </div>
-    </Zone>
+
+    {/snippet}
+</Zone>
+
+    {/snippet}
 </Object>
 
 <style>

@@ -27,7 +27,7 @@
     let disconnected =
         $derived(settings.markUnpushedBookmarks &&
         (ref.type === "LocalBookmark"
-            ? ref.available_remotes == 0 && ref.potential_remotes > 0
+            ? ref.available_remotes == 0 && ref.potential_remotes> 0
             : ref.is_tracked && ref.is_absent));
 
     let defaultCommand = $derived(RefMutator.defaultCommand(ref));
@@ -36,12 +36,18 @@
     let lifecycleIcon = $derived(ref.has_conflict ? "alert-triangle" : ref.type === "RemoteBookmark" ? (ref.is_tracked ? (ref.is_absent ? "minus-circle" : "link") : "help-circle") : (!ref.is_synced ? "upload" : null));
 </script>
 
-<Object {operand} label={bookmarkLabel(ref)} {defaultCommand} conflicted={ref.has_conflict} let:context let:hint={dragHint}>
-    <Zone {operand} let:target let:hint={dropHint}>
+<Object {operand} label={bookmarkLabel(ref)} {defaultCommand} conflicted={ref.has_conflict}>
+    {#snippet children({ context, hint: dragHint })}
+    <Zone {operand}>
+    {#snippet children({ target, hint: dropHint })}
         <Chip tone={ref.type === "LocalBookmark" ? "bookmark" : "remote"} {context} {target} {disconnected} {tip}>
             <Icon name="bookmark" />
             {#if lifecycleIcon}<Icon name={lifecycleIcon} state={ref.has_conflict ? "remove" : null} />{/if}
             <span>{dragHint ?? dropHint ?? label}</span>
         </Chip>
-    </Zone>
+
+    {/snippet}
+</Zone>
+
+    {/snippet}
 </Object>

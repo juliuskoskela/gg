@@ -30,12 +30,18 @@
     }
 </script>
 
-<Object {operand} tabIndex={0} selected={$commandOperand === operand} conflicted={false} label={getHunkDescription(hunk)} let:context let:hint={dragHint}>
-    <Zone {operand} let:target let:hint={dropHint}>
+<Object {operand} tabIndex={0} selected={$commandOperand === operand} conflicted={false} label={getHunkDescription(hunk)}>
+    {#snippet children({ context, hint: dragHint })}
+    <Zone {operand}>
+    {#snippet children({ target, hint: dropHint })}
         <div class="hunk" class:target>
             {dragHint ?? dropHint ?? getHunkDescription(hunk)}
         </div>
-    </Zone>
+
+    {/snippet}
+</Zone>
+
+    {/snippet}
 </Object>
 
 <style>

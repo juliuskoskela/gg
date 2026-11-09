@@ -221,7 +221,7 @@
                 let { candidates, exact } = result.value;
                 let stillCurrent = candidates.some(header => header.id.commit.hex === set[endpoint].commit.hex);
                 if (!stillCurrent && candidates.length === 1) resolved[endpoint] = candidates[0].id;
-                else if (!stillCurrent && candidates.length > 1) {
+                else if (!stillCurrent && candidates.length> 1) {
                     let message = "This change now has multiple revisions. Choose the exact revision to inspect.";
                     selectionRecovery.set({ message, candidates, set, endpoint });
                     selection = { type: "error", message };
@@ -310,7 +310,8 @@
 
 <svelte:window on:focus={refreshAnnotations} />
 
-<Zone operand={{ type: "Repository" }} alwaysTarget let:target>
+<Zone operand={{ type: "Repository" }} alwaysTarget>
+    {#snippet children({ target })}
     <div id="shell" use:focusModality use:autoHideScrollbars class={$effectiveTheme} data-theme-family={$themeFamily} data-dark-depth={$darkDepth} data-color-vision={$colorVision}>
         {#if $repoConfigEvent.type == "Initial"}
             <TitlebarInset>
@@ -404,6 +405,8 @@
                 }} />
         {/if}
     </div>
+
+    {/snippet}
 </Zone>
 
 <style>

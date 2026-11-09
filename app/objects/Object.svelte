@@ -4,56 +4,64 @@ Core component for direct-manipulation objects. A drag&drop source.
 -->
 
 <script lang="ts">
-    import { onDestroy } from "svelte";
+    import { type Snippet, onDestroy } from "svelte";
     import { pendingDropSource, clearDrag } from "../motion/dropLifecycle";
     import { mutationPending } from "../operations";
     import type { Operand } from "../messages/Operand";
     import { setCommandOperand } from "../commands/context";
     import { executeOperandCommand } from "../commands/registry";
     import { currentContext, currentSource, selectionHeaders, pickedRevisions, hasMenu, ignoreToggled } from "../stores";
-    import { createEventDispatcher } from "svelte";
     import { get } from "svelte/store";
     import BinaryMutator from "../mutators/BinaryMutator";
 
-    interface $$Slots {
-        default: { context: boolean; hint: string | null };
+    interface Props {
+        tabIndex?: number;
+        setSize?: number | undefined;
+        position?: number | undefined;
+        suffix?: string | null;
+        label: string;
+        selected?: boolean;
+        conflicted: boolean;
+        operand: Operand | null;
+        defaultCommand?: string | null;
+        onClick?: (event: MouseEvent) => void;
+        onDoubleClick?: (event: MouseEvent) => void;
+        children?: Snippet<[{ context: boolean; hint: string | null }]>;
     }
 
-    interface $$Events {
-        click: CustomEvent<MouseEvent>;
-        dblclick: CustomEvent<MouseEvent>;
-    }
+    let {
+        tabIndex = -1,
+        setSize = undefined,
+        position = undefined,
+        suffix = null,
+        label,
+        selected = false,
+        conflicted,
+        operand,
+        defaultCommand = null,
+        onClick,
+        onDoubleClick,
+        children
+    }: Props = $props();
 
-    export let tabIndex = -1;
-    export let setSize: number | undefined = undefined;
-    export let position: number | undefined = undefined;
-    export let suffix: string | null = null;
-    export let label: string;
-    export let selected: boolean = false;
-    export let conflicted: boolean;
-    export let operand: Operand | null;
-    export let defaultCommand: string | null = null;
+    let id = $derived(suffix == null ? null : operand == null ? null : `${operand.type}-${suffix}`);
+    let dragging = $state(false);
+    let dragHint: string | null = $state(null);
 
-    let dispatch = createEventDispatcher();
-
-    let id = suffix == null ? null : operand == null ? null : `${operand.type}-${suffix}`;
-    let dragging: boolean;
-    let dragHint: string | null = null;
-
-    function onClick(event: MouseEvent) {
+    function handleClick(event: MouseEvent) {
         if ((event.target as Element).closest("button.selection-item") !== event.currentTarget) return;
         setCommandOperand(getEffectiveOperand());
-        dispatch("click", event);
+        onClick?.(event);
     }
 
-    function onDoubleClick(event: MouseEvent) {
+    function handleDoubleClick(event: MouseEvent) {
         // a default command consumes the event, so it doesn't also reach the revision underneath
         if (defaultCommand && operand) {
             event.preventDefault();
             event.stopPropagation();
             executeOperandCommand(operand, defaultCommand);
         } else {
-            dispatch("dblclick", event);
+            onDoubleClick?.(event);
         }
     }
 
@@ -147,8 +155,8 @@ Core component for direct-manipulation objects. A drag&drop source.
         return false;
     }
 
-    $: inContext = isInContext($currentContext, operand);
-    $: inSource = isInSource($currentSource, operand) || isInSource($pendingDropSource, operand);
+    let inContext = $derived(isInContext($currentContext, operand));
+    let inSource = $derived(isInSource($currentSource, operand) || isInSource($pendingDropSource, operand));
     onDestroy(() => { if (dragging) clearDrag(); });
 </script>
 
@@ -167,12 +175,12 @@ Core component for direct-manipulation objects. A drag&drop source.
     aria-selected={selected}
     aria-setsize={setSize}
     aria-posinset={position}
-    on:click={onClick}
-    on:dblclick={onDoubleClick}
-    on:contextmenu={onMenu}
-    on:dragstart={onDragStart}
-    on:dragend={onDragEnd}>
-    <slot context={dragging || inContext || inSource} hint={dragHint} />
+    onclick={handleClick}
+    ondblclick={handleDoubleClick}
+    oncontextmenu={onMenu}
+    ondragstart={onDragStart}
+    ondragend={onDragEnd}>
+    {@render children?.({ context: dragging || inContext || inSource, hint: dragHint, })}
 </button>
 
 <style>

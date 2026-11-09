@@ -33,9 +33,9 @@
             // instead of a parent, we have a mergepoint
             let childX = c1 * 18 + 9;
             let mergeX = c2 * 18 + 9;
-            let midY = c2 > c1 ? childY + 9 : parentY - 9;
-            let radius = c2 > c1 ? 6 : -6;
-            let sweep = c2 > c1 ? 0 : 1;
+            let midY = c2> c1 ? childY + 9 : parentY - 9;
+            let radius = c2> c1 ? 6 : -6;
+            let sweep = c2> c1 ? 0 : 1;
             path = `M${childX},${childY}
                 L${childX},${midY - 6}
                 A6,6,0,0,${sweep},${childX + radius},${midY}
@@ -51,12 +51,12 @@
             });
             // vertical segment at child column
             let topH = (midY - 6) - childY;
-            if (topH > 2) {
+            if (topH> 2) {
                 blocks.push({ x: c1 * 18 + 2, y: childY, w: 14, h: topH });
             }
             // vertical segment at merge column
             let bottomH = parentY - (midY + 6);
-            if (bottomH > 2) {
+            if (bottomH> 2) {
                 blocks.push({ x: c2 * 18 + 2, y: midY + 6, w: 14, h: bottomH });
             }
         } else if (c1 == c2) {
@@ -75,9 +75,9 @@
             // different-column, curved line
             let childX = c1 * 18 + 9;
             let parentX = c2 * 18 + 9;
-            let midY = allowEarlyBreak && c1 > c2 ? parentY - 9 : childY + 9;
-            let radius = c2 > c1 ? 6 : -6;
-            let sweep = c2 > c1 ? 0 : 1;
+            let midY = allowEarlyBreak && c1> c2 ? parentY - 9 : childY + 9;
+            let radius = c2> c1 ? 6 : -6;
+            let sweep = c2> c1 ? 0 : 1;
             path = `M${childX},${childY}
                 L${childX},${midY - 6}
                 A6,6,0,0,${sweep},${childX + radius},${midY}
@@ -94,12 +94,12 @@
             });
             // vertical segment at child column
             let topH = (midY - 6) - childY;
-            if (topH > 2) {
+            if (topH> 2) {
                 blocks.push({ x: c1 * 18 + 2, y: childY, w: 14, h: topH });
             }
             // vertical segment at parent column
             let bottomH = parentY - (midY + 6);
-            if (bottomH > 2) {
+            if (bottomH> 2) {
                 blocks.push({ x: c2 * 18 + 2, y: midY + 6, w: 14, h: bottomH });
             }
         }
@@ -109,9 +109,12 @@
 {#if !line.indirect}
     {#each blocks as block}
         <foreignObject x={block.x} y={block.y} width={block.w} height={block.h}>
-            <Zone {operand} let:target>
+            <Zone {operand}>
+    {#snippet children({ target })}
                 <div class="backdrop" class:target></div>
-            </Zone>
+
+    {/snippet}
+</Zone>
         </foreignObject>
     {/each}
 {/if}
@@ -127,7 +130,7 @@
         stroke-linejoin: round;
     }
 
-    foreignObject > :global(*) {
+    foreignObject> :global(*) {
         height: 100%;
     }
 

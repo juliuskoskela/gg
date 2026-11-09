@@ -51,7 +51,10 @@
         {/if}
         {#if bookmarks.length}<MetadataRow label="Bookmarks"><div class="references" aria-label="Revision bookmarks">{#each bookmarks as { header, ref }}{#if ref.type === "LocalBookmark" || ref.type === "RemoteBookmark"}<div class="reference"><BookmarkObject {header} {ref} /><span class="reference-status">{bookmarkStatus(ref)}</span></div>{/if}{/each}</div></MetadataRow>{/if}
         {#if tags.length}<MetadataRow label="Tags"><div class="references" aria-label="Revision tags">{#each tags as { header, ref }}{#if ref.type === "Tag"}<TagObject {header} {ref} />{/if}{/each}</div></MetadataRow>{/if}
-        {#if revs.parents.length}<MetadataRow label={revs.parents.length === 1 ? "Parent" : "Parents"}><Zone operand={{ type: "Merge", header: oldest }} let:target><div class="parents" class:target>{#each revs.parents as parent}<RevisionObject header={parent} child={oldest} selected={false} noBookmarks expanded />{/each}</div></Zone></MetadataRow>{/if}
+        {#if revs.parents.length}<MetadataRow label={revs.parents.length === 1 ? "Parent" : "Parents"}><Zone operand={{ type: "Merge", header: oldest }}>
+    {#snippet children({ target })}<div class="parents" class:target>{#each revs.parents as parent}<RevisionObject header={parent} child={oldest} selected={false} noBookmarks expanded />{/each}</div>
+    {/snippet}
+</Zone></MetadataRow>{/if}
     </MetadataList>
 </div>
 
@@ -64,7 +67,7 @@
     .references { display: flex; flex-wrap: wrap; align-items: start; gap: var(--gap-row) var(--gap-group); min-width: 0; }
     .reference { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-width: 100%; }
     /* a reference is as wide as its name, with its status beside it */
-    .reference > :global(*) { flex: 0 1 auto; width: auto; max-width: 100%; }
+    .reference> :global(*) { flex: 0 1 auto; width: auto; max-width: 100%; }
     .references :global(.chip) { max-width: 100%; height: auto; min-height: 24px; white-space: normal; overflow-wrap: anywhere; }
     .references :global(.chip svg) { flex-shrink: 0; }
     .references :global(.chip span) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }

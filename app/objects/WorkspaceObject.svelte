@@ -13,9 +13,12 @@
     let operand = $derived({ type: "Workspace", name } as Operand);
 </script>
 
-<Object {operand} label={name} defaultCommand="open" conflicted={false} let:context>
+<Object {operand} label={name} defaultCommand="open" conflicted={false}>
+    {#snippet children({ context })}
     <Chip tone="workspace" {context} target={false} immobile tip="workspace: {name}">
         <Icon name="at-sign" />
         <span>{name}</span>
     </Chip>
+
+    {/snippet}
 </Object>
