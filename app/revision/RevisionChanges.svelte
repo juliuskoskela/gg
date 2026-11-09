@@ -4,6 +4,9 @@
     import ReviewControl from "../review/ReviewControl.svelte";
     import { untrack } from "svelte";
 
+    import { rangeLineTargets, owningHeaders } from "./origins";
+    import RangeHunk from "./RangeHunk.svelte";
+    import OriginLink from "./OriginLink.svelte";
     import { repositoryScope } from "../workspace/repository";
     import { onDestroy, tick } from "svelte";
     import { revisionIdentity, loadRevisionDiff, type RevisionDetail } from "./data";
@@ -51,7 +54,7 @@
     }: Props = $props();
     let localComparison = $state.raw<ReviewComparison | null>(null);
     let requestedComparison = $derived(comparison === undefined ? localComparison : comparison);
-    let activeComparison = $derived(revs.headers.length === 1 && requestedComparison?.to.commit.hex === revs.headers[0].id.commit.hex ? requestedComparison : null);
+    let activeComparison = $derived(requestedComparison && revs.headers.some(header => header.id.commit.hex === requestedComparison.to.commit.hex) ? requestedComparison : null);
     function compare(from: ReviewComparison["from"], to: ReviewComparison["to"], path: string | null) {
         if (onCompare) onCompare(from, to, path);
         else localComparison = { from, to, path };
@@ -91,7 +94,12 @@
 
     function selectFile(change: RevChange) { onSelectFile(change); }
     function annotateLines(event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) {
-        let file = currentChange, header = revs.headers.length === 1 ? revs.headers[0] : null;
+        let file = loaded.type === "data" ? loaded.value : null, header = revs.headers.length === 1 ? revs.headers[0] : null;
+        if (file && revs.headers.length > 1) {
+            let targets = rangeLineTargets(file, revs.headers, range);
+            lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: targetCommands(async () => targets ?? [], "Annotate selected lines…", range.end - range.start + 1 > MAX_LINES ? `Annotate at most ${MAX_LINES} lines` : targets?.length ? null : "Select changed lines whose origins are available") });
+            return;
+        }
         let count = range.end - range.start + 1;
         let label = count === 1 ? `Annotate line ${range.start}…` : `Annotate lines ${range.start}–${range.end}…`;
         let reason = !header ? "Select one revision to annotate its lines" : count > MAX_LINES ? `Annotate at most ${MAX_LINES} lines` : null;
@@ -166,7 +174,7 @@
                     {:else if loaded.value}
                         {#key loaded.value}
                             {#if actionsLoaded.type === "data" && actionsLoaded.value && !actionsLoaded.value.has_conflict && actionsLoaded.value.hunks.length}
-                                <details class="hunk-actions"><summary><span class="hunk-action-label"><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></span><DiffStat {changes} /></summary><div class="hunk-list" role="listbox" aria-label="File hunks" tabindex="-1" onkeydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}<HunkObject header={revs.headers.length === 1 ? revs.headers[0] : null} path={currentChange.path} {hunk} />{/each}</div></details>
+                                <details class="hunk-actions"><summary><span class="hunk-action-label"><Icon name="chevron-right" />Hunk actions <span>{actionsLoaded.value.hunks.length}</span></span><DiffStat {changes} /></summary><div class="hunk-list" role={revs.headers.length > 1 ? "group" : "listbox"} aria-label="File hunks" tabindex="-1" onkeydown={navigateOptions}>{#each actionsLoaded.value.hunks as hunk}{#if revs.headers.length > 1}<RangeHunk {hunk} path={currentChange.path.repo_path} headers={revs.headers} />{:else}<HunkObject header={revs.headers[0]} path={currentChange.path} {hunk} />{/if}{/each}</div></details>
                             {:else}
                                 <div class="file-diff-summary"><span>No editable hunks</span><DiffStat {changes} /></div>
                             {/if}
@@ -177,8 +185,9 @@
                 <PanelFooter className="diff-footer"><div class="diff-toolbar">
                     {#if activeComparison}<button class="review-back" type="button" onclick={closeComparison}>Back to file diff</button>
                     {:else}
-                    {#if currentChange && revs.headers.length === 1}<ReviewControl header={revs.headers[0]} path={currentChange.path.repo_path} onCompare={compare} />{/if}
+                    {#if currentChange}{@const owners = owningHeaders(currentChange, revs.headers)}{#if owners[0]}<ReviewControl header={owners[0]} path={currentChange.path.repo_path} onCompare={compare} />{/if}{/if}
                     <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} onclick={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} onclick={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
+                    {#if revs.headers.length > 1 && currentChange?.origin}<OriginLink origin={currentChange.origin} path={currentChange.path.repo_path} />{/if}
                     <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
                     {/if}
                 </div></PanelFooter>

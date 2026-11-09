@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { owningHeaders as fileOwners } from "../revision/origins";
     import { categoryLabel, categoryOf } from "../revision/fileCategories";
     import FileReviewBadge from "../review/FileReviewBadge.svelte";
     import { shortFilename } from "../paths";
@@ -51,23 +52,24 @@
     }
 
     function onExternalDiff() {
-        if (!headers) return;
+        if (!owners.length) return;
         mutate<ExternalDiff>("external_diff", {
-            id: headers[0].id,
+            id: owners[0].id,
             path: change.path,
         });
     }
 
     function onExternalResolve() {
-        if (!headers) return;
+        if (!owners.length) return;
         mutate<ExternalResolve>("external_resolve", {
-            id: headers[0].id,
+            id: owners[0].id,
             path: change.path,
         });
     }
-    let operand = $derived(headers ? { type: "Change", headers, path: change.path, hunk: null } as Operand : null);
+    let owners = $derived(headers ? fileOwners(change, headers) : []);
+    let operand = $derived(owners.length ? { type: "Change", headers: owners, path: change.path, hunk: null } as Operand : null);
     // notes on the file or its lines, in the one revision shown
-    let notes = $derived(headers?.length === 1 ? ($openNotesByChange.get(headers[0].id.change.hex) ?? []).filter(note => note.targets.some(target => target.anchor.change_id === headers![0].id.change.hex && "path" in target.anchor && target.anchor.path === change.path.repo_path)) : []);
+    let notes = $derived(owners.length === 1 ? ($openNotesByChange.get(owners[0].id.change.hex) ?? []).filter(note => note.targets.some(target => target.anchor.change_id === owners[0].id.change.hex && "path" in target.anchor && target.anchor.path === change.path.repo_path)) : []);
     let hasDiffTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool);
     let hasMergeTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool);
     let insertions = $derived(change.stat?.added ?? countLines(change, "+"));
@@ -92,9 +94,10 @@
         <div class="layout" class:tree class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
             <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
+            {#if tree && headers && headers.length > 1 && change.origin}<span class="category" title={`Originating change ${change.origin.change.hex}`}>{change.origin.change.hex.slice(0, 8)}</span>{/if}
             {#if categoryOf(change) !== "Implementation"}<span class="category">{categoryLabel(change)}</span>{/if}
             {#if notes.length}<NoteMarker {notes} />{/if}
-            {#if headers?.length === 1}<FileReviewBadge header={headers[0]} path={change.path.repo_path} />{/if}
+            {#if owners[0]}<FileReviewBadge header={owners[0]} path={change.path.repo_path} />{/if}
             {#if change.has_conflict}
                 <span class="kind" role="img" aria-label="Unresolved conflict" title="Unresolved conflict"><Icon name="alert-triangle" state={context ? null : "remove"} /></span>
             {:else if change.kind === "Added" || change.kind === "Deleted"}

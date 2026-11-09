@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { owningHeaders } from "./revision/origins";
     import { untrack } from "svelte";
 
     import { repositoryScope } from "./workspace/repository";
@@ -54,7 +55,7 @@
     }
     function selectFile(change: RevChange) {
         selectedPath = change.path.repo_path;
-        setCommandOperand({ type: "Change", headers: revs.headers, path: change.path, hunk: null });
+        setCommandOperand({ type: "Change", headers: owningHeaders(change, revs.headers), path: change.path, hunk: null });
         onFileSelected(selectedPath);
         changeSelectEvent.set(change);
     }

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { owningHeaders } from "../revision/origins";
     import { untrack } from "svelte";
 
     import { onMount, tick } from "svelte";
@@ -37,7 +38,7 @@
 
     function selectFile(change: RevChange) {
         selectedPath = change.path.repo_path;
-        if (detail) setCommandOperand({ type: "Change", headers: detail.headers, path: change.path, hunk: null });
+        if (detail) setCommandOperand({ type: "Change", headers: owningHeaders(change, detail.headers), path: change.path, hunk: null });
         workspaceController.setFile(selectedPath);
         changeSelectEvent.set(change);
     }
