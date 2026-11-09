@@ -16,6 +16,11 @@ async function localData<T>(command: string, args: Record<string, unknown>): Pro
 
 export let pluginHost = createPluginHost(bundledPlugins, {
     query,
+    github: async request => {
+        let result = await query<import("../messages/GithubResponse").GithubResponse>("github_public", { request });
+        if (result.type === "error") throw new Error(result.message);
+        return result.value;
+    },
     annotations: () => localData<AnnotationList>("annotations", { request: { type: "List" } }),
     reviews: () => localData<ReviewProgress>("review_progress", { request: { type: "List" } }),
     data: (plugin, operation, workspace) => localData<PluginData>("plugin_data", { request: { plugin, operation, workspace } }),

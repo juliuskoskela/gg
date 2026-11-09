@@ -10,10 +10,11 @@ import type { PluginFact } from "../messages/PluginFact";
 import { registerContributions, pluginPanelId } from "./contributions";
 import type { BundledPlugin, Capability, PluginAPI, PluginContext, PluginActivation, ReadCommand } from "./types";
 
-let capabilities: Capability[] = ["queries.read", "navigation", "annotations.write", "annotations.exchange", "annotations.read", "reviews.read", "storage", "facts.publish"];
+let capabilities: Capability[] = ["github.read","queries.read", "navigation", "annotations.write", "annotations.exchange", "annotations.read", "reviews.read", "storage", "facts.publish"];
 let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes", "resolve_revision_selection", "query_split_receipts", "query_split_receipt_states"];
 export interface PluginStatus { manifest: BundledPlugin["manifest"]; enabled: boolean; active: boolean; starting: boolean; error?: string; }
 export interface HostServices {
+    github?: PluginAPI["github"]["read"];
     query: PluginAPI["query"];
     annotations: PluginAPI["annotations"];
     reviews: PluginAPI["reviews"];
@@ -97,6 +98,10 @@ export function createPluginHost(plugins: readonly BundledPlugin[], services: Ho
                 if (!readCommands.includes(command)) throw new Error("Not a plugin read query");
                 return services.query(command, args);
             }),
+            github: { read: request => call("github.read", () => {
+                if (!services.github) throw new Error("Public GitHub reads are unavailable");
+                return services.github(request);
+            }) },
             annotations: () => call("annotations.read", services.annotations),
             reviews: () => call("reviews.read", services.reviews),
             navigation: {

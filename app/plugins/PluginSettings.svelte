@@ -4,6 +4,7 @@
     let { host = pluginHost }: { host?: typeof pluginHost } = $props();
     let states = $derived(host.statuses);
     let permissions: Record<Capability, string> = {
+        "github.read": "Read public pull requests from api.github.com (opt-in)",
         navigation: "Open changes and files",
         "annotations.write": "Write its session annotations",
         "annotations.exchange": "Import and export its session annotations",

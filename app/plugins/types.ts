@@ -1,3 +1,5 @@
+import type { GithubRequest } from "../messages/GithubRequest";
+import type { GithubResponse } from "../messages/GithubResponse";
 import type { Component } from "svelte";
 import type { Readable } from "svelte/store";
 import type { Query } from "../events";
@@ -13,7 +15,7 @@ import type { RevSet } from "../messages/RevSet";
 import type { RepoStatus } from "../messages/RepoStatus";
 import type { SplitOutcome } from "../messages/SplitOutcome";
 
-export type Capability = "queries.read" | "navigation" | "annotations.write" | "annotations.exchange" | "annotations.read" | "reviews.read" | "storage" | "facts.publish";
+export type Capability = "github.read" | "queries.read" | "navigation" | "annotations.write" | "annotations.exchange" | "annotations.read" | "reviews.read" | "storage" | "facts.publish";
 export interface PluginManifest {
     id: string;
     name: string;
@@ -27,6 +29,7 @@ export type PluginContext = { repository: string; workspace: string; status: Rep
 export interface PluginAPI {
     readonly context: Readable<PluginContext>;
     query<T>(command: ReadCommand, args: Record<string, unknown>): Promise<Query<T>>;
+    readonly github: { read(request: GithubRequest): Promise<GithubResponse> };
     annotations(): Promise<AnnotationList>;
     reviews(): Promise<ReviewProgress>;
     readonly navigation: { split(id: RevId): Promise<SplitOutcome | null>; select(id: RevId, path?: string): Promise<void>; openView(view: string): Promise<void> };

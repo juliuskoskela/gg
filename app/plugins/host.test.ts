@@ -37,6 +37,26 @@ function plugin(activate: BundledPlugin["activate"], capabilities: BundledPlugin
 }
 
 describe("bundled plugin host", () => {
+    it("requires explicit public-network capability and drops results after disposal", async () => {
+        let api!: PluginAPI;
+        let read = vi.fn(async () => ({ status: 304, pulls: [], etag: null, retry_after_seconds: null, reset_at_seconds: null, remaining: null, has_next: false }));
+        let { host } = setup(plugin(value => { api = value; return {}; }), { github: read });
+        host.enable("review", true);
+        await expect(api.github.read({ owner: "o", repo: "r", endpoint: { type: "List", page: 1 }, etag: null })).rejects.toThrow("github.read");
+        expect(read).not.toHaveBeenCalled();
+        host.dispose();
+        let allowed = setup(plugin(value => { api = value; return {}; }, ["github.read"]), { github: read });
+        allowed.host.enable("review", true);
+        await api.github.read({ owner: "o", repo: "r", endpoint: { type: "List", page: 1 }, etag: null });
+        expect(read).toHaveBeenCalledOnce();
+        let resolve!: (value: Awaited<ReturnType<typeof read>>) => void;
+        read.mockImplementation(() => new Promise(done => resolve = done));
+        let pending = api.github.read({ owner: "o", repo: "r", endpoint: { type: "List", page: 1 }, etag: null });
+        allowed.host.dispose();
+        resolve({ status: 304, pulls: [], etag: null, retry_after_seconds: null, reset_at_seconds: null, remaining: null, has_next: false });
+        await expect(pending).rejects.toThrow("no longer active");
+    });
+
     it("only activates enabled plugins and scopes storage to their namespace", async () => {
         let api!: PluginAPI;
         let { host, services } = setup(plugin(value => { api = value; return {}; }, ["storage"]));
