@@ -237,7 +237,7 @@ async fn apply_receipts(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "ts-rs")))]
 mod tests {
     use super::*;
     use crate::{
