@@ -1,4 +1,5 @@
 <script lang="ts">
+    import TimelineStat from "../revision/TimelineStat.svelte";
     import { revisionAuthorHeight, revisionTitleHeight, revisionRowGap, revisionRowHeight } from "../graphLayout";
     import type { RevHeader } from "../messages/RevHeader";
     import type { Operand } from "../messages/Operand";
@@ -17,6 +18,7 @@
 
     interface Props {
         header: RevHeader;
+        showStats?: boolean;
         child?: RevHeader | null;
         selected: boolean; // same as the imported event, but parent may want to force a value
         noBookmarks?: boolean;
@@ -37,6 +39,7 @@
 
     let {
         header,
+        showStats = false,
         child = null,
         selected,
         noBookmarks = false,
@@ -145,6 +148,7 @@
 
                 {#if tall}<span class="author truncate">{header.author.name || header.author.email || "Unknown author"}</span>{/if}
                 <span class="refs" role="group" aria-label="Bookmarks and workspaces">
+                    {#if showStats}<TimelineStat id={header.id} />{/if}
                     {#each header.refs as ref}
                         {#if ref.type != "Tag"}
                             {#if showBookmarks && (ref.type == "LocalBookmark" || !ref.is_synced || !ref.is_tracked)}
