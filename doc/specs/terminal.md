@@ -5,6 +5,11 @@ terminal starts the user's `$SHELL` (`COMSPEC` on Windows, falling back to
 `/bin/sh` or `cmd.exe`) in the loaded workspace's working directory. It edits
 the working copy, independently of the revision being inspected.
 
+Bash, Zsh and Fish use a compact `folder >` prompt that follows directory
+changes. GG loads the shell's normal configuration first, then applies its prompt
+for this session only. Your shell configuration files are not modified. The
+toolbar shows the starting folder name; its tooltip keeps the full path.
+
 The view supports the same tabs, splits, resizing and compact layout as the
 other workspace views. Its shell, terminal state and scrollback survive tab
 switching and moving the panel. Closing the view, changing workspace, reloading

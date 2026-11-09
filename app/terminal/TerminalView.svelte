@@ -11,6 +11,7 @@
     // the parent keys this component by workspace directory.
     let session = $state(terminalSession(untrack(() => directory)));
     let status = $derived(session.state);
+    let directoryName = $derived(directory.split(/[\\/]/).filter(Boolean).at(-1) || directory);
     let mounted = false;
 
     async function restart() {
@@ -36,7 +37,7 @@
 </script>
 
 <ViewToolbar label="Terminal tools">
-    <span class="toolbar-lead terminal-directory" title={directory}>{directory}</span>
+    <span class="toolbar-lead terminal-directory" title={directory}>{directoryName}</span>
     <span id="terminal-restart" tabindex="-1">
         <ActionWidget safe onClick={restart} tip={$status.phase === "running" ? "End the current shell and start a new one" : "Start a new shell"}>{$status.phase === "running" ? "Restart shell" : "New shell"}</ActionWidget>
     </span>

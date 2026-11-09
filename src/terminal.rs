@@ -1,5 +1,7 @@
 //! PTY ownership shared by the desktop and web transports.
 
+mod prompt;
+
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::mpsc::{SyncSender, sync_channel};
@@ -22,6 +24,7 @@ pub struct Terminal {
     master: Box<dyn MasterPty + Send>,
     input: SyncSender<Vec<u8>>,
     killer: Box<dyn ChildKiller + Send + Sync>,
+    _startup: Option<tempfile::TempDir>,
 }
 
 impl Terminal {
@@ -29,7 +32,7 @@ impl Terminal {
         let shell = std::env::var_os(if cfg!(windows) { "COMSPEC" } else { "SHELL" })
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }.into());
-        let mut command = CommandBuilder::new(shell);
+        let mut command = CommandBuilder::new(&shell);
         command.cwd(directory);
         command.env("TERM", "xterm-256color");
         command.env("COLORTERM", "truecolor");
@@ -37,7 +40,10 @@ impl Terminal {
         for variable in ["PS1", "PS2", "PROMPT", "PROMPT2", "RPROMPT", "RPS1"] {
             command.env_remove(variable);
         }
-        Self::spawn(command, cols, rows)
+        let startup = prompt::configure(&mut command, &shell)?;
+        let (mut terminal, output) = Self::spawn(command, cols, rows)?;
+        terminal._startup = startup;
+        Ok((terminal, output))
     }
 
     fn spawn(
@@ -105,6 +111,7 @@ impl Terminal {
                 master: pair.master,
                 input,
                 killer,
+                _startup: None,
             },
             rx,
         ))
