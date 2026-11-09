@@ -41,15 +41,20 @@ export let revisionReviewState = new Map<string, { path: string; scrollTop: numb
 export let fileScrollPositions = new Map<string, number>();
 export let fileHorizontalPositions = new Map<string, number[]>();
 
-export function selectWorkingCopy() {
-    let status = get(repoStatusEvent);
-    if (!status) return;
+export function workingCopySelection(status: RepoStatus): RevSet {
     let id = {
         change: { type: "ChangeId" as const, hex: "@", prefix: "@", rest: "", offset: null, is_divergent: false },
         commit: status.working_copy,
     };
-    revisionSelectEvent.set({ from: id, to: id });
-    workspaceController.selectRevision({ from: id, to: id });
+    return { from: id, to: id };
+}
+
+export function selectWorkingCopy() {
+    let status = get(repoStatusEvent);
+    if (!status) return;
+    let set = workingCopySelection(status);
+    revisionSelectEvent.set(set);
+    workspaceController.selectRevision(set);
 }
 
 export function dragOverWidget(event: DragEvent) {

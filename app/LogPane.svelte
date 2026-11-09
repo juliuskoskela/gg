@@ -53,6 +53,7 @@
     let graphBuilder = new GraphPageBuilder();
     let logError = $state("");
     let latestLogRequest = 0;
+    let initialSelectionRevealed = false;
 
     let selectionAnchorIdx: number | undefined; // selection model is topologically ordered, selection view requires an anchor point
 
@@ -141,7 +142,7 @@
         },
     };
 
-    onMount(() => { loadLog(true); });
+    onMount(() => { loadLog(); });
     onDestroy(() => latestLogRequest++);
 
 
@@ -332,7 +333,7 @@
         reloadLog();
     }
 
-    async function loadLog(selectFirst: boolean) {
+    async function loadLog() {
         logError = "";
         let request = ++latestLogRequest;
         let page = await query<LogPage>(
@@ -348,10 +349,6 @@
             graphBuilder.reset();
             graphRows = graphBuilder.append(page.value.rows);
 
-            if (selectFirst && !$revisionSelectEvent && page.value.rows.length > 0) {
-                setSelection(0, 0);
-            }
-
             while (page.value.has_more) {
                 let next_page = await query<LogPage>("query_log_next_page", null);
                 if (request !== latestLogRequest) return;
@@ -363,10 +360,7 @@
                 }
             }
 
-            // XXX perhaps we should retry this after each page
-            if (!selectFirst) {
-                syncSelectionWithGraph();
-            }
+            syncSelectionWithGraph();
         } else if (page.type === "error") {
             logError = page.message;
         }
@@ -374,7 +368,7 @@
 
 
     // repository-wide rewrite resolution belongs to Shell, never the filtered graph.
-    function syncSelectionWithGraph() {
+    async function syncSelectionWithGraph() {
         const selection = $revisionSelectEvent;
         if (!selection || !graphRows || graphRows.length === 0) {
             return;
@@ -392,13 +386,22 @@
             if (newFrom.commit.hex !== selection.from.commit.hex || newTo.commit.hex !== selection.to.commit.hex) {
                 $revisionSelectEvent = { from: newFrom, to: newTo };
             }
-        } else if (!$workspaceController.inspector) {
-            setSelection(0, 0);
+            if (!initialSelectionRevealed) {
+                let request = latestLogRequest;
+                await tick();
+                if (request !== latestLogRequest || $revisionSelectEvent?.to.commit.hex !== newTo.commit.hex) return;
+                let box = graphBody?.querySelector<HTMLElement>(".listbox");
+                if (box?.clientHeight) {
+                    initialSelectionRevealed = true;
+                    box.scrollTop = Math.max(0, toIdx * measuredRowHeight - (box.clientHeight - measuredRowHeight) / 2);
+                    logScrollTop = box.scrollTop;
+                }
+            }
         }
     }
 
     function reloadLog() {
-        loadLog(false);
+        loadLog();
     }
 
     let presets = $derived((() => {
@@ -510,7 +513,7 @@
         bind:clientWidth={logWidth}
         bind:scrollTop={logScrollTop}>
         {#if logError}
-            <div class="empty-graph" role="alert"><h3>Couldn’t load revisions</h3><p>{logError}</p><ActionWidget onClick={() => loadLog(false)}>Try again</ActionWidget></div>
+            <div class="empty-graph" role="alert"><h3>Couldn’t load revisions</h3><p>{logError}</p><ActionWidget onClick={() => loadLog()}>Try again</ActionWidget></div>
         {:else if graphRows}
             {#if graphRows.length}
             <GraphLog

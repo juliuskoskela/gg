@@ -31,6 +31,7 @@
         progressEvent,
         lastFocus,
         ignoreToggled,
+        workingCopySelection,
     } from "./stores.js";
     import ContextMenu from "./controls/ContextMenu.svelte";
     import { lineMenu, loadAnnotations } from "./annotations/store";
@@ -170,6 +171,7 @@
             settings.markUnpushedBookmarks = config.mark_unpushed_bookmarks;
             ignoreToggled.set(config.ignore_immutable);
             $repoStatusEvent = config.status;
+            if (!revsetOverride) $revisionSelectEvent = workingCopySelection(config.status);
         }
     }
 
