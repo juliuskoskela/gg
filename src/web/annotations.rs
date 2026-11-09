@@ -19,6 +19,10 @@ use super::state::AppState;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/annotations", post(annotations))
+        .route(
+            "/plugin_notes",
+            post(plugin_notes).layer(DefaultBodyLimit::max(11 * 1024 * 1024)),
+        )
         .route("/review_progress", post(review_progress))
         .route("/export_annotations", post(export_annotations))
         .route(
@@ -88,6 +92,23 @@ async fn plugin_data(
 ) -> Result<Json<PluginData>, ApiError> {
     let (tx, rx) = channel();
     state.worker_tx.send(SessionEvent::PluginData {
+        tx,
+        request: req.request,
+    })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct PluginNotes {
+    request: crate::messages::annotation_exchange::PluginNotesRequest,
+}
+
+async fn plugin_notes(
+    State(state): State<AppState>,
+    Json(req): Json<PluginNotes>,
+) -> Result<Json<crate::messages::annotation_exchange::PluginNotesResponse>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::PluginNotes {
         tx,
         request: req.request,
     })?;

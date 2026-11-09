@@ -152,3 +152,58 @@ fn quote_matches(
         .collect();
     Ok(lines.join("\n") == quote.lines().collect::<Vec<_>>().join("\n"))
 }
+
+pub fn plugin_notes(
+    ws: &WorkspaceSession,
+    request: crate::messages::annotation_exchange::PluginNotesRequest,
+) -> Result<crate::messages::annotation_exchange::PluginNotesResponse> {
+    use crate::messages::annotation_exchange::{
+        AnnotationContext, PluginNoteAction, PluginNotesResponse,
+    };
+    if ws.workspace.workspace_root().to_string_lossy() != request.workspace {
+        anyhow::bail!("Plugin request belongs to a different workspace");
+    }
+    let context = AnnotationContext {
+        plugin: request.plugin,
+        id: request.context,
+    };
+    annotations::validate_context(&context)?;
+    let store = store(ws)?;
+    match request.action {
+        PluginNoteAction::List => {}
+        PluginNoteAction::Create { targets, body } => {
+            store.create_in_context(
+                targets,
+                ws.name().as_str(),
+                author(ws),
+                &body,
+                context.clone(),
+            )?;
+        }
+        PluginNoteAction::Reply { id, body } => {
+            store.in_context(&id, &context)?;
+            store.reply(&id, author(ws), &body)?;
+        }
+        PluginNoteAction::Edit { id, post, body } => {
+            store.in_context(&id, &context)?;
+            store.edit(&id, &post, author(ws), &body)?;
+        }
+        PluginNoteAction::SetStatus { id, status } => {
+            store.in_context(&id, &context)?;
+            store.set_status(&id, author(ws), status)?;
+        }
+        PluginNoteAction::Export => {
+            return Ok(PluginNotesResponse::Bundle(store.export_context(&context)?));
+        }
+        PluginNoteAction::Import { bundle } => store.import_context(&context, bundle)?,
+    }
+    let mut list = handle(ws, AnnotationRequest::List)?;
+    list.threads.retain(|thread| {
+        thread
+            .contexts
+            .as_deref()
+            .unwrap_or_default()
+            .contains(&context)
+    });
+    Ok(PluginNotesResponse::List(list))
+}

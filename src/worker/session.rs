@@ -104,6 +104,10 @@ pub enum SessionEvent {
         tx: Sender<Result<messages::annotations::AnnotationList>>,
         request: messages::annotations::AnnotationRequest,
     },
+    PluginNotes {
+        tx: Sender<Result<messages::annotation_exchange::PluginNotesResponse>>,
+        request: messages::annotation_exchange::PluginNotesRequest,
+    },
     PluginData {
         tx: Sender<Result<messages::plugins::PluginData>>,
         request: messages::plugins::PluginRequest,
@@ -367,6 +371,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::Annotations { tx, request } => {
                     tx.send(super::annotations::handle(&self, request))?
                 }
+                SessionEvent::PluginNotes { tx, request } => {
+                    tx.send(super::annotations::plugin_notes(&self, request))?
+                }
                 SessionEvent::PluginData { tx, request } => tx.send(
                     PluginStore::for_workspace(
                         self.workspace.repo_path(),
@@ -616,6 +623,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::Annotations { tx, request }) => {
                     tx.send(super::annotations::handle(self.ws, request))?
+                }
+                Ok(SessionEvent::PluginNotes { tx, request }) => {
+                    tx.send(super::annotations::plugin_notes(self.ws, request))?
                 }
                 Ok(SessionEvent::PluginData { tx, request }) => tx.send(
                     PluginStore::for_workspace(

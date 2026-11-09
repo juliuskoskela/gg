@@ -152,6 +152,9 @@ pub struct AnnotationThread {
     /// everything the note points at, in the order it was added
     pub targets: Vec<AnnotationTarget>,
     pub workspace: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub contexts: Option<Vec<super::annotation_exchange::AnnotationContext>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub status: AnnotationStatus,

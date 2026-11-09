@@ -17,16 +17,22 @@
 //! app and the command line can add to the same thread concurrently.
 
 pub mod cli;
+mod exchange;
+pub(crate) use exchange::validate_context;
 
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow, bail};
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::Utc;
+use serde::Serialize;
 use tempfile::NamedTempFile;
 
+use crate::messages::annotation_exchange::{
+    AnnotationContext, AnnotationEvent as Event, AnnotationEventKind as EventKind,
+    AnnotationHeader as Header,
+};
 use crate::messages::annotations::{
     ANNOTATION_FORMAT, ANNOTATION_VERSION, AnchorState, AnnotationAnchor, AnnotationAuthor,
     AnnotationPost, AnnotationStatus, AnnotationTarget, AnnotationThread, AuthorKind, LineSide,
@@ -36,24 +42,6 @@ use crate::messages::annotations::{
 const MAX_BODY: usize = 100_000;
 const MAX_TARGETS: usize = 500;
 const MAX_QUOTE: usize = 20_000;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Header {
-    format: String,
-    version: u32,
-    id: String,
-    created_at: DateTime<Utc>,
-    author: AnnotationAuthor,
-    #[serde(default)]
-    targets: Vec<TargetInput>,
-    // version 1 pointed at a single place
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    anchor: Option<AnnotationAnchor>,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    subject: String,
-    #[serde(default)]
-    workspace: String,
-}
 
 impl Header {
     fn initial_targets(&self) -> Vec<TargetInput> {
@@ -69,25 +57,6 @@ impl Header {
         }
         targets
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Event {
-    id: String,
-    at: DateTime<Utc>,
-    author: AnnotationAuthor,
-    #[serde(flatten)]
-    kind: EventKind,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum EventKind {
-    Post { body: String },
-    Edit { post: String, body: String },
-    Status { status: AnnotationStatus },
-    AddTargets { targets: Vec<TargetInput> },
-    RemoveTarget { anchor: AnnotationAnchor },
 }
 
 #[derive(Serialize)]
@@ -248,6 +217,29 @@ impl AnnotationStore {
         author: AnnotationAuthor,
         body: &str,
     ) -> Result<AnnotationThread> {
+        self.create_with_contexts(targets, workspace, author, body, Vec::new())
+    }
+
+    pub fn create_in_context(
+        &self,
+        targets: Vec<TargetInput>,
+        workspace: &str,
+        author: AnnotationAuthor,
+        body: &str,
+        context: AnnotationContext,
+    ) -> Result<AnnotationThread> {
+        exchange::validate_context(&context)?;
+        self.create_with_contexts(targets, workspace, author, body, vec![context])
+    }
+
+    fn create_with_contexts(
+        &self,
+        targets: Vec<TargetInput>,
+        workspace: &str,
+        author: AnnotationAuthor,
+        body: &str,
+        contexts: Vec<AnnotationContext>,
+    ) -> Result<AnnotationThread> {
         let targets = validate_targets(targets, &[])?;
         if targets.is_empty() {
             bail!("A note needs something to point at.");
@@ -268,6 +260,7 @@ impl AnnotationStore {
             anchor: None,
             subject: String::new(),
             workspace: workspace.to_owned(),
+            contexts,
         };
         write_atomic(
             &dir.join("annotation.json"),
@@ -492,6 +485,7 @@ impl AnnotationStore {
                 })
                 .collect(),
             workspace: header.workspace,
+            contexts: (!header.contexts.is_empty()).then_some(header.contexts),
             created_at: header.created_at,
             updated_at,
             status,

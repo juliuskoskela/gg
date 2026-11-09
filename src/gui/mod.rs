@@ -335,6 +335,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             review_progress,
             export_annotations,
             plugin_data,
+            plugin_notes,
             query_operation_detail,
             query_revision_diff,
             query_remotes,
@@ -686,6 +687,22 @@ fn annotations(
     app_state
         .get_session(window.label())
         .send(SessionEvent::Annotations { tx, request })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn plugin_notes(
+    window: Window,
+    app_state: State<AppState>,
+    request: messages::annotation_exchange::PluginNotesRequest,
+) -> Result<messages::annotation_exchange::PluginNotesResponse, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::PluginNotes { tx, request })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?
