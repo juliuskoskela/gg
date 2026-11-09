@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { categoryLabel, categoryOf } from "../revision/fileCategories";
     import { shortFilename } from "../paths";
     import type { RevChange } from "../messages/RevChange";
     import type { RevHeader } from "../messages/RevHeader";
@@ -90,6 +91,7 @@
         <div class="layout" class:tree class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
             <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
+            {#if categoryOf(change) !== "Implementation"}<span class="category">{categoryLabel(change)}</span>{/if}
             {#if notes.length}<NoteMarker {notes} />{/if}
             {#if change.has_conflict}
                 <span class="kind" role="img" aria-label="Unresolved conflict" title="Unresolved conflict"><Icon name="alert-triangle" state={context ? null : "remove"} /></span>
@@ -142,6 +144,7 @@
         flex: 1 1 auto;
         min-width: 0;
     }
+    .category { color: var(--muted); font: var(--font-label); white-space: nowrap; }
     .deleted .name { color: var(--muted); }
 
     .kind { display: flex; flex: 0 0 auto; --icon-size: 13px; }

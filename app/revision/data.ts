@@ -20,7 +20,7 @@ export async function loadRevisionSummary(set: RevSet): Promise<Ready<RevsResult
     let summary = result.value;
     let changes: RevChange[] = summary.changes.map(({ stat, ...change }) => ({ ...change, hunks: [], ...(stat ? { stat } : {}) }));
     for (let path of summary.conflicts) {
-        if (!changes.some(change => change.path.repo_path === path.repo_path)) changes.push({ kind: "None", path, has_conflict: true, hunks: [] });
+        if (!changes.some(change => change.path.repo_path === path.repo_path)) changes.push({ kind: "None", category: summary.conflict_categories?.[path.repo_path], path, has_conflict: true, hunks: [] });
     }
     let detail: RevisionDetail = { ...summary, changes, conflicts: [], summaryOnly: true };
     return { type: "data", value: detail };
@@ -37,7 +37,7 @@ export function loadRevisionDiff(revs: RevisionDetail, file: RevChange, reposito
         if (result.type === "error") { diffs.delete(key); return result; }
         if (result.value.type === "NotFound") { diffs.delete(key); return { type: "data" as const, value: null }; }
         let { change, conflict } = result.value;
-        return { type: "data" as const, value: change ?? (conflict ? { kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] } : null) };
+        return { type: "data" as const, value: change ?? (conflict ? { kind: "None" as const, category: conflict.category, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] } : null) };
     });
     diffs.set(key, pending);
     while (diffs.size > 24) diffs.delete(diffs.keys().next().value!);

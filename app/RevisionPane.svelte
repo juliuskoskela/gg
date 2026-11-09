@@ -60,7 +60,7 @@
     }
     let maxFilesWidth = $derived(Math.max(180, Math.floor(Math.min(workspaceWidth * 0.6, workspaceWidth - 284))));
     let filesWidth = $derived(Math.max(180, Math.min(maxFilesWidth, Number.isFinite($fileTreeWidth) ? $fileTreeWidth : 200)));
-    let syntheticChanges = $derived([...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path)));
+    let syntheticChanges = $derived([...revs.changes, ...revs.conflicts.map(conflict => ({ kind: "None" as const, category: conflict.category, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path)));
     let reviewKey = $derived(revisionIdentity(revs, repositoryScope($repoConfigEvent)));
     $effect.pre(() => {
         let key = reviewKey, files = syntheticChanges, requested = requestedPath;

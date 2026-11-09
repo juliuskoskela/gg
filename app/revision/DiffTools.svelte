@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { RevChange } from "../messages/RevChange";
     import PanelTools from "../controls/PanelTools.svelte";
+    import DiffStat from "./DiffStat.svelte";
     import DiffDisplayOptions from "./DiffDisplayOptions.svelte";
     interface Props {
         changes: RevChange[];
@@ -10,8 +11,8 @@
     let { changes, title = "" }: Props = $props();
 </script>
 
-<div class="diff-tools"><PanelTools label="Diff tools" summaryVisible={!!title}>
-    {#snippet summary()}{#if title}<h3>{title}</h3>{/if}{/snippet}
+<div class="diff-tools"><PanelTools label="Diff tools" summaryVisible={true}>
+    {#snippet summary()}{#if title}<h3>{title}</h3>{/if}<DiffStat {changes} />{/snippet}
     {#if changes.length}<DiffDisplayOptions />{/if}
 </PanelTools></div>
 

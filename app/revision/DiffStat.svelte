@@ -1,18 +1,20 @@
 <script lang="ts">
     import type { RevChange } from "../messages/RevChange";
-    interface Props {
-        changes: RevChange[];
-    }
-
+    import { lineCounts } from "./fileCategories";
+    interface Props { changes: RevChange[]; }
     let { changes }: Props = $props();
-    let added = $derived(changes.reduce((total, change) => total + (change.stat?.added ?? change.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("+")).length, 0)), 0));
-    let removed = $derived(changes.reduce((total, change) => total + (change.stat?.removed ?? change.hunks.reduce((count, hunk) => count + hunk.lines.lines.filter(line => line.startsWith("-")).length, 0)), 0));
+    let incomplete = $derived(changes.some(change => change.has_conflict || !change.stat && !change.hunks.length && change.kind !== "None"));
+    let counts = $derived(lineCounts(changes));
+    let different = $derived(counts.added !== counts.totalAdded || counts.removed !== counts.totalRemoved);
+    let description = $derived(`Implementation: ${counts.added} additions, ${counts.removed} deletions${different ? `. All files: ${counts.totalAdded} additions, ${counts.totalRemoved} deletions` : ""}`);
 </script>
 
-<span class="diff-stat" aria-label={`Total diff: ${added} additions, ${removed} deletions`} title="Total changes across all files"><span class="added">+{added}</span><span class="removed">−{removed}</span></span>
+{#if incomplete}<span class="diff-stat unavailable" title="Line counts unavailable for binary or very large changes" aria-label="Line counts unavailable">—</span>{:else}<span class="diff-stat" aria-label={description} title={description}><span class="added">+{counts.added}</span><span class="removed">−{counts.removed}</span>{#if different}<span class="all-files" aria-hidden="true">*</span>{/if}</span>{/if}
 
 <style>
-    .diff-stat { display: inline-flex; align-items: baseline; flex-shrink: 0; gap: var(--panel-gap); font-size: var(--type-caption); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .diff-stat { display: inline-flex; align-items: baseline; flex-shrink: 0; gap: var(--panel-gap); font: var(--font-label); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .unavailable { color: var(--muted); }
     .added { color: var(--positive); }
     .removed { color: var(--negative); }
+    .all-files { color: var(--muted); }
 </style>

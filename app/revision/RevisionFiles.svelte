@@ -3,6 +3,7 @@
 </script>
 
 <script lang="ts">
+    import { groupFiles } from "./fileCategories";
     import { untrack } from "svelte";
 
     import ViewToolbar from "../controls/ViewToolbar.svelte";
@@ -42,6 +43,7 @@
     let panel!: HTMLElement;
     let searchInput: HTMLInputElement | undefined = $state();
     let search = $state("");
+    let groupByType = $state(false);
     let lastKey = $state("");
     let wasVisible = $state(false);
     $effect.pre(() => {
@@ -56,6 +58,8 @@
     });
     $effect.pre(() => { if (reviewKey) fileFilters.set(reviewKey, search); });
     let filteredChanges = $derived(changes.filter(change => change.path.relative_path.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+    let groups = $derived(groupFiles(filteredChanges));
+    let visibleChanges = $derived(groupByType ? groups.flatMap(group => group.changes) : filteredChanges);
     $effect.pre(() => {
         let showing = visible, floating = overlay;
         untrack(() => {
@@ -73,9 +77,9 @@
 <svelte:window onkeydown={keydown} />
 <aside class="file-tree" class:overlay hidden={!visible} id="changed-files" aria-label="Changed files" bind:this={panel}>
     {#if showHeading}<PanelHeader><div class="file-tree-heading">Files <span>{changes.length}</span>{#if onClose}<div class="tree-toggle"><ToggleTray label="Changed files"><ToggleItem kind="disclosure" on text="Tree" label="File tree" tip="Hide file tree" controls="changed-files" onClick={onClose} /></ToggleTray></div>{/if}</div></PanelHeader>{/if}
-    <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter toolbar-lead"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div></ViewToolbar>
-    {#if changes.length > 200}<VirtualFileList changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">No matching files</p>{/if}{:else}
-    <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" onkeydown={navigateOptions}><FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
+    <ViewToolbar label="Files tools" local={showHeading}><div class="file-filter toolbar-lead"><TextField className="file-search" type="search" label="Filter changed files" placeholder="Find a file…" bind:element={searchInput} bind:value={search} /></div><ToggleTray label="File grouping"><ToggleItem on={groupByType} label="Group by type" text="Group by type" onClick={() => groupByType = !groupByType} /></ToggleTray></ViewToolbar>
+    {#if changes.length > 200}<VirtualFileList changes={visibleChanges} {headers} {selectedPath} {onSelect} />{#if !filteredChanges.length}<p class="no-results">No matching files</p>{/if}{:else}
+    <div class="tree-scroll" role="listbox" aria-label="Changed files" tabindex="-1" onkeydown={navigateOptions}>{#if groupByType}{#each groups as group (group.value)}<section aria-label={group.label}><h3 class="category-heading">{group.label}<span>{group.changes.length}</span></h3><FileTree changes={group.changes} {headers} {selectedPath} {onSelect} /></section>{/each}{:else}<FileTree changes={filteredChanges} {headers} {selectedPath} {onSelect} />{/if}{#if !filteredChanges.length}<p class="no-results">{changes.length ? "No matching files" : "No changed files"}</p>{/if}</div>{/if}
 </aside>
 
 <style>
@@ -89,6 +93,7 @@
     .file-tree-heading span { color: var(--muted); font: var(--font-label); }
     .tree-toggle { display: flex; margin-inline-start: auto; }
     .tree-scroll { padding: 0 var(--panel-inset) 8px; flex: 1; overflow: auto; overscroll-behavior: contain; min-height: 0; pointer-events: auto; }
+    .category-heading { display: flex; gap: var(--space-2); margin: var(--space-3) 0 var(--space-1); color: var(--muted); font: var(--font-label); }
     .no-results { margin: 8px 4px; color: var(--muted); font: var(--font-body); }
     @media (pointer: coarse), (max-width: 600px) { .file-tree :global(.file-search) { min-height: 44px; } }
 </style>
