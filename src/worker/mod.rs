@@ -15,6 +15,7 @@
 //! for an example of wiring this up.
 
 mod annotations;
+mod categories;
 mod git_util;
 mod gui_util;
 mod history;

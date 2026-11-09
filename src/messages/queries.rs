@@ -3,10 +3,27 @@
 
 use super::*;
 
+/// Review meaning supplied by the revision's versioned attributes.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub enum FileCategory {
+    #[default]
+    Implementation,
+    Test,
+    Documentation,
+    Generated,
+    AgentGuidance,
+    Localization,
+    Assets,
+}
+
 /// A file-level change within a revision's diff.
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct RevChange {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub category: Option<FileCategory>,
     pub kind: ChangeKind,
     pub path: TreePath,
     pub has_conflict: bool,
@@ -29,6 +46,9 @@ pub struct LineStat {
 #[derive(Serialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct RevChangeSummary {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub category: Option<FileCategory>,
     pub kind: ChangeKind,
     pub path: TreePath,
     pub has_conflict: bool,
@@ -49,6 +69,9 @@ pub enum RevisionSummaryResult {
         parents: Vec<RevHeader>,
         changes: Vec<RevChangeSummary>,
         conflicts: Vec<TreePath>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        conflict_categories: Option<HashMap<String, FileCategory>>,
     },
 }
 
@@ -89,6 +112,9 @@ pub struct OperationPreflight {
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct RevConflict {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub category: Option<FileCategory>,
     pub path: TreePath,
     pub hunk: ChangeHunk,
 }

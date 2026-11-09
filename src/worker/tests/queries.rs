@@ -1166,3 +1166,87 @@ async fn change_only_divergence_returns_all_candidates() -> Result<()> {
     );
     Ok(())
 }
+
+#[tokio::test]
+async fn categories_follow_the_requested_tree_not_the_current_checkout() -> Result<()> {
+    use crate::messages::queries::{FileCategory, RevisionSummaryResult};
+    use std::fs;
+
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let mut ws = session.load_workspace(repo.path()).await?;
+    fs::create_dir_all(repo.path().join("tests/nested"))?;
+    fs::write(
+        repo.path().join(".gitattributes"),
+        "tests/** review-test\n*.txt review-generated\n",
+    )?;
+    fs::write(
+        repo.path().join("tests/nested/.gitattributes"),
+        "*.md -review-test review-documentation=true\n",
+    )?;
+    fs::write(repo.path().join("tests/nested/check.rs"), "test\n")?;
+    fs::write(repo.path().join("tests/nested/readme.md"), "docs\n")?;
+    fs::remove_file(repo.path().join("a.txt"))?;
+    ws.import_and_snapshot(true, false).await?;
+    let old = ws.format_header(&ws.get_commit(ws.wc_id())?, None)?.id;
+    let set = RevSet::singleton(old);
+    let RevsResult::Detail { changes: full, .. } =
+        queries::query_revisions(&ws, set.clone()).await?
+    else {
+        panic!("missing revision")
+    };
+
+    fs::write(
+        repo.path().join(".gitattributes"),
+        "tests/** review-generated\n",
+    )?;
+    ws.import_and_snapshot(true, false).await?;
+
+    let RevisionSummaryResult::Detail { changes, .. } =
+        queries::query_revision_summary(&ws, set.clone()).await?
+    else {
+        panic!("missing revision")
+    };
+    assert_eq!(
+        changes
+            .iter()
+            .find(|change| change.path.repo_path == "tests/nested/check.rs")
+            .unwrap()
+            .category,
+        Some(FileCategory::Test)
+    );
+    assert_eq!(
+        changes
+            .iter()
+            .find(|change| change.path.repo_path == "tests/nested/readme.md")
+            .unwrap()
+            .category,
+        Some(FileCategory::Documentation)
+    );
+    assert_eq!(
+        changes
+            .iter()
+            .find(|change| change.path.repo_path == "a.txt")
+            .unwrap()
+            .category,
+        Some(FileCategory::Generated)
+    );
+    for change in changes {
+        assert_eq!(
+            full.iter()
+                .find(|full| full.path.repo_path == change.path.repo_path)
+                .unwrap()
+                .category,
+            change.category
+        );
+        let crate::messages::queries::RevisionDiffResult::Detail {
+            change: Some(single),
+            ..
+        } = queries::query_revision_diff(&ws, set.clone(), change.path, false).await?
+        else {
+            panic!("missing file diff")
+        };
+        assert_eq!(single.category, change.category);
+    }
+    Ok(())
+}

@@ -37,7 +37,7 @@ use crate::messages::{
 #[cfg(test)]
 use crate::messages::{RevHeader, RevId};
 
-use super::{WorkspaceSession, git_util::get_git_remote_names};
+use super::{WorkspaceSession, categories::FileCategories, git_util::get_git_remote_names};
 
 struct LogStem {
     source: LogCoordinates,
@@ -363,12 +363,21 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
 
     let newest_commit = commits.first().ok_or(anyhow!("slice is_empty()"))?;
     let final_tree = newest_commit.tree();
+    let mut categories = FileCategories::new(&final_tree);
 
     // compute combined changes: diff from parents to final
     let mut changes = Vec::new();
     let tree_diff = parent_tree.diff_stream(&final_tree, &EverythingMatcher);
     let conflict_labels = Diff::new(parent_tree.labels(), final_tree.labels());
-    format_tree_changes(ws, &mut changes, tree_diff, conflict_labels, 3).await?;
+    format_tree_changes(
+        ws,
+        &mut changes,
+        tree_diff,
+        conflict_labels,
+        3,
+        &mut categories,
+    )
+    .await?;
 
     let mut conflicts = Vec::new();
     for (path, entry) in final_tree.entries() {
@@ -401,6 +410,7 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
                     let mut hunks = get_unified_hunks(3, &hunk_content, &[])?;
                     if let Some(hunk) = hunks.pop() {
                         conflicts.push(RevConflict {
+                            category: Some(categories.category(&path).await?),
                             path: ws.format_path(path)?,
                             hunk,
                         });
@@ -597,6 +607,7 @@ pub async fn query_revision_summary(
     let labels = Diff::new(parent_tree.labels(), final_tree.labels());
     let with_stats = entries.len() <= SUMMARY_STAT_FILE_LIMIT;
     let mut changes = Vec::with_capacity(entries.len());
+    let mut categories = FileCategories::new(&final_tree);
     for (path, diff) in entries {
         let kind = if diff.before.is_present() && diff.after.is_present() {
             ChangeKind::Modified
@@ -616,6 +627,7 @@ pub async fn query_revision_summary(
             None
         };
         changes.push(RevChangeSummary {
+            category: Some(categories.category(&path).await?),
             kind,
             path: ws.format_path(path)?,
             has_conflict,
@@ -627,6 +639,14 @@ pub async fn query_revision_summary(
         if !entry?.is_resolved() {
             conflicts.push(ws.format_path(path)?);
         }
+    }
+    let mut conflict_categories = std::collections::HashMap::new();
+    for path in &conflicts {
+        let repo_path = RepoPath::from_internal_string(&path.repo_path)?;
+        conflict_categories.insert(
+            path.repo_path.clone(),
+            categories.category(repo_path).await?,
+        );
     }
     let conflicted_paths: HashSet<_> = conflicts
         .iter()
@@ -647,6 +667,7 @@ pub async fn query_revision_summary(
         .map(|p| ws.format_header(p, known_immutable))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(RevisionSummaryResult::Detail {
+        conflict_categories: (!conflict_categories.is_empty()).then_some(conflict_categories),
         set,
         headers,
         parents,
@@ -668,6 +689,7 @@ pub async fn query_revision_diff(
     let oldest = commits.last().ok_or(anyhow!("empty revision set"))?;
     let parent_tree = rewrite::merge_commit_trees(ws.repo(), &oldest.parents().await?).await?;
     let final_tree = commits.first().ok_or(anyhow!("empty revision set"))?.tree();
+    let mut categories = FileCategories::new(&final_tree);
     let repo_path = RepoPath::from_internal_string(&path.repo_path)?;
     let matcher = FilesMatcher::new([repo_path]);
     let mut changes = Vec::new();
@@ -677,6 +699,7 @@ pub async fn query_revision_diff(
         parent_tree.diff_stream(&final_tree, &matcher),
         Diff::new(parent_tree.labels(), final_tree.labels()),
         if full_context { usize::MAX } else { 3 },
+        &mut categories,
     )
     .await?;
     let mut conflict = None;
@@ -696,6 +719,7 @@ pub async fn query_revision_diff(
                 None => None,
             } {
                 conflict = Some(RevConflict {
+                    category: Some(categories.category(&entry_path).await?),
                     path: ws.format_path(entry_path)?,
                     hunk,
                 });
@@ -752,6 +776,7 @@ async fn format_tree_changes(
     mut tree_diff: TreeDiffStream<'_>,
     conflict_labels: Diff<&ConflictLabels>,
     context_lines: usize,
+    categories: &mut FileCategories<'_>,
 ) -> Result<()> {
     let store = ws.repo().store();
 
@@ -779,6 +804,7 @@ async fn format_tree_changes(
         let hunks = get_value_hunks(context_lines, &path, before_value, after_value).await?;
 
         changes.push(RevChange {
+            category: Some(categories.category(&path).await?),
             path: ws.format_path(path)?,
             kind,
             has_conflict,
