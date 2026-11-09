@@ -13,6 +13,7 @@
 pub mod annotations;
 pub mod askpass;
 pub mod config;
+pub mod github;
 pub mod messages;
 pub mod plugins;
 pub mod review;

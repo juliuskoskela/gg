@@ -198,6 +198,7 @@ pub fn create_app(
         .nest("/api/trigger", triggers::router())
         .route("/api/mutate/{command}", post(handle_mutate))
         .route("/api/events", get(stream_events))
+        .route("/api/query/github_public", post(github_public))
         .with_state(state.clone());
 
     if client_timeout.is_some() {
@@ -399,4 +400,14 @@ where
     })?;
     let result = rx.recv()?;
     Ok(Json(serde_json::to_value(result)?))
+}
+
+async fn github_public(
+    Json(request): Json<GithubRead>,
+) -> Result<Json<crate::messages::github::GithubResponse>, ApiError> {
+    Ok(Json(crate::github::read(request.request).await?))
+}
+#[derive(Deserialize)]
+struct GithubRead {
+    request: crate::messages::github::GithubRequest,
 }

@@ -8,6 +8,7 @@
 
 pub mod annotation_exchange;
 pub mod annotations;
+pub mod github;
 pub mod mutations;
 pub mod plugins;
 pub mod queries;

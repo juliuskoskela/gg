@@ -339,6 +339,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             export_annotations,
             plugin_data,
             plugin_notes,
+            github_public,
             query_operation_detail,
             query_revision_diff,
             query_remotes,
@@ -1872,5 +1873,14 @@ fn query_split_receipt_states(
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command]
+async fn github_public(
+    request: messages::github::GithubRequest,
+) -> Result<messages::github::GithubResponse, InvokeError> {
+    gg_lib::github::read(request)
+        .await
         .map_err(InvokeError::from_anyhow)
 }
