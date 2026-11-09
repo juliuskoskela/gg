@@ -11,26 +11,24 @@ describe("input and acknowledgement dialogs", () => {
         let { default: InputDialog } = await import("./InputDialog.svelte");
         let response = vi.fn();
         let { getByRole, queryByRole } = render(InputDialog, {
-            props: { title: "Action unavailable", detail: "The destination must resolve to one revision.", fields: [] },
-            events: { response },
+            props: { title: "Action unavailable", detail: "The destination must resolve to one revision.", fields: [], onResponse: response },
         });
         let button = getByRole("button", { name: "OK" });
         expect(document.activeElement).toBe(button);
         expect(queryByRole("button", { name: "Cancel" })).toBeNull();
         await fireEvent.click(button);
-        expect(response).toHaveBeenCalledWith(expect.objectContaining({ detail: { fields: {} } }));
+        expect(response).toHaveBeenCalledWith({ fields: {} });
     });
 
     it("keeps field focus and Escape cancellation for ordinary input", async () => {
         let { default: InputDialog } = await import("./InputDialog.svelte");
         let response = vi.fn();
         let { getByRole } = render(InputDialog, {
-            props: { title: "Name", detail: "", fields: [{ label: "Bookmark", choices: [] }] },
-            events: { response },
+            props: { title: "Name", detail: "", fields: [{ label: "Bookmark", choices: [] }], onResponse: response },
         });
         expect(document.activeElement).toBe(getByRole("textbox", { name: /Bookmark/ }));
         await fireEvent.keyDown(document, { key: "Escape" });
-        expect(response).toHaveBeenCalledWith(expect.objectContaining({ detail: null }));
+        expect(response).toHaveBeenCalledWith(null);
     });
 });
 
@@ -40,14 +38,14 @@ describe("input dialog keyboard behavior", () => {
         document.body.append(trigger);
         trigger.focus();
         let response = vi.fn();
-        let view = render(InputDialog, { props: { title: "Input", detail: "", fields: [{ label: "Name", choices: [] }] }, events: { response } });
+        let view = render(InputDialog, { props: { title: "Input", detail: "", fields: [{ label: "Name", choices: [] }], onResponse: response } });
         let cancel = view.getByRole("button", { name: "Cancel" });
         cancel.focus();
         await fireEvent.keyDown(cancel, { key: "Enter" });
         expect(response).not.toHaveBeenCalled();
         await fireEvent.click(cancel);
         expect(response).toHaveBeenCalledOnce();
-        expect(response.mock.calls[0][0].detail).toBeNull();
+        expect(response.mock.calls[0][0]).toBeNull();
         view.unmount();
         expect(document.activeElement).toBe(trigger);
         trigger.remove();
@@ -56,8 +54,7 @@ describe("input dialog keyboard behavior", () => {
     it("does not submit an input while composing or after a handled key", async () => {
         let response = vi.fn();
         let view = render(InputDialog, {
-            props: { title: "Input", detail: "", fields: [{ label: "Name", choices: [] }] },
-            events: { response },
+            props: { title: "Input", detail: "", fields: [{ label: "Name", choices: [] }], onResponse: response },
         });
         let input = view.getByRole("textbox", { name: /Name/ });
         await fireEvent.keyDown(input, { key: "Enter", isComposing: true });

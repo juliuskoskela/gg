@@ -364,7 +364,7 @@
                     title={$currentInput.title}
                     detail={$currentInput.detail}
                     fields={$currentInput.fields}
-                    on:response={(event) => $currentInput?.callback(event.detail)} />
+                    onResponse={response => $currentInput?.callback(response)} />
             </ModalOverlay>
         {:else if $currentMutation}
             <ModalOverlay>

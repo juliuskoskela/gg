@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import { onMount, tick } from "svelte";
     import { dock } from "../workspace/dock";
     import CommandPalette from "../commands/CommandPalette.svelte";
@@ -15,16 +16,23 @@
     import PlaceMenu from "./PlaceMenu.svelte";
     import ViewsMenu from "./ViewsMenu.svelte";
 
-    export let target = false;
-    export let workspace: Extract<RepoConfig, { type: "Workspace" }>;
-    let menuOpen = false;
-    let viewportWidth = 1440;
+    interface Props {
+        target?: boolean;
+        workspace: Extract<RepoConfig, { type: "Workspace" }>;
+        children?: Snippet;
+    }
+
+    let { target = false, workspace, children }: Props = $props();
+    let menuOpen = $state(false);
+    let viewportWidth = $state(1440);
     let standalone = typeof window !== "undefined" && window.location.pathname !== "/";
-    $: persistentNavigation = viewportWidth >= 768;
-    $: if (persistentNavigation) menuOpen = false;
-    let refreshing = false;
-    let refreshError = "";
-    $: currentQuery = $activeLogQuery ?? workspace.latest_query;
+    let persistentNavigation = $derived(viewportWidth >= 768);
+    $effect.pre(() => {
+        if (persistentNavigation) menuOpen = false;
+    });
+    let refreshing = $state(false);
+    let refreshError = $state("");
+    let currentQuery = $derived($activeLogQuery ?? workspace.latest_query);
 
     function selectView(revset: string) {
         workspaceController.setPresentation("closed");
@@ -75,7 +83,7 @@
 
 <div class="workspace-frame" class:with-navigation={persistentNavigation} class:expanded-navigation={$navigationExpanded} inert={$hasModal}>
     <header class="workspace-topbar">
-        {#if !persistentNavigation}<button class="navigation-trigger" type="button" aria-label="Open repository navigation" aria-expanded={menuOpen} aria-controls="workspace-navigation" on:click={() => menuOpen = true}><Icon name="menu" /></button>{/if}
+        {#if !persistentNavigation}<button class="navigation-trigger" type="button" aria-label="Open repository navigation" aria-expanded={menuOpen} aria-controls="workspace-navigation" onclick={() => menuOpen = true}><Icon name="menu" /></button>{/if}
         <PlaceMenu {workspace} />
         {#if !standalone}<div class="views-control"><ViewsMenu /></div>{/if}
     </header>
@@ -83,20 +91,20 @@
         <aside class="workspace-navigation" id="workspace-navigation" aria-label="Repository navigation">
             <div class="navigation-scroll"><RepositoryNavigation {workspace} {currentQuery} collapsed={!$navigationExpanded} onSelect={selectView} onHistory={openHistory} onWorkingCopy={selectWorkingCopy} /></div>
             <div class="navigation-footer">
-                <button class="settings-trigger" type="button" aria-label="Settings" title="Settings" aria-controls="panel-settings" on:click={openSettings}><Icon name="settings" />{#if $navigationExpanded}<span>Settings</span>{/if}</button>
+                <button class="settings-trigger" type="button" aria-label="Settings" title="Settings" aria-controls="panel-settings" onclick={openSettings}><Icon name="settings" />{#if $navigationExpanded}<span>Settings</span>{/if}</button>
                 <PanelToggle label={$navigationExpanded ? "Collapse repository navigation" : "Expand repository navigation"} text={$navigationExpanded ? "Collapse" : ""} controls="workspace-navigation" expanded={$navigationExpanded} onToggle={() => navigationExpanded.update(value => !value)} /></div>
         </aside>
     {:else}
         <Drawer id="workspace-navigation" open={menuOpen} title="Repository navigation" onClose={() => menuOpen = false}>
             <div class="drawer-navigation">
                 <RepositoryNavigation {workspace} {currentQuery} onSelect={selectView} onHistory={openHistory} onWorkingCopy={() => { selectWorkingCopy(); menuOpen = false; }} />
-                <button class="settings-trigger" type="button" aria-label="Settings" aria-controls="panel-settings" on:click={openSettings}><Icon name="settings" /><span>Settings</span></button>
+                <button class="settings-trigger" type="button" aria-label="Settings" aria-controls="panel-settings" onclick={openSettings}><Icon name="settings" /><span>Settings</span></button>
             </div>
         </Drawer>
     {/if}
     <main class="workspace-sheet" class:has-error={!!refreshError}>
         {#if refreshError}<p class="refresh-error" role="alert">Couldn’t refresh: {refreshError}</p>{/if}
-        <div class="workspace-content"><slot /></div>
+        <div class="workspace-content">{@render children?.()}</div>
     </main>
     <footer class="workspace-footer" aria-label="Repository controls">
         <RepositoryToolbar {target} {refreshing} onRefresh={refresh} />

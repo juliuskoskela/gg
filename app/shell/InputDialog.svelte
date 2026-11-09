@@ -1,6 +1,6 @@
 <script lang="ts">
     import TextField from "../controls/TextField.svelte";
-    import { createEventDispatcher, onMount } from "svelte";
+    import { onMount } from "svelte";
     import type { InputResponse } from "../messages/InputResponse";
     import type { InputField } from "../messages/InputField";
     import ActionWidget from "../controls/ActionWidget.svelte";
@@ -27,15 +27,15 @@
         }
     }
 
-    interface $$Events {
-        response: CustomEvent<InputResponse | null>;
+    interface Props {
+        title: string;
+        detail: string;
+        fields: InputField[];
+        onResponse?: (response: InputResponse | null) => void;
     }
 
-    export let title: string;
-    export let detail: String;
-    export let fields: InputField[];
+    let { title, detail, fields, onResponse }: Props = $props();
 
-    let dispatch = createEventDispatcher();
 
     onMount(() => {
         if (fields[0]) document.getElementById(`field-${fields[0].label}`)?.focus();
@@ -43,7 +43,7 @@
     });
 
     function onCancel() {
-        dispatch("response", null);
+        onResponse?.(null);
     }
 
     function onEnter() {
@@ -67,7 +67,7 @@
             }
         }
 
-        dispatch("response", {
+        onResponse?.({
             fields: responseFields,
         });
     }

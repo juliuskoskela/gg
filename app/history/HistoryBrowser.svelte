@@ -1,19 +1,37 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import "./history.css";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Icon from "../controls/Icon.svelte";
     import LogList, { type LogEntry } from "../controls/LogList.svelte";
-    export let label: string;
-    export let caption: string;
-    export let rows: LogEntry[] = [];
-    export let selected = "";
-    export let loading = false;
-    export let error = "";
-    export let more = false;
-    export let onSelect: (id: string) => void;
-    export let onMore: () => void;
-    export let onRefresh: () => void;
+    interface Props {
+        label: string;
+        caption: string;
+        rows?: LogEntry[];
+        selected?: string;
+        loading?: boolean;
+        error?: string;
+        more?: boolean;
+        onSelect: (id: string) => void;
+        onMore: () => void;
+        onRefresh: () => void;
+        children?: Snippet;
+    }
+
+    let {
+        label,
+        caption,
+        rows = [],
+        selected = "",
+        loading = false,
+        error = "",
+        more = false,
+        onSelect,
+        onMore,
+        onRefresh,
+        children
+    }: Props = $props();
 </script>
 
 <ViewToolbar label={`${label} tools`}><ActionWidget safe tip={`Refresh ${label.toLowerCase()}`} disabled={loading} onClick={onRefresh}><Icon name="refresh-cw" />Refresh</ActionWidget></ViewToolbar>
@@ -24,12 +42,12 @@
         <div class="history-index">
             <LogList {rows} {selected} {onSelect} label={`${label} entries`} />
             {#if loading}<p class="history-state" role="status">Loading history…</p>{/if}
-            {#if error}<div class="history-state" role="alert"><p>{error}</p><button type="button" on:click={rows.length ? onMore : onRefresh}>Try again</button></div>{/if}
+            {#if error}<div class="history-state" role="alert"><p>{error}</p><button type="button" onclick={rows.length ? onMore : onRefresh}>Try again</button></div>{/if}
             {#if !loading && !error && !rows.length}<p class="history-state">No retained history is available.</p>{/if}
-            {#if more}<button class="load-more" type="button" disabled={loading} on:click={onMore}>Load earlier entries</button>{/if}
+            {#if more}<button class="load-more" type="button" disabled={loading} onclick={onMore}>Load earlier entries</button>{/if}
         </div>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (historical details scroll independently) -->
-        <div class="history-detail" role="region" aria-label={`${label} detail`} tabindex="0"><slot /></div>
+        <div class="history-detail" role="region" aria-label={`${label} detail`} tabindex="0">{@render children?.()}</div>
     </div>
 </section>
 
