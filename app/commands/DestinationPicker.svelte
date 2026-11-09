@@ -1,25 +1,28 @@
 <script lang="ts">
+    import { untrack } from "svelte";
     import TextField from "../controls/TextField.svelte";
     import { tick } from "svelte";
     import { destinationRequest } from "./destination";
     import { revisionLabel } from "./registry";
-    let dialog: HTMLDialogElement;
-    let input: HTMLInputElement | undefined;
-    let expression = "";
+    let dialog = $state<HTMLDialogElement>();
+    let input: HTMLInputElement | undefined = $state();
+    let expression = $state("");
     let previous: HTMLElement | null = null;
-    let shown = false;
-    $: candidates = ($destinationRequest?.candidates ?? []).filter(candidate => !expression.trim() || revisionLabel(candidate).toLowerCase().includes(expression.trim().toLowerCase()));
-    $: if ($destinationRequest && !shown) show();
-    async function show() { shown = true; expression = ""; previous = document.activeElement as HTMLElement; await tick(); dialog.showModal(); input?.focus(); }
-    function finish(value: string | null) { let request = $destinationRequest; dialog.close(); destinationRequest.set(null); shown = false; previous?.focus(); request?.resolve(value); }
+    let shown = $state(false);
+    async function show() { shown = true; expression = ""; previous = document.activeElement as HTMLElement; await tick(); dialog?.showModal(); input?.focus(); }
+    function finish(value: string | null) { let request = $destinationRequest; dialog?.close(); destinationRequest.set(null); shown = false; previous?.focus(); request?.resolve(value); }
+    let candidates = $derived(($destinationRequest?.candidates ?? []).filter(candidate => !expression.trim() || revisionLabel(candidate).toLowerCase().includes(expression.trim().toLowerCase())));
+    $effect(() => {
+        if ($destinationRequest && !shown) untrack(() => show());
+    });
 </script>
 {#if $destinationRequest}
-    <dialog bind:this={dialog} aria-label={$destinationRequest.title} on:cancel|preventDefault={() => finish(null)}>
+    <dialog bind:this={dialog} aria-label={$destinationRequest.title} oncancel={event => { event.preventDefault(); finish(null); }}>
         <h2>{$destinationRequest.title}</h2>
         <label for="destination-expression">Bookmark or revset</label>
-        <div class="input-row"><TextField id="destination-expression" bind:element={input} bind:value={expression} /><button type="button" disabled={!expression.trim()} on:click={() => finish(expression.trim())}>Use</button></div>
-        {#if $destinationRequest.candidates.length}<p>Or choose a visible revision</p><div class="candidates">{#each candidates as candidate (candidate.id.commit.hex)}<button type="button" on:click={() => finish(candidate.id.commit.hex)}>{revisionLabel(candidate)}</button>{/each}</div>{/if}
-        <button type="button" on:click={() => finish(null)}>Cancel</button>
+        <div class="input-row"><TextField id="destination-expression" bind:element={input} bind:value={expression} /><button type="button" disabled={!expression.trim()} onclick={() => finish(expression.trim())}>Use</button></div>
+        {#if $destinationRequest.candidates.length}<p>Or choose a visible revision</p><div class="candidates">{#each candidates as candidate (candidate.id.commit.hex)}<button type="button" onclick={() => finish(candidate.id.commit.hex)}>{revisionLabel(candidate)}</button>{/each}</div>{/if}
+        <button type="button" onclick={() => finish(null)}>Cancel</button>
     </dialog>
 {/if}
 <style>

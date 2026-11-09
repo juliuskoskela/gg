@@ -1,11 +1,16 @@
 <script lang="ts">
+    import { untrack } from "svelte";
     import { onDestroy, type Snippet } from "svelte";
     import ToolbarRow from "./ToolbarRow.svelte";
     import { toolbarOwner, useToolbars } from "../workspace/toolbars";
 
-    export let children: Snippet;
-    export let label = "View tools";
-    export let local = false;
+    interface Props {
+        children: Snippet;
+        label?: string;
+        local?: boolean;
+    }
+
+    let { children, label = "View tools", local = false }: Props = $props();
     let toolbars = useToolbars();
     let owner = toolbarOwner();
     let registered: Snippet | undefined;
@@ -20,7 +25,10 @@
             return next;
         });
     }
-    $: contribute(children, local);
+    $effect.pre(() => {
+        let content = children, inline = local;
+        untrack(() => contribute(content, inline));
+    });
     onDestroy(() => {
         if (toolbars && owner) toolbars.update(current => {
             if (current.get(owner!) !== registered) return current;

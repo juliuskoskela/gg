@@ -12,33 +12,37 @@
     import type { RevHeader } from "../messages/RevHeader";
     import { appZoom, nativeZoomEnabled, zoomCommands } from "../display/zoom";
 
-    export let headers: RevHeader[] | undefined = undefined;
-    let open = false;
-    let search = "";
-    let input: HTMLInputElement | undefined;
-    let dialog: HTMLDialogElement;
+    interface Props {
+        headers?: RevHeader[] | undefined;
+    }
+
+    let { headers = undefined }: Props = $props();
+    let open = $state(false);
+    let search = $state("");
+    let input: HTMLInputElement | undefined = $state();
+    let dialog = $state<HTMLDialogElement>();
     let previous: HTMLElement | null = null;
-    $: activeHeaders = headers ?? $selectionHeaders;
-    $: commands = [
+    let activeHeaders = $derived(headers ?? $selectionHeaders);
+    let commands = $derived([
         ...zoomCommands($appZoom, $nativeZoomEnabled),
         ...repositoryCommands("", $currentMutation, $mutationPending, $repoStatusEvent, $repoConfigEvent),
         ...workspaceViews.map((view): Command => ({ id: `view.${view.id}`, label: view.commandLabel ?? view.label, icon: "layers", scope: "View", reason: view.available && !view.available({ status: $repoStatusEvent, hasSelection: activeHeaders.length > 0 }) ? "Not available" : null, execute: () => { window.dispatchEvent(new CustomEvent("gg:open-view", { detail: view.id })); } })),
         ...revisionCommands(activeHeaders, true, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled),
         ...contextCommands($commandOperand ?? $currentContext, $currentWorkspaceIdentity, $currentMutation, $mutationPending, $ignoreToggled),
         ...annotationCommands($commandOperand ?? $currentContext ?? ($pickedRevisions.length > 1 ? { type: "Revisions", headers: $pickedRevisions } : null) ?? (activeHeaders.length === 1 ? { type: "Revision", header: activeHeaders[0] } : activeHeaders.length > 1 ? { type: "Revisions", headers: activeHeaders } : null)),
-    ];
-    $: filtered = commands.filter(c => `${c.label} ${c.scope}`.toLowerCase().includes(search.toLowerCase()));
+    ]);
+    let filtered = $derived(commands.filter(c => `${c.label} ${c.scope}`.toLowerCase().includes(search.toLowerCase())));
     async function show() {
         if ($hasModal || open) return;
         previous = document.activeElement as HTMLElement;
         search = ""; open = true;
-        await tick(); dialog.showModal(); input?.focus();
+        await tick(); dialog?.showModal(); input?.focus();
     }
     onMount(() => { window.addEventListener("gg:open-commands", show); return () => window.removeEventListener("gg:open-commands", show); });
     function close() { dialog?.close(); open = false; previous?.focus(); }
     function run(command: Command) { if (command.reason) return; close(); command.execute(); }
     function focusResult(index: number) {
-        let buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>(".results button"));
+        let buttons = Array.from(dialog?.querySelectorAll<HTMLButtonElement>(".results button") ?? []);
         let next = buttons[Math.max(0, Math.min(buttons.length - 1, index))];
         next?.focus(); next?.scrollIntoView({ block: "nearest" });
     }
@@ -56,22 +60,22 @@
         if (event.key === "Escape") { event.preventDefault(); close(); return; }
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            let buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>(".results button"));
+            let buttons = Array.from(dialog?.querySelectorAll<HTMLButtonElement>(".results button") ?? []);
             let current = buttons.indexOf(document.activeElement as HTMLButtonElement);
             focusResult(current < 0 ? 0 : current + (event.key === "ArrowDown" ? 1 : -1));
         }
         if (event.key === "Enter" && event.target === input && filtered[0]) { event.preventDefault(); run(filtered[0]); }
     }
 </script>
-<svelte:window on:keydown={key} />
+<svelte:window onkeydown={key} />
 {#if open}
-    <dialog bind:this={dialog} class="palette" aria-label="Commands" on:cancel|preventDefault={close} on:click={event => { if (event.target === dialog) close(); }}>
+    <dialog bind:this={dialog} class="palette" aria-label="Commands" oncancel={event => { event.preventDefault(); close(); }} onclick={event => { if (event.target === dialog) close(); }}>
         <div class="content">
-            <div class="heading"><label for="command-search">Commands</label><button type="button" on:click={close} aria-label="Close commands"><Icon name="x" /></button></div>
+            <div class="heading"><label for="command-search">Commands</label><button type="button" onclick={close} aria-label="Close commands"><Icon name="x" /></button></div>
             <TextField id="command-search" bind:element={input} bind:value={search} placeholder="Search commands" autocomplete="off" aria-controls="command-results" />
             <div id="command-results" class="results" aria-label="Available commands">
                 {#each filtered as command (command.id)}
-                    <button type="button" aria-disabled={!!command.reason} on:click={() => run(command)}>
+                    <button type="button" aria-disabled={!!command.reason} onclick={() => run(command)}>
                         <span>{command.label}<small>{command.scope}{#if command.shortcut} · {command.shortcut}{/if}</small></span>{#if command.reason}<small>{command.reason}</small>{/if}
                     </button>
                 {:else}<p>No matching commands</p>{/each}

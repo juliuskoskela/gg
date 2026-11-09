@@ -8,15 +8,8 @@
     import Icon from "./Icon.svelte";
     import { annotationCommands } from "../annotations/commands";
     import { openViewCommands } from "../workspace/viewCommands";
-    export let operand: Operand | null = null;
-    /** a fixed list, for menus about things that aren't operands, such as diff lines */
-    export let items: Command[] | null = null;
-    export let heading: string | null = null;
-    export let x: number;
-    export let y: number;
-    export let placement: "pointer" | "above-end" = "pointer";
-    export let onClose: () => void;
-    let menuElement: HTMLDivElement;
+
+    let menuElement!: HTMLDivElement;
     let previous = document.activeElement as HTMLElement | null;
     // like native menus, nothing is highlighted until the pointer moves or arrow keys pick an item;
     // a menu that opens under a resting pointer mustn't select whatever lies beneath it
@@ -52,36 +45,60 @@
         return [...groups.entries()].sort(([a], [b]) => a - b).map(([, commands]) => commands);
     }
 
-    $: commands = items ?? [...actionCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending), ...annotationCommands(operand)];
     function actionCommands(operand: Operand | null, ..._dependencies: unknown[]): Command[] {
         if (!operand) return [];
         return operand.type === "Revision" ? revisionCommands([operand.header], false, $ignoreToggled, $currentMutation, $mutationPending) : operand.type === "Revisions" ? revisionCommands(operand.headers, false, $ignoreToggled, $currentMutation, $mutationPending) : contextCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending);
     }
-    // every menu ends with the views that can still be opened, so right-clicking is always a way to add one
-    export let views = true;
-    $: viewItems = views ? openViewCommands().filter(command => !command.reason) : [];
-    // destructive actions stay last, after the views
-    $: actionSections = sections(commands);
-    $: destructive = actionSections.filter(section => section.every(command => command.destructive));
-    $: grouped = [...actionSections.filter(section => !destructive.includes(section)), ...(viewItems.length ? [viewItems] : []), ...destructive];
-    // a title only when it clarifies scope: several revisions at once
-    $: title = heading ?? (operand?.type === "Revisions" && operand.headers.length > 1 ? `${operand.headers.length} revisions` : null);
-    $: unavailable = grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? (views ? "All views are open" : "No actions available")) : null;
-    $: if (menuElement) {
-        let rect = menuElement.getBoundingClientRect();
-        let left = placement === "above-end" ? x - rect.width : x;
-        let top = placement === "above-end" ? y - rect.height - 4 : y;
-        menuElement.style.left = `${Math.max(8, Math.min(left, window.innerWidth - rect.width - 8))}px`;
-        menuElement.style.top = `${Math.max(8, Math.min(top, window.innerHeight - rect.height - 8))}px`;
+
+    interface Props {
+        operand?: Operand | null;
+        /** a fixed list, for menus about things that aren't operands, such as diff lines */
+        items?: Command[] | null;
+        heading?: string | null;
+        x: number;
+        y: number;
+        placement?: "pointer" | "above-end";
+        onClose: () => void;
+        // every menu ends with the views that can still be opened, so right-clicking is always a way to add one
+        views?: boolean;
     }
+
+    let {
+        operand = null,
+        items = null,
+        heading = null,
+        x,
+        y,
+        placement = "pointer",
+        onClose,
+        views = true
+    }: Props = $props();
+    let commands = $derived(items ?? [...actionCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending), ...annotationCommands(operand)]);
+    let viewItems = $derived(views ? openViewCommands().filter(command => !command.reason) : []);
+    // destructive actions stay last, after the views
+    let actionSections = $derived(sections(commands));
+    let destructive = $derived(actionSections.filter(section => section.every(command => command.destructive)));
+    let grouped = $derived([...actionSections.filter(section => !destructive.includes(section)), ...(viewItems.length ? [viewItems] : []), ...destructive]);
+    // a title only when it clarifies scope: several revisions at once
+    let title = $derived(heading ?? (operand?.type === "Revisions" && operand.headers.length > 1 ? `${operand.headers.length} revisions` : null));
+    let unavailable = $derived(grouped.length === 0 ? (commands.find(command => command.reason)?.reason ?? (views ? "All views are open" : "No actions available")) : null);
+    $effect(() => {
+        if (menuElement) {
+            let rect = menuElement.getBoundingClientRect();
+            let left = placement === "above-end" ? x - rect.width : x;
+            let top = placement === "above-end" ? y - rect.height - 4 : y;
+            menuElement.style.left = `${Math.max(8, Math.min(left, window.innerWidth - rect.width - 8))}px`;
+            menuElement.style.top = `${Math.max(8, Math.min(top, window.innerHeight - rect.height - 8))}px`;
+        }
+    });
 </script>
-<svelte:window on:click={onClose} on:blur={onClose} on:resize={onClose} />
-<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="-1" aria-label={title ?? "Actions"} on:click|stopPropagation on:contextmenu|preventDefault|stopPropagation on:keydown={key} on:mouseleave={() => menuElement.focus({ preventScroll: true })} bind:this={menuElement}>
+<svelte:window onclick={onClose} onblur={onClose} onresize={onClose} />
+<div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="-1" aria-label={title ?? "Actions"} onclick={event => event.stopPropagation()} oncontextmenu={event => { event.stopPropagation(); event.preventDefault(); }} onkeydown={key} onmouseleave={() => menuElement.focus({ preventScroll: true })} bind:this={menuElement}>
     {#if title}<p class="menu-title" role="presentation">{title}</p>{/if}
     {#each grouped as section, index}
         {#if index > 0}<hr />{/if}
         {#each section as command (command.id)}
-            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" on:mousemove={event => { if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }} on:click={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
+            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" onmousemove={event => { if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }} onclick={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
         {/each}
     {/each}
     {#if unavailable}<p class="menu-empty" role="presentation">{unavailable}</p>{/if}

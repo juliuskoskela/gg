@@ -1,12 +1,22 @@
 <script lang="ts">
-    // a native checkbox drawn in the theme's ink, so selection never brings in a system accent
-    export let checked: boolean;
-    export let indeterminate = false;
-    export let label: string;
-    export let onChange: () => void;
+
+    interface Props {
+        // a native checkbox drawn in the theme's ink, so selection never brings in a system accent
+        checked: boolean;
+        indeterminate?: boolean;
+        label: string;
+        onChange: () => void;
+    }
+
+    let {
+        checked,
+        indeterminate = false,
+        label,
+        onChange
+    }: Props = $props();
 </script>
 
-<input class="note-check" type="checkbox" aria-label={label} {checked} {indeterminate} on:change={onChange} on:click|stopPropagation />
+<input class="note-check" type="checkbox" aria-label={label} {checked} {indeterminate} onchange={onChange} onclick={event => event.stopPropagation()} />
 
 <style>
     .note-check {

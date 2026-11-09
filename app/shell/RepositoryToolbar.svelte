@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { untrack } from "svelte";
     import { onMount, tick } from "svelte";
     import { mutationPending } from "../operations";
     import SelectWidget from "../controls/SelectWidget.svelte";
@@ -15,21 +16,18 @@
     import { isTauri, trigger } from "../ipc";
     import BookmarkSpan from "../controls/BookmarkSpan.svelte";
 
-    export let target: boolean;
-    export let refreshing = false;
-    export let onRefresh: () => void;
-    let remoteName = "";
-    let moreOpen = false;
-    let moreX = 0;
-    let moreY = 0;
-    let moreButton: HTMLButtonElement;
-    $: overflowCommands = repositoryCommands(remoteName, $currentMutation, $mutationPending, $repoConfigEvent, $repoStatusEvent, $ignoreToggled)
-        .filter(command => !["repository.fetch", "repository.push", "repository.undo", "repository.redo"].includes(command.id))
-        .map(command => command.id === "repository.refresh" ? { ...command, reason: refreshing ? "Refreshing repository" : command.reason } : command);
-    $: moreCommands = [...overflowCommands, {
-        id: "repository.commands", label: "Commands…", icon: "command", scope: "Repository", group: 1, reason: null,
-        execute: async () => { moreOpen = false; await tick(); moreButton.focus(); window.dispatchEvent(new Event("gg:open-commands")); },
-    } satisfies Command];
+    interface Props {
+        target: boolean;
+        refreshing?: boolean;
+        onRefresh: () => void;
+    }
+
+    let { target, refreshing = false, onRefresh }: Props = $props();
+    let remoteName = $state("");
+    let moreOpen = $state(false);
+    let moreX = $state(0);
+    let moreY = $state(0);
+    let moreButton!: HTMLButtonElement;
     function toggleMore() {
         if (moreOpen) { moreOpen = false; return; }
         let bounds = moreButton.getBoundingClientRect();
@@ -37,17 +35,9 @@
         moreY = bounds.top;
         moreOpen = true;
     }
-    $: remotes = $repoConfigEvent.type === "Workspace" ? $repoConfigEvent.git_remotes : [];
-    $: if (!remotes.includes(remoteName)) remoteName = remotes[0] ?? "";
-    $: remoteOptions = remotes.length ? remotes.map(value => ({ value })) : [{ value: "", label: "No remote" }];
-    $: busy = !!$currentMutation || $mutationPending;
-    $: redoReason = busy ? "Another operation is in progress" : !$repoStatusEvent?.can_redo ? "Nothing to redo. New operations clear redo history." : "";
 
-    let dropHint: RichHint | null = null;
-    let maybe = false;
-
-    $: setDropHint($currentSource, $currentTarget);
-    $: if (isTauri()) trigger("set_modifier_state", { alt: $ignoreToggled });
+    let dropHint: RichHint | null = $state(null);
+    let maybe = $state(false);
 
     function setDropHint(source: Operand | null, target: Operand | null) {
         maybe = false;
@@ -84,6 +74,27 @@
     function onRedo() { runRepository("repository.redo"); }
     function onPush(_remote: string) { runRepository("repository.push"); }
     function onFetch(_remote: string) { runRepository("repository.fetch"); }
+    let remotes = $derived($repoConfigEvent.type === "Workspace" ? $repoConfigEvent.git_remotes : []);
+    $effect.pre(() => {
+        if (!remotes.includes(remoteName)) remoteName = remotes[0] ?? "";
+    });
+    let overflowCommands = $derived(repositoryCommands(remoteName, $currentMutation, $mutationPending, $repoConfigEvent, $repoStatusEvent, $ignoreToggled)
+        .filter(command => !["repository.fetch", "repository.push", "repository.undo", "repository.redo"].includes(command.id))
+        .map(command => command.id === "repository.refresh" ? { ...command, reason: refreshing ? "Refreshing repository" : command.reason } : command));
+    let moreCommands = $derived([...overflowCommands, {
+        id: "repository.commands", label: "Commands…", icon: "command", scope: "Repository", group: 1, reason: null,
+        execute: async () => { moreOpen = false; await tick(); moreButton.focus(); window.dispatchEvent(new Event("gg:open-commands")); },
+    } satisfies Command]);
+    let remoteOptions = $derived(remotes.length ? remotes.map(value => ({ value })) : [{ value: "", label: "No remote" }]);
+    let busy = $derived(!!$currentMutation || $mutationPending);
+    let redoReason = $derived(busy ? "Another operation is in progress" : !$repoStatusEvent?.can_redo ? "Nothing to redo. New operations clear redo history." : "");
+    $effect.pre(() => {
+        let source = $currentSource, target = $currentTarget;
+        untrack(() => setDropHint(source, target));
+    });
+    $effect.pre(() => {
+        if (isTauri()) trigger("set_modifier_state", { alt: $ignoreToggled });
+    });
 </script>
 
 <div class="repository-toolbar" role="group" aria-label="Repository actions" inert={$hasModal}>
@@ -96,7 +107,7 @@
         <ActionWidget secondary tip="Undo the latest operation" disabled={busy} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
         <ActionWidget secondary tip="Redo the latest undone operation" disabled={!!redoReason} disabledReason={redoReason} onClick={onRedo}><Icon name="rotate-cw" /> <span class="action-label">Redo</span></ActionWidget>
     </div>
-    <button class="more-button" type="button" aria-label="More repository actions" title="More repository actions" aria-haspopup="menu" aria-expanded={moreOpen} bind:this={moreButton} on:click|stopPropagation={toggleMore} on:keydown={event => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); if (!moreOpen) toggleMore(); } }}><Icon name="more-horizontal" /></button>
+    <button class="more-button" type="button" aria-label="More repository actions" title="More repository actions" aria-haspopup="menu" aria-expanded={moreOpen} bind:this={moreButton} onclick={event => { event.stopPropagation(); toggleMore(); }} onkeydown={event => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); if (!moreOpen) toggleMore(); } }}><Icon name="more-horizontal" /></button>
 </div>
 
 {#if moreOpen}<ContextMenu items={moreCommands} views={false} heading="Repository actions" placement="above-end" x={moreX} y={moreY} onClose={() => moreOpen = false} />{/if}

@@ -1,4 +1,5 @@
 <script lang="ts" generics="Id extends string">
+    import { untrack } from "svelte";
     import { tick, type Snippet } from "svelte";
     import { writable } from "svelte/store";
     import { hiddenToolbars, toggleToolbar, useToolbars } from "../workspace/toolbars";
@@ -7,25 +8,33 @@
     import { panelDraggable } from "../workspace/panelDrag";
     import type { Edge, PanelId } from "../workspace/dock";
 
-    export let items: { id: Id; label: string; count?: number }[];
-    export let active: Id | null;
-    export let label = "Panels";
-    export let prefix = "panel";
-    export let draggable = false;
-    export let toolsVisible = true;
-    export let tools: Snippet | undefined = undefined;
-    export let onSelect: (id: Id) => void;
-    export let onClose: ((id: Id) => void) | null = null;
-    export let onMove: (id: PanelId, target: PanelId, edge: Edge) => void = () => {};
+    interface Props {
+        items: { id: Id; label: string; count?: number }[];
+        active: Id | null;
+        label?: string;
+        prefix?: string;
+        draggable?: boolean;
+        toolsVisible?: boolean;
+        tools?: Snippet | undefined;
+        onSelect: (id: Id) => void;
+        onClose?: ((id: Id) => void) | null;
+        onMove?: (id: PanelId, target: PanelId, edge: Edge) => void;
+    }
 
+    let {
+        items,
+        active,
+        label = "Panels",
+        prefix = "panel",
+        draggable = false,
+        toolsVisible = true,
+        tools = undefined,
+        onSelect,
+        onClose = null,
+        onMove = () => {}
+    }: Props = $props();
 
     let toolbars = useToolbars() ?? writable(new Map());
-    $: contribution = active ? $toolbars.get(active) : undefined;
-    $: activeLabel = items.find(item => item.id === active)?.label ?? label;
-    $: toolbarHidden = !!active && $hiddenToolbars.has(active);
-    $: single = items.length === 1;
-    $: hasTools = !!contribution || (toolsVisible && !!tools);
-    $: if (active && !single) void revealActive(active);
 
     async function revealActive(id: Id) {
         await tick();
@@ -64,13 +73,22 @@
         onSelect(id);
         document.getElementById(`${prefix}-tab-${id}`)?.focus({ preventScroll: true });
     }
+    let contribution = $derived(active ? $toolbars.get(active) : undefined);
+    let activeLabel = $derived(items.find(item => item.id === active)?.label ?? label);
+    let toolbarHidden = $derived(!!active && $hiddenToolbars.has(active));
+    let single = $derived(items.length === 1);
+    let hasTools = $derived(!!contribution || (toolsVisible && !!tools));
+    $effect(() => {
+        let id = active;
+        if (id && !single) untrack(() => void revealActive(id));
+    });
 </script>
 
 {#snippet toolbarToggle()}
     {#if hasTools}
         <button class="toolbar-toggle" class:open={!toolbarHidden} type="button" aria-label={`${toolbarHidden ? "Show" : "Hide"} ${activeLabel} toolbar`}
             title={`${toolbarHidden ? "Show" : "Hide"} toolbar`} aria-expanded={!toolbarHidden} aria-controls={`${prefix}-toolbar-${active}`}
-            on:click={() => active && toggleToolbar(active)}>
+            onclick={() => active && toggleToolbar(active)}>
             <Icon name="sliders" />
         </button>
     {/if}
@@ -85,13 +103,13 @@
                 <button class="panel-title" id="{prefix}-tab-{item.id}" type="button" data-panel-handle
                     aria-label={item.label} aria-describedby="{prefix}-drag-help-{item.id}" title="Move {item.label} view"
                     use:panelDraggable={{ id: item.id as PanelId, enabled: true, move: onMove }}
-                    on:click={() => onSelect(item.id)} on:keydown={event => keydown(event, 0)}>
+                    onclick={() => onSelect(item.id)} onkeydown={event => keydown(event, 0)}>
                     <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
                 </button>
             {:else}
                 <h2 class="panel-title" tabindex="-1" id="{prefix}-tab-{item.id}"><span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}</h2>
             {/if}
-            {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
+            {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" onclick={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
             </div>
             {@render toolbarToggle()}
         </div>
@@ -100,17 +118,17 @@
             <div class="panel-tabs" use:observeTabs role="tablist" aria-label={label}>
                 {#each items as item, index (item.id)}
                     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions (the inner tab owns keyboard activation; its padding is also clickable) -->
-                    <div class="panel-tab-item" class:closable={!!onClose} class:active={active === item.id} role="presentation" on:click={() => onSelect(item.id)}>
+                    <div class="panel-tab-item" class:closable={!!onClose} class:active={active === item.id} role="presentation" onclick={() => onSelect(item.id)}>
                         <!-- svelte-ignore a11y_interactive_supports_focus (roving focus is managed by the tabs) -->
                         <div class="panel-tab" role="tab" id="{prefix}-tab-{item.id}" data-panel-handle tabindex={active === item.id ? 0 : -1}
                             aria-label={item.label} aria-selected={active === item.id} aria-controls="{prefix}-{item.id}"
                             use:panelDraggable={{ id: item.id as PanelId, enabled: draggable, move: onMove }}
                             aria-describedby={draggable ? `${prefix}-drag-help-${items[0]?.id}` : undefined}
-                            on:focus={() => void revealActive(item.id)}
-                            on:keydown={event => keydown(event, index)}>
+                            onfocus={() => void revealActive(item.id)}
+                            onkeydown={event => keydown(event, index)}>
                             <span>{item.label}</span>{#if item.count !== undefined}<span class="count">{item.count}</span>{/if}
                         </div>
-                        {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" on:click|stopPropagation={() => onClose?.(item.id)}><Icon name="x" /></button>{/if}
+                        {#if onClose}<button class="panel-close" type="button" aria-label="Close {item.label}" title="Close {item.label}" onclick={event => { event.stopPropagation(); onClose?.(item.id); }}><Icon name="x" /></button>{/if}
                     </div>
                 {/each}
             </div>

@@ -6,12 +6,16 @@
     import { anchorLabel } from "./anchors";
     import { noteTitle, openAnnotation } from "./store";
 
-    export let notes: AnnotationThread[];
+    interface Props {
+        notes: AnnotationThread[];
+    }
 
-    let marker: HTMLSpanElement;
-    let preview: HTMLDivElement;
+    let { notes }: Props = $props();
+
+    let marker!: HTMLSpanElement;
+    let preview!: HTMLDivElement;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    $: label = notes.length === 1 ? "1 note" : `${notes.length} notes`;
+    let label = $derived(notes.length === 1 ? "1 note" : `${notes.length} notes`);
     let previews = typeof HTMLElement !== "undefined" && "showPopover" in HTMLElement.prototype;
 
     // the preview lives in the top layer, so virtualized rows and clipped panes can't cut it off
@@ -38,8 +42,8 @@
     onDestroy(hide);
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions (rows are options; keyboard users reach notes from the Annotations view) -->
-<span class="note-marker" bind:this={marker} title={previews ? undefined : label} on:pointerenter={show} on:pointerleave={hide} on:pointerdown|stopPropagation on:click={open} on:dblclick|stopPropagation>
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (rows are options; keyboard users reach notes from the Annotations view) -->
+<span class="note-marker" bind:this={marker} title={previews ? undefined : label} onpointerenter={show} onpointerleave={hide} onpointerdown={event => event.stopPropagation()} onclick={open} ondblclick={event => event.stopPropagation()}>
     <Icon name="message-square" />{#if notes.length > 1}<span>{notes.length}</span>{/if}
     <span class="sr-only">, {label}</span>
 </span>
