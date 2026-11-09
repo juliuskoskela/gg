@@ -5,4 +5,4 @@ import type { RevHeader } from "./RevHeader";
 import type { RevSet } from "./RevSet";
 import type { TreePath } from "./TreePath";
 
-export type RevisionSummaryResult = { "type": "NotFound", set: RevSet, } | { "type": "Detail", set: RevSet, headers: Array<RevHeader>, parents: Array<RevHeader>, changes: Array<RevChangeSummary>, conflicts: Array<TreePath>, conflict_categories?: Record<string, FileCategory>, };
+export type RevisionSummaryResult = { "type": "NotFound", set: RevSet, } | { "type": "Detail", set: RevSet, headers: Array<RevHeader>, parents: Array<RevHeader>, changes: Array<RevChangeSummary>, conflicts: Array<TreePath>, conflict_categories?: Record<string, FileCategory>, range_unavailable?: string, };

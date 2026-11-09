@@ -2,6 +2,7 @@
 import type { ChangeKind } from "./ChangeKind";
 import type { FileCategory } from "./FileCategory";
 import type { LineStat } from "./LineStat";
+import type { RevId } from "./RevId";
 import type { TreePath } from "./TreePath";
 
-export interface RevChangeSummary { category?: FileCategory, kind: ChangeKind, path: TreePath, has_conflict: boolean, stat: LineStat | null, }
+export interface RevChangeSummary { origin?: RevId, category?: FileCategory, kind: ChangeKind, path: TreePath, has_conflict: boolean, stat: LineStat | null, }

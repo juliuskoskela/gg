@@ -21,6 +21,8 @@ mod gui_util;
 mod history;
 mod mutations;
 mod queries;
+mod range_attribution;
+mod range_provenance;
 mod review;
 mod review_delta;
 mod session;

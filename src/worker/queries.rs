@@ -37,7 +37,10 @@ use crate::messages::{
 #[cfg(test)]
 use crate::messages::{RevHeader, RevId};
 
-use super::{WorkspaceSession, categories::FileCategories, git_util::get_git_remote_names};
+use super::{
+    WorkspaceSession, categories::FileCategories, git_util::get_git_remote_names,
+    range_attribution::RangeAttribution,
+};
 
 struct LogStem {
     source: LogCoordinates,
@@ -356,6 +359,8 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
         }
     };
 
+    let attribution = RangeAttribution::new(ws, &commits).await?;
+
     // trees before and after the revset
     let oldest_commit = commits.last().ok_or(anyhow!("slice is_empty()"))?;
     let oldest_parents = oldest_commit.parents().await?;
@@ -379,6 +384,9 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
     )
     .await?;
 
+    for change in &mut changes {
+        attribution.annotate(change).await?;
+    }
     let mut conflicts = Vec::new();
     for (path, entry) in final_tree.entries() {
         if let Ok(entry) = entry
@@ -450,6 +458,7 @@ pub async fn query_revisions(ws: &WorkspaceSession<'_>, set: RevSet) -> Result<R
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(RevsResult::Detail {
+        range_unavailable: attribution.unavailable.clone(),
         set,
         headers,
         parents,
@@ -594,6 +603,7 @@ pub async fn query_revision_summary(
     let Some((commits, set)) = commits else {
         return Ok(RevisionSummaryResult::NotFound { set });
     };
+    let attribution = RangeAttribution::new(ws, &commits).await?;
     let oldest = commits.last().ok_or(anyhow!("empty revision set"))?;
     let oldest_parents = oldest.parents().await?;
     let parent_tree = rewrite::merge_commit_trees(ws.repo(), &oldest_parents).await?;
@@ -627,6 +637,7 @@ pub async fn query_revision_summary(
             None
         };
         changes.push(RevChangeSummary {
+            origin: attribution.file_origin(&path).await?,
             category: Some(categories.category(&path).await?),
             kind,
             path: ws.format_path(path)?,
@@ -667,6 +678,7 @@ pub async fn query_revision_summary(
         .map(|p| ws.format_header(p, known_immutable))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(RevisionSummaryResult::Detail {
+        range_unavailable: attribution.unavailable.clone(),
         conflict_categories: (!conflict_categories.is_empty()).then_some(conflict_categories),
         set,
         headers,
@@ -686,6 +698,7 @@ pub async fn query_revision_diff(
     let Some((commits, set)) = commits else {
         return Ok(RevisionDiffResult::NotFound { set });
     };
+    let attribution = RangeAttribution::new(ws, &commits).await?;
     let oldest = commits.last().ok_or(anyhow!("empty revision set"))?;
     let parent_tree = rewrite::merge_commit_trees(ws.repo(), &oldest.parents().await?).await?;
     let final_tree = commits.first().ok_or(anyhow!("empty revision set"))?.tree();
@@ -702,6 +715,9 @@ pub async fn query_revision_diff(
         &mut categories,
     )
     .await?;
+    for change in &mut changes {
+        attribution.annotate(change).await?;
+    }
     let mut conflict = None;
     for (entry_path, entry) in final_tree.entries_matching(&matcher) {
         let entry = entry?;
@@ -804,6 +820,7 @@ pub(super) async fn format_tree_changes(
         let hunks = get_value_hunks(context_lines, &path, before_value, after_value).await?;
 
         changes.push(RevChange {
+            origin: None,
             category: Some(categories.category(&path).await?),
             path: ws.format_path(path)?,
             kind,
@@ -977,6 +994,7 @@ pub(super) fn get_unified_hunks(
         }
 
         hunks.push(ChangeHunk {
+            provenance: None,
             location,
             lines: MultilineString { lines },
         });

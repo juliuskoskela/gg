@@ -3,6 +3,7 @@ import type { ChangeHunk } from "./ChangeHunk";
 import type { ChangeKind } from "./ChangeKind";
 import type { FileCategory } from "./FileCategory";
 import type { LineStat } from "./LineStat";
+import type { RevId } from "./RevId";
 import type { TreePath } from "./TreePath";
 
-export interface RevChange { category?: FileCategory, kind: ChangeKind, path: TreePath, has_conflict: boolean, hunks: Array<ChangeHunk>, stat?: LineStat, }
+export interface RevChange { origin?: RevId, category?: FileCategory, kind: ChangeKind, path: TreePath, has_conflict: boolean, hunks: Array<ChangeHunk>, stat?: LineStat, }

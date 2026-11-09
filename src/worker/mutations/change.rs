@@ -1256,6 +1256,7 @@ mod tests {
         // hunk_child_multi modifies lines 2 and 4: line2 -> changed2, line4 -> changed4
         // Move only the line 2 change to hunk_base, keeping line 4 change in source
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -1332,6 +1333,7 @@ mod tests {
 
         // Move only hunk from source, abandoning it
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 2, len: 1 },
                 to_file: ChangeRange { start: 2, len: 1 },
@@ -1379,6 +1381,7 @@ mod tests {
 
         // Invalid hunk - doesn't match the actual content of b.txt in hunk_source
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 1 },
                 to_file: ChangeRange { start: 1, len: 1 },
@@ -1414,6 +1417,7 @@ mod tests {
 
         // hunk_child_single's only change is line 2: "line2" -> "modified2"
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -1479,6 +1483,7 @@ mod tests {
         // hunk_child_single modifies line 2: "line2" -> "modified2"
         // hunk_sibling extends the file with new6, new7, new8
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -1554,6 +1559,7 @@ mod tests {
         // Hunk from hunk_source that changes line 1: "1" -> "11"
         // hunk_source's parent has b.txt = "1\n" (single line)
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 1 },
                 to_file: ChangeRange { start: 1, len: 1 },
@@ -1658,6 +1664,7 @@ mod tests {
 
         // The hunk in hunk_child_single's context: parent (hunk_base) has line2, child has modified2
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -1760,6 +1767,7 @@ mod tests {
         //
         // Move the line2->changed2 hunk from hunk_child_multi to hunk_sibling
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -1877,6 +1885,7 @@ mod tests {
 
         // Move a hunk in hunk_test.txt from child to parent
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -1965,6 +1974,7 @@ mod tests {
 
         // hunk_child_multi has two hunks: line2->changed2 and line4->changed4
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 3, len: 3 },
                 to_file: ChangeRange { start: 3, len: 3 },
@@ -2043,6 +2053,7 @@ mod tests {
 
         // Copy/restore hunk from hunk_base (parent) to hunk_child_single (child)
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -2105,6 +2116,7 @@ mod tests {
 
         // Try to copy a hunk to the conflicted commit
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 1 },
                 to_file: ChangeRange { start: 1, len: 1 },
@@ -2151,6 +2163,7 @@ mod tests {
         // small_parent has small.txt with "line1\nline2\n"
         // small_child has small.txt with "line1\nchanged\n"
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 1 },
                 to_file: ChangeRange { start: 10, len: 5 }, // Way out of bounds
@@ -2196,6 +2209,7 @@ mod tests {
 
         // hunk_base has line1-line5, hunk_sibling has line1-line5 plus new6-new8
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 1, len: 3 },
                 to_file: ChangeRange { start: 1, len: 3 },
@@ -2237,6 +2251,7 @@ mod tests {
 
         // hunk_child_multi modifies two lines: line2->changed2 and line4->changed4
         let hunk = ChangeHunk {
+            provenance: None,
             location: ChangeLocation {
                 from_file: ChangeRange { start: 3, len: 3 },
                 to_file: ChangeRange { start: 3, len: 3 },

@@ -1250,3 +1250,110 @@ async fn categories_follow_the_requested_tree_not_the_current_checkout() -> Resu
     }
     Ok(())
 }
+
+#[tokio::test]
+async fn range_hunks_keep_distinct_origins_and_original_coordinates() -> Result<()> {
+    use crate::messages::{mutations::CreateRevision, queries::RevisionDiffResult};
+    use crate::worker::Mutation;
+    use std::fs;
+
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let mut ws = session.load_workspace(repo.path()).await?;
+    let mut lines: Vec<_> = (0..30).map(|index| format!("base-{index}\n")).collect();
+    let path = repo.path().join("range.txt");
+    fs::write(&path, lines.concat())?;
+    ws.import_and_snapshot(true, false).await?;
+    let base = ws.format_header(&ws.get_commit(ws.wc_id())?, None)?.id;
+    CreateRevision {
+        set: RevSet::singleton(base),
+    }
+    .execute_unboxed(&mut ws)
+    .await?;
+    lines[10] = "first change\n".into();
+    fs::write(&path, lines.concat())?;
+    ws.import_and_snapshot(true, false).await?;
+    let first = ws.format_header(&ws.get_commit(ws.wc_id())?, None)?.id;
+    CreateRevision {
+        set: RevSet::singleton(first.clone()),
+    }
+    .execute_unboxed(&mut ws)
+    .await?;
+    lines[25] = "last change\n".into();
+    lines.insert(0, "prefix\n".into());
+    fs::write(&path, lines.concat())?;
+    ws.import_and_snapshot(true, false).await?;
+    let last = ws.format_header(&ws.get_commit(ws.wc_id())?, None)?.id;
+    let RevisionDiffResult::Detail {
+        change: Some(change),
+        ..
+    } = queries::query_revision_diff(
+        &ws,
+        RevSet {
+            from: first.clone(),
+            to: last.clone(),
+        },
+        crate::messages::TreePath {
+            repo_path: "range.txt".into(),
+            relative_path: "range.txt".into(),
+        },
+        false,
+    )
+    .await?
+    else {
+        panic!("missing range diff")
+    };
+    assert_eq!(change.origin, Some(last.clone()));
+    let first_line = change
+        .hunks
+        .iter()
+        .flat_map(|hunk| &hunk.provenance.as_ref().unwrap().lines)
+        .find(|line| line.added && line.origin == first)
+        .unwrap();
+    assert_eq!(first_line.line, 12);
+    assert_eq!(first_line.origin_line, 11);
+    let first_hunk = change
+        .hunks
+        .iter()
+        .find(|hunk| {
+            hunk.lines
+                .lines
+                .iter()
+                .any(|line| line.contains("first change"))
+        })
+        .unwrap();
+    assert_eq!(first_hunk.provenance.as_ref().unwrap().origin, first);
+    assert!(change.hunks.iter().any(|hunk| {
+        hunk.provenance
+            .as_ref()
+            .is_some_and(|origin| origin.lines.iter().any(|line| line.origin == first))
+    }));
+    Ok(())
+}
+
+#[tokio::test]
+async fn nonlinear_range_keeps_all_members_without_guessing_origins() -> Result<()> {
+    let repo = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(repo.path()).await?;
+    let RevsResult::Detail {
+        headers,
+        changes,
+        range_unavailable,
+        ..
+    } = queries::query_revisions(
+        &ws,
+        RevSet {
+            from: revs::resolve_conflict(),
+            to: revs::chain_conflict(),
+        },
+    )
+    .await?
+    else {
+        panic!("missing range")
+    };
+    assert_eq!(headers.len(), 4);
+    assert!(range_unavailable.is_some());
+    assert!(changes.iter().all(|change| change.origin.is_none()));
+    Ok(())
+}

@@ -4,4 +4,4 @@ import type { RevConflict } from "./RevConflict";
 import type { RevHeader } from "./RevHeader";
 import type { RevSet } from "./RevSet";
 
-export type RevsResult = { "type": "NotFound", set: RevSet, } | { "type": "Detail", set: RevSet, headers: Array<RevHeader>, parents: Array<RevHeader>, changes: Array<RevChange>, conflicts: Array<RevConflict>, };
+export type RevsResult = { "type": "NotFound", set: RevSet, } | { "type": "Detail", range_unavailable?: string, set: RevSet, headers: Array<RevHeader>, parents: Array<RevHeader>, changes: Array<RevChange>, conflicts: Array<RevConflict>, };

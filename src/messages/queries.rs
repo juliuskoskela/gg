@@ -23,6 +23,9 @@ pub enum FileCategory {
 pub struct RevChange {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub origin: Option<RevId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub category: Option<FileCategory>,
     pub kind: ChangeKind,
     pub path: TreePath,
@@ -46,6 +49,9 @@ pub struct LineStat {
 #[derive(Serialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct RevChangeSummary {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub origin: Option<RevId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub category: Option<FileCategory>,
@@ -72,6 +78,9 @@ pub enum RevisionSummaryResult {
         #[serde(skip_serializing_if = "Option::is_none")]
         #[cfg_attr(feature = "ts-rs", ts(optional))]
         conflict_categories: Option<HashMap<String, FileCategory>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        range_unavailable: Option<String>,
     },
 }
 
@@ -139,6 +148,9 @@ pub enum RevsResult {
         set: RevSet,
     },
     Detail {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        range_unavailable: Option<String>,
         /// The revision set that was queried.
         set: RevSet,
         /// All revisions in the set, ordered ancestors-first.

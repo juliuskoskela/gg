@@ -75,8 +75,29 @@ pub struct ChangeRange {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct ChangeHunk {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub provenance: Option<HunkProvenance>,
     pub location: ChangeLocation,
     pub lines: MultilineString,
+}
+
+/// Exact source coordinates of changed lines in a combined range diff.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct HunkProvenance {
+    pub origin: RevId,
+    pub lines: Vec<LineProvenance>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct LineProvenance {
+    pub added: bool,
+    pub line: usize,
+    pub len: usize,
+    pub origin: RevId,
+    pub origin_line: usize,
 }
 
 /// Line ranges in the source and target files for a diff hunk.
