@@ -1,7 +1,4 @@
 import { tick } from "svelte";
-import { selectRevision } from "./navigation";
-import { requestSplit } from "../splits/requestSplit";
-import { loadAnnotations } from "../annotations/store";
 import type { PluginNotesResponse } from "../messages/PluginNotesResponse";
 import { annotate, query } from "../ipc";
 import type { ReviewProgress } from "../messages/ReviewProgress";
@@ -22,11 +19,12 @@ export let pluginHost = createPluginHost(bundledPlugins, {
     annotations: () => localData<AnnotationList>("annotations", { request: { type: "List" } }),
     reviews: () => localData<ReviewProgress>("review_progress", { request: { type: "List" } }),
     data: (plugin, operation, workspace) => localData<PluginData>("plugin_data", { request: { plugin, operation, workspace } }),
-    navigate: selectRevision,
-    split: requestSplit,
+    // action modules reach awaited stores; loading them here would cycle through Settings.
+    navigate: async (id, path, validate) => (await import("./navigation")).selectRevision(id, path, validate),
+    split: async (id, validate) => (await import("../splits/requestSplit")).requestSplit(id, validate),
     notes: async (plugin, context, workspace, action) => {
         let result = await localData<PluginNotesResponse>("plugin_notes", { request: { plugin, context, workspace, action } });
-        if (action.type !== "List" && action.type !== "Export") await loadAnnotations();
+        if (action.type !== "List" && action.type !== "Export") await (await import("../annotations/store")).loadAnnotations();
         return result;
     },
     openView: async id => {

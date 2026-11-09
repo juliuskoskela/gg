@@ -15,7 +15,6 @@ import RefMutator from "../mutators/RefMutator";
 import { handleCommand } from "../mutators/commands";
 import { revisionCapabilities } from "../mutators/revisionActions";
 import { revisionIdCommands } from "./revisionIds";
-import { requestSplit } from "../splits/requestSplit";
 
 let protectionVersion = 0;
 let trackingProtection = false;
@@ -77,7 +76,7 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
             let selection = get(revisionSelectEvent);
             let protection = currentProtectionVersion();
             let valid = () => protectionVersion === protection && !get(currentMutation) && !get(mutationPending) && get(repoStatusEvent) === status && get(repoConfigEvent) === config && get(revisionSelectEvent) === selection && !revisionCommands(headers, checkSelection).find(c => c.id === id)?.reason;
-            if (id === "split") return requestSplit(headers[0].id, () => { if (!valid()) throw new Error("The split context changed. Reopen the dialog."); }).then(() => {});
+            if (id === "split") return import("../splits/requestSplit").then(({ requestSplit }) => requestSplit(headers[0].id, () => { if (!valid()) throw new Error("The split context changed. Reopen the dialog."); })).then(() => {});
             if (id === "move") return moveRevisions(headers, checkSelection, valid);
             if (id === "insert" || id === "add_parent" || id === "remove_parent") return manipulateRevisions(id, headers, valid);
             new RevisionMutator(headers, get(ignoreToggled), valid).handle(id);
