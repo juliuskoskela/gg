@@ -3,18 +3,26 @@
     import type { RevHeader } from "./messages/RevHeader";
     import { currentContext, revisionSelectEvent } from "./stores.js";
 
-    export let header: RevHeader;
-    export let rowHeight = revisionRowHeight;
-    export let authorSpace = 0;
-    export let lane = 0;
+    interface Props {
+        header: RevHeader;
+        rowHeight?: number;
+        authorSpace?: number;
+        lane?: number;
+    }
 
-    let context = false;
-    $: context = $currentContext?.type == "Revision" && header == $currentContext.header;
-    $: selected = $revisionSelectEvent?.from.commit.hex === header.id.commit.hex || $revisionSelectEvent?.to.commit.hex === header.id.commit.hex;
-    $: cy = revisionNodeOffset(rowHeight, authorSpace);
-    $: r = revisionNodeRadius;
+    let {
+        header,
+        rowHeight = revisionRowHeight,
+        authorSpace = 0,
+        lane = 0
+    }: Props = $props();
+
+    let context = $derived($currentContext?.type == "Revision" && header == $currentContext.header);
+    let selected = $derived($revisionSelectEvent?.from.commit.hex === header.id.commit.hex || $revisionSelectEvent?.to.commit.hex === header.id.commit.hex);
+    let cy = $derived(revisionNodeOffset(rowHeight, authorSpace));
+    let r = $derived(revisionNodeRadius);
     // diamond matches jj's ◆ glyph for immutable history
-    $: diamond = `M9,${cy - r - 0.5} L${9 + r + 0.5},${cy} L9,${cy + r + 0.5} L${9 - r - 0.5},${cy} Z`;
+    let diamond = $derived(`M9,${cy - r - 0.5} L${9 + r + 0.5},${cy} L9,${cy + r + 0.5} L${9 - r - 0.5},${cy} Z`);
 </script>
 
 <g class="station" class:workspace={header.is_working_copy} style="--lane: var(--lane-{lane % 8})">

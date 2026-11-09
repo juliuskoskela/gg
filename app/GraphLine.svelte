@@ -5,37 +5,40 @@
     import Zone from "./objects/Zone.svelte";
     import { currentTarget } from "./stores";
 
-    export let line: EnhancedLine;
-    export let rowHeight = revisionRowHeight;
-    export let authorSpace = 0;
+    interface Props {
+        line: EnhancedLine;
+        rowHeight?: number;
+        authorSpace?: number;
+    }
 
-    $: isMerge = line.type == "ToIntersection";
-    $: allowEarlyBreak = line.type == "FromNode";
-    $: c1 = line.source[0];
-    $: c2 = line.target[0];
-    $: r1 = line.source[1];
-    $: r2 = line.target[1];
+    let { line, rowHeight = revisionRowHeight, authorSpace = 0 }: Props = $props();
 
-    $: operand = { type: "Parent", header: line.parent, child: line.child } as Operand;
+    let isMerge = $derived(line.type == "ToIntersection");
+    let allowEarlyBreak = $derived(line.type == "FromNode");
+    let c1 = $derived(line.source[0]);
+    let c2 = $derived(line.target[0]);
+    let r1 = $derived(line.source[1]);
+    let r2 = $derived(line.target[1]);
+
+    let operand = $derived(line.parent ? { type: "Parent", header: line.parent, child: line.child } as Operand : null);
 
     // draw path downward, from child to parent
-    let path: string;
 
-    $: childY = r1 * rowHeight + revisionNodeOffset(rowHeight, authorSpace) + revisionNodeRadius;
-    $: parentY = r2 * rowHeight + revisionNodeOffset(rowHeight, authorSpace) - revisionNodeRadius;
+    let childY = $derived(r1 * rowHeight + revisionNodeOffset(rowHeight, authorSpace) + revisionNodeRadius);
+    let parentY = $derived(r2 * rowHeight + revisionNodeOffset(rowHeight, authorSpace) - revisionNodeRadius);
 
     type Block = { x: number; y: number; w: number; h: number };
-    let blocks: Block[] = [];
 
-    $: {
-        blocks = [];
+    let { path, blocks } = $derived.by(() => {
+        let blocks: Block[] = [];
+        let path: string;
         if (isMerge) {
             // instead of a parent, we have a mergepoint
             let childX = c1 * 18 + 9;
             let mergeX = c2 * 18 + 9;
-            let midY = c2> c1 ? childY + 9 : parentY - 9;
-            let radius = c2> c1 ? 6 : -6;
-            let sweep = c2> c1 ? 0 : 1;
+            let midY = c2 > c1 ? childY + 9 : parentY - 9;
+            let radius = c2 > c1 ? 6 : -6;
+            let sweep = c2 > c1 ? 0 : 1;
             path = `M${childX},${childY}
                 L${childX},${midY - 6}
                 A6,6,0,0,${sweep},${childX + radius},${midY}
@@ -51,12 +54,12 @@
             });
             // vertical segment at child column
             let topH = (midY - 6) - childY;
-            if (topH> 2) {
+            if (topH > 2) {
                 blocks.push({ x: c1 * 18 + 2, y: childY, w: 14, h: topH });
             }
             // vertical segment at merge column
             let bottomH = parentY - (midY + 6);
-            if (bottomH> 2) {
+            if (bottomH > 2) {
                 blocks.push({ x: c2 * 18 + 2, y: midY + 6, w: 14, h: bottomH });
             }
         } else if (c1 == c2) {
@@ -75,9 +78,9 @@
             // different-column, curved line
             let childX = c1 * 18 + 9;
             let parentX = c2 * 18 + 9;
-            let midY = allowEarlyBreak && c1> c2 ? parentY - 9 : childY + 9;
-            let radius = c2> c1 ? 6 : -6;
-            let sweep = c2> c1 ? 0 : 1;
+            let midY = allowEarlyBreak && c1 > c2 ? parentY - 9 : childY + 9;
+            let radius = c2 > c1 ? 6 : -6;
+            let sweep = c2 > c1 ? 0 : 1;
             path = `M${childX},${childY}
                 L${childX},${midY - 6}
                 A6,6,0,0,${sweep},${childX + radius},${midY}
@@ -94,27 +97,27 @@
             });
             // vertical segment at child column
             let topH = (midY - 6) - childY;
-            if (topH> 2) {
+            if (topH > 2) {
                 blocks.push({ x: c1 * 18 + 2, y: childY, w: 14, h: topH });
             }
             // vertical segment at parent column
             let bottomH = parentY - (midY + 6);
-            if (bottomH> 2) {
+            if (bottomH > 2) {
                 blocks.push({ x: c2 * 18 + 2, y: midY + 6, w: 14, h: bottomH });
             }
         }
-    }
+        return { path, blocks };
+    });
 </script>
 
 {#if !line.indirect}
     {#each blocks as block}
         <foreignObject x={block.x} y={block.y} width={block.w} height={block.h}>
             <Zone {operand}>
-    {#snippet children({ target })}
-                <div class="backdrop" class:target></div>
-
-    {/snippet}
-</Zone>
+                {#snippet children({ target })}
+                    <div class="backdrop" class:target></div>
+                {/snippet}
+            </Zone>
         </foreignObject>
     {/each}
 {/if}

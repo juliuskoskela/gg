@@ -1,36 +1,41 @@
 <!-- Renders commit rows with an SVG graph drawn over them, virtualising the ui to allow for long graphs -->
 
-<script context="module" lang="ts">
-    import type { LogLine } from "./messages/LogLine.js";
-
-    export type EnhancedLine = LogLine & { key: number; parent: RevHeader; child: RevHeader };
-
-    export interface EnhancedRow extends LogRow {
-        passingLines: Array<EnhancedLine>;
-    }
+<script module lang="ts">
+    export type { EnhancedLine, EnhancedRow } from "./graphRows";
 </script>
 
 <script lang="ts">
     import { revisionRowHeight } from "./graphLayout";
-    import type { LogRow } from "./messages/LogRow.js";
+    import type { Snippet } from "svelte";
+    import type { EnhancedLine, EnhancedRow } from "./graphRows";
     import GraphLine from "./GraphLine.svelte";
     import GraphNode from "./GraphNode.svelte";
-    import type { RevHeader } from "./messages/RevHeader.js";
-
-    interface $$Slots {
-        default: { row: EnhancedRow | null };
-    }
 
     let columnWidth = 18;
     // rows reach this far left of their node, so the selection never clips a station's halo
     const rowBleed = 6;
-    export let rowHeight = revisionRowHeight;
-    export let authorSpace = 0;
-    export let containerHeight: number;
-    export let endInset = 0;
-    export let containerWidth: number;
-    export let scrollTop: number;
-    export let rows: (EnhancedRow | null)[];
+    interface Props {
+      rowHeight?: number;
+      authorSpace?: number;
+      containerHeight: number;
+      endInset?: number;
+      containerWidth: number;
+      scrollTop: number;
+      rows: (EnhancedRow | null)[];
+      children?: Snippet<[{ row: EnhancedRow | null }]>;
+    }
+
+    let {
+      rowHeight = revisionRowHeight,
+      authorSpace = 0,
+      containerHeight,
+      endInset = 0,
+      containerWidth,
+      scrollTop,
+      rows,
+      children
+    }: Props = $props();
+
 
     function sliceArray(arr: (EnhancedRow | null)[], start: number, end: number) {
         arr = arr.slice(start, end);
@@ -82,13 +87,13 @@
         return sortLines(result);
     }
 
-    $: graphHeight = Math.max(containerHeight, rows.length * rowHeight + endInset);
-    $: visibleRows = Math.ceil(containerHeight / rowHeight) + 1;
-    $: startIndex = Math.floor(Math.max(scrollTop, 0) / rowHeight);
-    $: endIndex = startIndex + visibleRows;
-    $: overlap = startIndex % visibleRows;
-    $: visibleSlice = shiftArray(sliceArray(rows, startIndex, endIndex), overlap);
-    $: distinctLines = computeDistinctLines(visibleSlice);
+    let graphHeight = $derived(Math.max(containerHeight, rows.length * rowHeight + endInset));
+    let visibleRows = $derived(Math.ceil(containerHeight / rowHeight) + 1);
+    let startIndex = $derived(Math.floor(Math.max(scrollTop, 0) / rowHeight));
+    let endIndex = $derived(startIndex + visibleRows);
+    let overlap = $derived(startIndex % visibleRows);
+    let visibleSlice = $derived(shiftArray(sliceArray(rows, startIndex, endIndex), overlap));
+    let distinctLines = $derived(computeDistinctLines(visibleSlice));
 </script>
 
 <svg class="graph" style="width: 100%; height: {graphHeight}px;">
@@ -101,7 +106,7 @@
                 height={rowHeight}
                 width={containerWidth - (row?.location[0] ?? 0) * columnWidth}
                 style="--leftpad: {(row?.padding ?? 0) * columnWidth + columnWidth + 6 + rowBleed}px; --lane: var(--lane-{(row?.location[0] ?? 0) % 8});">
-                <slot {row} />
+                {@render children?.({ row, })}
             </foreignObject>
         </g>
     {/each}

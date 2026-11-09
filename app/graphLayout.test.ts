@@ -6,6 +6,7 @@ import { anchoredHistoryScroll, createHistoryDensity, historyDensity, historyDen
 import { cleanupMocks, setupMocks } from "./mocks";
 import type { RevHeader } from "./messages/RevHeader";
 import type { EnhancedLine, EnhancedRow } from "./GraphLog.svelte";
+import { GraphPageBuilder } from "./graphRows";
 
 let id = { change: { type: "ChangeId" as const, hex: "abcdefgh", prefix: "a", rest: "bcdefgh", offset: null, is_divergent: false }, commit: { type: "CommitId" as const, hex: "01234567", prefix: "0", rest: "1234567" } };
 let header: RevHeader = { id, description: { lines: ["Fix parser"] }, refs: [], parent_ids: [id.commit], is_immutable: false, is_working_copy: false, has_conflict: false, working_copy_of: null, author: { name: "Test Author", email: "test@example.com", timestamp: "" } };
@@ -53,6 +54,20 @@ describe("history density", () => {
         expect(chips[0].left - description.right).toBeGreaterThanOrEqual(8);
         unmount(); target.remove();
     });
+    it("renders a new edge through visible rows when its parent arrives on an offscreen page", async () => {
+        let { default: GraphLog } = await import("./GraphLog.svelte");
+        let builder = new GraphPageBuilder();
+        let rows = builder.append(Array.from({ length: 5 }, (_, index) => ({ revision: header, location: [0, index] as [number, number], padding: 0, lines: [] })));
+        let props = { rows, rowHeight: 30, authorSpace: 0, containerHeight: 30, containerWidth: 400, scrollTop: 0 };
+        let view = render(GraphLog, { props });
+        expect(view.container.querySelectorAll(".graph > g > path")).toHaveLength(0);
+        let next = builder.append([{ revision: header, location: [0, 5], padding: 0, lines: [{ type: "FromNode", source: [0, 0], target: [0, 5], indirect: false }] }]);
+        await view.rerender({ ...props, rows: next });
+        expect(view.container.querySelector(".graph > g > path")?.getAttribute("d")).toBe("M9,19.5 L9,160.5");
+        expect(rows[0].passingLines).toHaveLength(0);
+        expect(next[0].passingLines).toHaveLength(1);
+    });
+
     it("updates graph nodes, edge paths and drop zones together on a density change", async () => {
         let { default: GraphLog } = await import("./GraphLog.svelte");
         let line: EnhancedLine = { key: 1, type: "FromNode", source: [0, 0], target: [0, 1], indirect: false, parent: header, child: header };

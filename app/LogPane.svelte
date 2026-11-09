@@ -1,9 +1,10 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { setDestinationCandidates } from "./commands/context";
     import { anchoredHistoryScroll, historyDensity, historyRowHeight } from "./graphLayout";
-    import { onMount, tick } from "svelte";
+    import { onMount, onDestroy, tick } from "svelte";
     import type { LogPage } from "./messages/LogPage.js";
-    import type { LogRow } from "./messages/LogRow.js";
     import type { RevHeader } from "./messages/RevHeader";
     import type { RevSet } from "./messages/RevSet";
     import { getInput, query, trigger } from "./ipc.js";
@@ -21,62 +22,47 @@
     import Icon from "./controls/Icon.svelte";
     import SelectWidget from "./controls/SelectWidget.svelte";
     import ListWidget, { type List, type Selection } from "./controls/ListWidget.svelte";
-    import { type EnhancedRow, default as GraphLog, type EnhancedLine } from "./GraphLog.svelte";
+    import GraphLog from "./GraphLog.svelte";
+    import { GraphPageBuilder, type EnhancedRow } from "./graphRows";
 
 
-    export let integrated = false;
-    export let reservedInset = 0;
-    export let overlayInset = 0;
-    export let query_choices: Record<string, string>;
-    export let latest_query: string;
+    interface Props {
+        integrated?: boolean;
+        reservedInset?: number;
+        overlayInset?: number;
+        query_choices: Record<string, string>;
+        latest_query: string;
+    }
+
+    let {
+        integrated = false,
+        reservedInset = 0,
+        overlayInset = 0,
+        query_choices = $bindable(),
+        latest_query
+    }: Props = $props();
 
     function toSentenceCase(kebab: string): string {
         let label = kebab.replaceAll("-", " ");
         return label.charAt(0).toUpperCase() + label.slice(1);
     }
 
-    $: presets = (() => {
-        let result: { label: string; value: string; separator?: boolean }[] = [];
 
-        // revsets.log first
-        if (query_choices["default"] !== undefined) {
-            result.push({ label: "Default", value: query_choices["default"] });
-        }
-
-        // followed by [gg.presets]
-        let others = Object.entries(query_choices)
-            .filter(([key]) => key !== "default")
-            .map(([key, value]) => ({ label: toSentenceCase(key), value }))
-            .sort((a, b) => a.label.localeCompare(b.label));
-
-        if (others.length > 0) {
-            result.push({ label: "", value: "", separator: true });
-            result.push(...others);
-        }
-
-        return result;
-    })();
-
-    let choices: ReturnType<typeof getChoices>;
-    let entered_query = latest_query;
-    let graphRows: EnhancedRow[] | undefined;
-    let logError = "";
-    $: graphSummary = logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…";
+    let entered_query = $state(untrack(() => latest_query));
+    let graphRows: EnhancedRow[] | undefined = $state.raw();
+    let graphBuilder = new GraphPageBuilder();
+    let logError = $state("");
     let latestLogRequest = 0;
 
     let selectionAnchorIdx: number | undefined; // selection model is topologically ordered, selection view requires an anchor point
 
-    let logHeight = 0;
-    let logWidth = 0;
-    let logScrollTop = 0;
-    let graphBody: HTMLDivElement;
-    let rowMeasurement = $historyRowHeight;
-    let measuredRowHeight = $historyRowHeight;
-    $: if (rowMeasurement > 0) measuredRowHeight = rowMeasurement;
-    $: textScale = measuredRowHeight / $historyRowHeight;
-    $: authorSpace = $historyDensity === "tall" ? 20 * textScale : 0;
-    let previousRowHeight = measuredRowHeight;
-    $: if (measuredRowHeight !== previousRowHeight) preserveHistoryAnchor(measuredRowHeight);
+    let logHeight = $state(0);
+    let logWidth = $state(0);
+    let logScrollTop = $state(0);
+    let graphBody = $state<HTMLDivElement>();
+    let rowMeasurement = $state(untrack(() => $historyRowHeight));
+    let measuredRowHeight = $state(untrack(() => $historyRowHeight));
+    let previousRowHeight = untrack(() => measuredRowHeight);
     async function preserveHistoryAnchor(height: number) {
         let box = graphBody?.querySelector<HTMLElement>(".listbox");
         let top = anchoredHistoryScroll(logScrollTop, previousRowHeight, height);
@@ -164,14 +150,9 @@
         },
     };
 
-    onMount(() => {
-        loadLog(true);
-    });
+    onMount(() => { loadLog(true); });
+    onDestroy(() => latestLogRequest++);
 
-    $: choices = getChoices(entered_query, presets);
-    $: activeLogQuery.set(entered_query);
-    $: if ($repoStatusEvent) reloadLog();
-    $: if ($logQueryRequest) applyQueryRequest($logQueryRequest);
 
     function applyQueryRequest(revset: string) {
         logQueryRequest.set(null);
@@ -205,7 +186,7 @@
 
         // find a connecting line
         for (const line of childRow.passingLines) {
-            if (line.child.id.commit.hex === childCommitHex && line.parent.id.commit.hex === parentCommitHex) {
+            if (line.child.id.commit.hex === childCommitHex && line.parent?.id.commit.hex === parentCommitHex) {
                 return !line.indirect && line.type !== "ToMissing";
             }
         }
@@ -262,11 +243,6 @@
         if (focus) focusRow(rowOf(focus));
     }
 
-    $: if (graphRows && $pickedRevisions.length) {
-        let remaining = $pickedRevisions.filter(pick => rowOf(pick) !== -1);
-        if (remaining.length !== $pickedRevisions.length) pickedRevisions.set(remaining.length > 1 ? remaining : []);
-    }
-    $: picked = new Set($pickedRevisions.map(pick => pick.id.commit.hex));
 
     function handleClick(header: RevHeader) {
         if (!graphRows) return;
@@ -307,10 +283,7 @@
         return [{ label: "Custom", value: query }, ...presetList];
     }
 
-    $: isCustom = !presets.some((p) => !p.separator && p.value === entered_query);
 
-    $: isDeletable =
-        !isCustom && presets.some((p) => !p.separator && p.value === entered_query && p.label !== "Default");
 
     function writePresets() {
         let values: Record<string, string> = {};
@@ -337,8 +310,7 @@
         let name = toKebabCase(response["Preset name"]);
         if (!name || name === "default") return;
 
-        query_choices[name] = entered_query;
-        query_choices = query_choices;
+        query_choices = { ...query_choices, [name]: entered_query };
         writePresets();
     }
 
@@ -348,8 +320,9 @@
         )?.[0];
         if (!keyToDelete) return;
 
-        delete query_choices[keyToDelete];
-        query_choices = query_choices;
+        let next = { ...query_choices };
+        delete next[keyToDelete];
+        query_choices = next;
         entered_query = query_choices["default"] ?? "";
         writePresets();
         reloadLog();
@@ -368,9 +341,8 @@
 
         if (request !== latestLogRequest) return;
         if (page.type == "data") {
-            passNextRow = [];
-            graphRows = [];
-            graphRows = addPageToGraph(graphRows, page.value.rows);
+            graphBuilder.reset();
+            graphRows = graphBuilder.append(page.value.rows);
 
             if (selectFirst && !$revisionSelectEvent && page.value.rows.length > 0) {
                 setSelection(0, 0);
@@ -380,7 +352,7 @@
                 let next_page = await query<LogPage>("query_log_next_page", null);
                 if (request !== latestLogRequest) return;
                 if (next_page.type == "data") {
-                    graphRows = addPageToGraph(graphRows, next_page.value.rows);
+                    graphRows = graphBuilder.append(next_page.value.rows);
                     page = next_page;
                 } else {
                     break;
@@ -396,7 +368,6 @@
         }
     }
 
-    $: setDestinationCandidates(graphRows?.map(row => row.revision) ?? []);
 
     // repository-wide rewrite resolution belongs to Shell, never the filtered graph.
     function syncSelectionWithGraph() {
@@ -426,50 +397,72 @@
         loadLog(false);
     }
 
-    // augment rows with all lines that pass through them
-    let lineKey = 0;
-    let passNextRow: EnhancedLine[] = [];
-    function addPageToGraph(graph: EnhancedRow[], page: LogRow[]): EnhancedRow[] {
-        for (let row of page) {
-            let enhancedRow = row as EnhancedRow;
-            for (let passingRow of passNextRow) {
-                passingRow.parent = row.revision;
-            }
-            enhancedRow.passingLines = passNextRow;
-            passNextRow = [];
+    let presets = $derived((() => {
+        let result: { label: string; value: string; separator?: boolean }[] = [];
 
-            for (let line of enhancedRow.lines) {
-                let enhancedLine = line as EnhancedLine;
-                enhancedLine.key = lineKey++;
-
-                if (line.type == "ToIntersection" || line.type == "ToMissing") {
-                    // ToIntersection lines begin at their owning row, so they run from this row to the next one that we read (which may not be on the same page)
-                    enhancedLine.child = row.revision;
-                    enhancedRow.passingLines.push(enhancedLine);
-                    passNextRow.push(enhancedLine);
-                } else {
-                    // other lines end at their owning row, so we need to add them to all previous rows and then this one
-                    enhancedLine.parent = row.revision;
-                    enhancedLine.child = graph[line.source[1]].revision;
-                    for (let i = line.source[1]; i < line.target[1]; i++) {
-                        graph[i].passingLines.push(enhancedLine);
-                    }
-                    enhancedRow.passingLines.push(enhancedLine);
-                }
-            }
-
-            graph.push(enhancedRow);
+        // revsets.log first
+        if (query_choices["default"] !== undefined) {
+            result.push({ label: "Default", value: query_choices["default"] });
         }
 
-        return graph;
-    }
+        // followed by [gg.presets]
+        let others = Object.entries(query_choices)
+            .filter(([key]) => key !== "default")
+            .map(([key, value]) => ({ label: toSentenceCase(key), value }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+
+        if (others.length > 0) {
+            result.push({ label: "", value: "", separator: true });
+            result.push(...others);
+        }
+
+        return result;
+    })());
+    let choices: ReturnType<typeof getChoices> = $derived(getChoices(entered_query, presets));
+    let graphSummary = $derived(logError ? "Unavailable" : graphRows ? `${graphRows.length} ${graphRows.length === 1 ? "revision" : "revisions"}` : "Loading…");
+    $effect.pre(() => {
+        if (rowMeasurement > 0) measuredRowHeight = rowMeasurement;
+    });
+    let textScale = $derived(measuredRowHeight / $historyRowHeight);
+    let authorSpace = $derived($historyDensity === "tall" ? 20 * textScale : 0);
+    $effect.pre(() => {
+        let height = measuredRowHeight;
+        untrack(() => { if (height !== previousRowHeight) preserveHistoryAnchor(height); });
+    });
+
+    $effect.pre(() => {
+        let query = entered_query;
+        untrack(() => activeLogQuery.set(query));
+    });
+    $effect.pre(() => {
+        if ($repoStatusEvent) untrack(reloadLog);
+    });
+    $effect.pre(() => {
+        let requested = $logQueryRequest;
+        if (requested) untrack(() => applyQueryRequest(requested));
+    });
+    $effect.pre(() => {
+        let rows = graphRows, picks = $pickedRevisions;
+        if (rows && picks.length) untrack(() => {
+            let remaining = picks.filter(pick => rowOf(pick) !== -1);
+            if (remaining.length !== picks.length) pickedRevisions.set(remaining.length > 1 ? remaining : []);
+        });
+    });
+    let picked = $derived(new Set($pickedRevisions.map(pick => pick.id.commit.hex)));
+    let isCustom = $derived(!presets.some((p) => !p.separator && p.value === entered_query));
+    let isDeletable =
+        $derived(!isCustom && presets.some((p) => !p.separator && p.value === entered_query && p.label !== "Default"));
+    $effect.pre(() => {
+        let candidates = graphRows?.map(row => row.revision) ?? [];
+        untrack(() => setDestinationCandidates(candidates));
+    });
 </script>
 
 {#if integrated}
     <ViewToolbar label="Timeline tools">
         {#if $pickedRevisions.length}
             <span class="graph-caption picks toolbar-lead" role="status"><span class="pick-count">{$pickedRevisions.length}</span>selected</span>
-            <button type="button" class="clear-picks toolbar-lead" title="Clear selection (Escape)" on:click={clearPicks}>Clear</button>
+            <button type="button" class="clear-picks toolbar-lead" title="Clear selection (Escape)" onclick={clearPicks}>Clear</button>
         {:else}<span class="graph-caption toolbar-lead">{graphSummary}</span>{/if}
         <span class="toolbar-spacer"><TimelineDisplayOptions /></span>
     </ViewToolbar>
@@ -524,23 +517,25 @@
                 containerWidth={logWidth}
                 scrollTop={logScrollTop}
                 rows={graphRows}
-                let:row>
-                {#if row}
-                    <RevisionObject
-                        rowHeight={measuredRowHeight}
-                        {textScale}
-                        tall={$historyDensity === "tall"}
-                        header={row.revision}
-                        selected={picked.size ? picked.has(row.revision.id.commit.hex) : isInSelectedRange(row, $revisionSelectEvent)}
-                        onClick={handleClick}
-                        onShiftClick={handleShiftClick}
-                        onToggle={handleToggle}
-                        showChange={$timelineDisplay.change}
-                        showCommit={$timelineDisplay.commit}
-                        showBookmarks={$timelineDisplay.bookmarks}
-                        showTags={$timelineDisplay.tags} />
-                {/if}
-            </GraphLog>
+                >
+                {#snippet children({ row })}
+                                                {#if row}
+                        <RevisionObject
+                            rowHeight={measuredRowHeight}
+                            {textScale}
+                            tall={$historyDensity === "tall"}
+                            header={row.revision}
+                            selected={picked.size ? picked.has(row.revision.id.commit.hex) : isInSelectedRange(row, $revisionSelectEvent)}
+                            onClick={handleClick}
+                            onShiftClick={handleShiftClick}
+                            onToggle={handleToggle}
+                            showChange={$timelineDisplay.change}
+                            showCommit={$timelineDisplay.commit}
+                            showBookmarks={$timelineDisplay.bookmarks}
+                            showTags={$timelineDisplay.tags} />
+                    {/if}
+                                                            {/snippet}
+                                        </GraphLog>
             {:else}<div class="empty-graph"><Icon name="git-branch" /><h3>No revisions match</h3><p>Try another view or change the revset.</p></div>{/if}
         {:else}
             <div class="empty-graph" role="status"><h3>Loading revisions…</h3><p>Reading your repository graph.</p></div>

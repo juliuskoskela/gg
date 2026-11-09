@@ -91,3 +91,37 @@ describe("LogPane (query requests)", () => {
         expect(input.value).toBe('files("a.txt")');
     });
 });
+
+describe("LogPane page publication", () => {
+    let releasePage: ((page: LogPage) => void) | undefined;
+    let second: LogPage;
+    beforeEach(() => {
+        let revision = (id: string) => ({
+            id: { change: { type: "ChangeId" as const, hex: id, prefix: id, rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId" as const, hex: id, prefix: id, rest: "" } },
+            description: { lines: [`Revision ${id}`] }, refs: [], parent_ids: [],
+            is_immutable: false, is_working_copy: false, has_conflict: false, working_copy_of: null,
+            author: { name: "Test", email: "test@example.com", timestamp: "2026-01-01T12:00:00Z" },
+        });
+        let first: LogPage = { has_more: true, rows: [{ revision: revision("a"), location: [0, 0], padding: 0, lines: [{ type: "ToIntersection", source: [0, 0], target: [1, 1], indirect: false }] }] };
+        second = { has_more: false, rows: [{ revision: revision("b"), location: [1, 1], padding: 0, lines: [] }] };
+        setupMocks(command => {
+            if (command === "query_log") return first;
+            if (command === "query_log_next_page") return new Promise<LogPage>(resolve => { releasePage = resolve; });
+            return undefined;
+        });
+    });
+    afterEach(async () => { releasePage?.(second); releasePage = undefined; await cleanupMocks(); });
+
+    it("shows an initial page and updates it when the next page completes an edge", async () => {
+        let { default: LogPane } = await import("./LogPane.svelte");
+        let view = render(LogPane, { props: { query_choices: { default: "all()" }, latest_query: "all()" } });
+        await waitFor(() => expect(view.container.textContent).toContain("1 revision"));
+        let firstRow = view.container.querySelector(".graph .selection-item");
+        expect(firstRow?.textContent).toContain("Revision a");
+        await waitFor(() => expect(releasePage).toBeTypeOf("function"));
+        releasePage!(second);
+        await waitFor(() => expect(view.container.textContent).toContain("2 revisions"));
+        expect(view.container.querySelector(".graph .selection-item")).toBe(firstRow);
+        expect(view.container.querySelector(".graph > g > path")).not.toBeNull();
+    });
+});
