@@ -329,6 +329,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             resolve_revision_selection,
             query_operation_preflight,
             query_evolution,
+            query_review_delta,
             query_operation_history,
             annotations,
             review_progress,
@@ -1751,6 +1752,22 @@ fn review_progress(
     app_state
         .get_session(window.label())
         .send(SessionEvent::ReviewProgress { tx, request })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_review_delta(
+    window: Window,
+    app_state: State<AppState>,
+    request: messages::review_delta::ReviewDeltaRequest,
+) -> Result<messages::review_delta::ReviewDelta, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryReviewDelta { tx, request })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?

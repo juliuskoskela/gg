@@ -24,6 +24,7 @@ pub fn router() -> Router<AppState> {
         .route("/query_log_next_page", post(query_log_next_page))
         .route("/query_revisions", post(query_revisions))
         .route("/query_evolution", post(query_evolution))
+        .route("/query_review_delta", post(query_review_delta))
         .route("/query_operation_history", post(query_operation_history))
         .route("/query_operation_detail", post(query_operation_detail))
         .route("/query_revision_summary", post(query_revision_summary))
@@ -294,5 +295,22 @@ async fn query_operation_detail(
     state
         .worker_tx
         .send(SessionEvent::QueryOperationDetail { tx, id: req.id })?;
+    Ok(Json(rx.recv()??))
+}
+
+#[derive(Deserialize)]
+struct QueryReviewDelta {
+    request: crate::messages::review_delta::ReviewDeltaRequest,
+}
+
+async fn query_review_delta(
+    State(state): State<AppState>,
+    Json(req): Json<QueryReviewDelta>,
+) -> Result<Json<crate::messages::review_delta::ReviewDelta>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::QueryReviewDelta {
+        tx,
+        request: req.request,
+    })?;
     Ok(Json(rx.recv()??))
 }

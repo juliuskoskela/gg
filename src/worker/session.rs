@@ -86,6 +86,10 @@ pub enum SessionEvent {
         tx: Sender<Result<messages::queries::RevsResult>>,
         set: messages::RevSet,
     },
+    QueryReviewDelta {
+        tx: Sender<Result<messages::review_delta::ReviewDelta>>,
+        request: messages::review_delta::ReviewDeltaRequest,
+    },
     QueryEvolution {
         tx: Sender<Result<messages::queries::EvolutionPage>>,
         id: messages::RevId,
@@ -346,6 +350,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryRevisions { tx, set } => {
                     tx.send(queries::query_revisions(&self, set).await)?
                 }
+                SessionEvent::QueryReviewDelta { tx, request } => {
+                    tx.send(super::review_delta::compare(&self, request).await)?
+                }
                 SessionEvent::QueryEvolution { tx, id, offset } => {
                     tx.send(super::history::evolution_page(&self, id, offset).await)?
                 }
@@ -584,6 +591,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryRevisions { tx, set }) => {
                     tx.send(queries::query_revisions(self.ws, set).await)?
+                }
+                Ok(SessionEvent::QueryReviewDelta { tx, request }) => {
+                    tx.send(super::review_delta::compare(self.ws, request).await)?
                 }
                 Ok(SessionEvent::QueryEvolution { tx, id, offset }) => {
                     tx.send(super::history::evolution_page(self.ws, id, offset).await)?

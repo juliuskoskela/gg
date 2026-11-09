@@ -22,6 +22,7 @@ mod history;
 mod mutations;
 mod queries;
 mod review;
+mod review_delta;
 mod session;
 #[cfg(all(test, not(feature = "ts-rs")))]
 mod tests;

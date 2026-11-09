@@ -770,7 +770,7 @@ pub fn query_remotes(
     Ok(matching_remotes)
 }
 
-async fn format_tree_changes(
+pub(super) async fn format_tree_changes(
     ws: &WorkspaceSession<'_>,
     changes: &mut Vec<RevChange>,
     mut tree_diff: TreeDiffStream<'_>,

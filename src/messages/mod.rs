@@ -10,6 +10,7 @@ pub mod annotations;
 pub mod mutations;
 pub mod queries;
 pub mod review;
+pub mod review_delta;
 
 use std::{collections::HashMap, path::Path};
 

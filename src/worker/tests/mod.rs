@@ -3,6 +3,7 @@ mod colocated;
 mod history;
 mod queries;
 mod review;
+mod review_delta;
 mod session;
 
 use anyhow::Result;
