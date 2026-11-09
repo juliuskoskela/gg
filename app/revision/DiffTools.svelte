@@ -2,8 +2,12 @@
     import type { RevChange } from "../messages/RevChange";
     import PanelTools from "../controls/PanelTools.svelte";
     import DiffDisplayOptions from "./DiffDisplayOptions.svelte";
-    export let changes: RevChange[];
-    export let title = "";
+    interface Props {
+        changes: RevChange[];
+        title?: string;
+    }
+
+    let { changes, title = "" }: Props = $props();
 </script>
 
 <div class="diff-tools"><PanelTools label="Diff tools" summaryVisible={!!title}>

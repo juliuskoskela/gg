@@ -5,7 +5,7 @@
 
 <div class="family-picker" role="group" aria-label="Color family">
     {#each themeFamilies as family}
-        <button type="button" aria-label={family.label} aria-describedby={`theme-family-${family.id}-description`} aria-pressed={$themeFamily === family.id} on:click={() => themeFamily.set(family.id)}>
+        <button type="button" aria-label={family.label} aria-describedby={`theme-family-${family.id}-description`} aria-pressed={$themeFamily === family.id} onclick={() => themeFamily.set(family.id)}>
             <span class="preview" data-theme-preview data-theme-family={family.id} data-dark-depth={$darkDepth} data-color-vision={$colorVision} style:color-scheme={$effectiveTheme} aria-hidden="true"><span class="preview-rail"></span><span class="preview-document"><i></i><i></i><i></i><i></i></span><span class="preview-note"><i></i><i></i></span></span>
             <span class="family-label"><span>{family.label}</span>{#if $themeFamily === family.id}<Icon name="check" />{/if}</span>
             <span class="family-description" id={`theme-family-${family.id}-description`}>{family.description}</span>

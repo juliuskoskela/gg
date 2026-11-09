@@ -5,10 +5,14 @@
     import { currentMutation, ignoreToggled, revisionSelectEvent } from "../stores";
     import Icon from "../controls/Icon.svelte";
 
-    export let headers: RevHeader[];
+    interface Props {
+        headers: RevHeader[];
+    }
+
+    let { headers }: Props = $props();
 
     let groups = ["Create", "Rewrite", "Remove"];
-    $: commands = revisionCommands(headers, true, $currentMutation, $mutationPending, $ignoreToggled, $revisionSelectEvent);
+    let commands = $derived(revisionCommands(headers, true, $currentMutation, $mutationPending, $ignoreToggled, $revisionSelectEvent));
 </script>
 
 <div class="revision-tools">
@@ -20,7 +24,7 @@
             <h3>{label}</h3>
             <div class="commands">
                 {#each commands.filter(command => command.group === index) as command (command.id)}
-                    <button type="button" class:destructive={command.destructive} disabled={!!command.reason} aria-describedby={command.reason ? `revision-tool-${command.id}-reason` : undefined} on:click={() => command.execute()}>
+                    <button type="button" class:destructive={command.destructive} disabled={!!command.reason} aria-describedby={command.reason ? `revision-tool-${command.id}-reason` : undefined} onclick={() => command.execute()}>
                         <Icon name={command.icon} />
                         <span class="command-copy">
                             <span>{command.label}</span>

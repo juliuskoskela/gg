@@ -1,15 +1,28 @@
 <script lang="ts">
-    export let label: string;
-    export let expanded: boolean;
-    export let side: "leading" | "trailing" = "leading";
-    export let controls: string | undefined = undefined;
-    export let text = "";
-    export let stacked = false;
-    export let onToggle: () => void;
-    export let disabled = false;
+    interface Props {
+        label: string;
+        expanded: boolean;
+        side?: "leading" | "trailing";
+        controls?: string | undefined;
+        text?: string;
+        stacked?: boolean;
+        onToggle: () => void;
+        disabled?: boolean;
+    }
+
+    let {
+        label,
+        expanded,
+        side = "leading",
+        controls = undefined,
+        text = "",
+        stacked = false,
+        onToggle,
+        disabled = false
+    }: Props = $props();
 </script>
 
-<button type="button" class="panel-toggle" class:stacked {disabled} aria-label={label} aria-expanded={expanded} aria-controls={controls} title={label} on:click={onToggle}>
+<button type="button" class="panel-toggle" class:stacked {disabled} aria-label={label} aria-expanded={expanded} aria-controls={controls} title={label} onclick={onToggle}>
     <svg viewBox="0 0 24 24" aria-hidden="true" class:trailing={side === "trailing"}>
         <rect x="3" y="4" width="18" height="16" rx="2" />
         <path d="M9 4v16" />

@@ -38,7 +38,7 @@
 
 {#if $nativeZoomEnabled}
     <span class="zoom-announcement" role="status">{!$appZoom.pending ? `App zoom ${Math.round($appZoom.level * 100)}%` : ""}</span>
-    {#if $appZoom.error}<div class="zoom-error" role="alert"><span>{$appZoom.error}</span><button type="button" on:click={() => appZoom.reset()}>Reset to 100%</button></div>{/if}
+    {#if $appZoom.error}<div class="zoom-error" role="alert"><span>{$appZoom.error}</span><button type="button" onclick={() => appZoom.reset()}>Reset to 100%</button></div>{/if}
 {/if}
 
 <style>

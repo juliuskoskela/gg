@@ -15,7 +15,7 @@
     <section class="selection-recovery" aria-label="Resolve revision selection">
         <p>{$selectionRecovery.message}</p>
         {#each $selectionRecovery.candidates as header}
-            <button type="button" on:click={() => choose(header)}><span>{header.description.lines[0] || "(no description set)"}</span><small>Change {header.id.change.hex.slice(0, 8)} · Commit {header.id.commit.hex.slice(0, 8)}{header.has_conflict ? " · Conflict" : ""}</small></button>
+            <button type="button" onclick={() => choose(header)}><span>{header.description.lines[0] || "(no description set)"}</span><small>Change {header.id.change.hex.slice(0, 8)} · Commit {header.id.commit.hex.slice(0, 8)}{header.has_conflict ? " · Conflict" : ""}</small></button>
         {/each}
     </section>
 {/if}

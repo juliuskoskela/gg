@@ -15,15 +15,19 @@
     import { lineMenu } from "../annotations/store";
     import { revisionIdCommands } from "../commands/revisionIds";
 
-    export let revs: Extract<RevsResult, { type: "Detail" }>;
-    $: singleton = revs.headers.length === 1;
-    $: newest = revs.headers[0];
-    $: oldest = revs.headers[revs.headers.length - 1];
-    $: authors = [...new Map(revs.headers.map(header => [header.author.email, header.author])).values()];
-    $: statuses = revs.headers.flatMap(header => revisionStatuses(header).map(status => ({ header, status })));
-    $: references = revs.headers.flatMap(header => header.refs.map(ref => ({ header, ref })));
-    $: bookmarks = references.filter(item => item.ref.type !== "Tag");
-    $: tags = references.filter(item => item.ref.type === "Tag");
+    interface Props {
+        revs: Extract<RevsResult, { type: "Detail" }>;
+    }
+
+    let { revs }: Props = $props();
+    let singleton = $derived(revs.headers.length === 1);
+    let newest = $derived(revs.headers[0]);
+    let oldest = $derived(revs.headers[revs.headers.length - 1]);
+    let authors = $derived([...new Map(revs.headers.map(header => [header.author.email, header.author])).values()]);
+    let statuses = $derived(revs.headers.flatMap(header => revisionStatuses(header).map(status => ({ header, status }))));
+    let references = $derived(revs.headers.flatMap(header => header.refs.map(ref => ({ header, ref }))));
+    let bookmarks = $derived(references.filter(item => item.ref.type !== "Tag"));
+    let tags = $derived(references.filter(item => item.ref.type === "Tag"));
 
     // ids are where people point when they talk about a revision, so they offer annotating and copying
     function idMenu(event: MouseEvent) {
@@ -42,8 +46,8 @@
         <MetadataRow label={authors.length === 1 ? "Author" : "Authors"}><div class="values authors">{#each authors as author}<AuthorSpan {author} />{/each}</div></MetadataRow>
         <MetadataRow label="Authored"><TimestampSpan timestamp={newest.author.timestamp} /></MetadataRow>
         {#if singleton}
-            <MetadataRow label="Change"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="revision-id" on:contextmenu={idMenu}><IdSpan selectable id={newest.id.change} /></span></MetadataRow>
-            <MetadataRow label="Commit"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="commit-identity" on:contextmenu={idMenu}><IdSpan selectable id={newest.id.commit} /></span></MetadataRow>
+            <MetadataRow label="Change"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="revision-id" oncontextmenu={idMenu}><IdSpan selectable id={newest.id.change} /></span></MetadataRow>
+            <MetadataRow label="Commit"><!-- svelte-ignore a11y_no_static_element_interactions (the same actions are in the timeline's menu) --><span class="commit-identity" oncontextmenu={idMenu}><IdSpan selectable id={newest.id.commit} /></span></MetadataRow>
         {/if}
         {#if bookmarks.length}<MetadataRow label="Bookmarks"><div class="references" aria-label="Revision bookmarks">{#each bookmarks as { header, ref }}{#if ref.type === "LocalBookmark" || ref.type === "RemoteBookmark"}<div class="reference"><BookmarkObject {header} {ref} /><span class="reference-status">{bookmarkStatus(ref)}</span></div>{/if}{/each}</div></MetadataRow>{/if}
         {#if tags.length}<MetadataRow label="Tags"><div class="references" aria-label="Revision tags">{#each tags as { header, ref }}{#if ref.type === "Tag"}<TagObject {header} {ref} />{/if}{/each}</div></MetadataRow>{/if}

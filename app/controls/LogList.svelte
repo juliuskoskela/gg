@@ -1,4 +1,4 @@
-<script lang="ts" context="module">
+<script lang="ts" module>
     export type LogEntry = {
         id: string;
         title: string;
@@ -15,20 +15,32 @@
     import type { Snippet } from "svelte";
     import { tick } from "svelte";
 
-    // one dense line per entry, like the timeline: id, title, badge, who, when
-    export let rows: LogEntry[];
-    export let label: string;
-    export let selected = "";
-    export let onSelect: (id: string) => void;
-    export let columns: { code?: boolean; who?: boolean; time?: boolean } = {};
-    /** extra controls at the end of a row */
-    export let trailing: Snippet<[LogEntry]> | undefined = undefined;
-    /** when set, F2 or double-click renames an entry in place */
-    export let onRename: ((id: string, title: string) => void) | undefined = undefined;
+    interface Props {
+        // one dense line per entry, like the timeline: id, title, badge, who, when
+        rows: LogEntry[];
+        label: string;
+        selected?: string;
+        onSelect: (id: string) => void;
+        columns?: { code?: boolean; who?: boolean; time?: boolean };
+        /** extra controls at the end of a row */
+        trailing?: Snippet<[LogEntry]> | undefined;
+        /** when set, F2 or double-click renames an entry in place */
+        onRename?: ((id: string, title: string) => void) | undefined;
+    }
 
-    let renaming: { id: string; title: string } | null = null;
-    let input: HTMLInputElement | undefined;
-    $: show = { code: true, who: true, time: true, ...columns };
+    let {
+        rows,
+        label,
+        selected = "",
+        onSelect,
+        columns = {},
+        trailing = undefined,
+        onRename = undefined
+    }: Props = $props();
+
+    let renaming: { id: string; title: string } | null = $state(null);
+    let input: HTMLInputElement | undefined = $state();
+    let show = $derived({ code: true, who: true, time: true, ...columns });
 
     let clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
     let day = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
@@ -67,10 +79,10 @@
         <li class="log-row" class:selected={selected === row.id}>
             {#if renaming?.id === row.id}
                 <input class="rename" bind:this={input} bind:value={renaming.title} aria-label="Rename {row.title}"
-                    on:keydown={event => { if (event.key === "Enter") finish(true); else if (event.key === "Escape") { event.stopPropagation(); finish(false); } }} on:blur={() => finish(true)} />
+                    onkeydown={event => { if (event.key === "Enter") finish(true); else if (event.key === "Escape") { event.stopPropagation(); finish(false); } }} onblur={() => finish(true)} />
             {:else}
                 <button type="button" data-log-row aria-pressed={selected === row.id} title={row.time ? new Date(row.time).toLocaleString() : undefined}
-                    on:click={() => onSelect(row.id)} on:dblclick={() => rename(row)} on:keydown={event => navigate(event, row)}>
+                    onclick={() => onSelect(row.id)} ondblclick={() => rename(row)} onkeydown={event => navigate(event, row)}>
                     {#if show.code && row.code}<code class="code">{row.code}</code>{/if}
                     <span class="title">{row.title}</span>
                     {#if row.badge}<span class="badge {row.tone ?? 'default'}">{row.badge}</span>{/if}
