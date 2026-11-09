@@ -2,6 +2,7 @@ import { writable, type Readable } from "svelte/store";
 import type { PluginNoteAction } from "../messages/PluginNoteAction";
 import type { PluginNotesResponse } from "../messages/PluginNotesResponse";
 import type { RevId } from "../messages/RevId";
+import type { SplitOutcome } from "../messages/SplitOutcome";
 import type { AnnotationList } from "../messages/AnnotationList";
 import type { PluginOperation } from "../messages/PluginOperation";
 import type { PluginData } from "../messages/PluginData";
@@ -10,7 +11,7 @@ import { registerContributions, pluginPanelId } from "./contributions";
 import type { BundledPlugin, Capability, PluginAPI, PluginContext, PluginActivation, ReadCommand } from "./types";
 
 let capabilities: Capability[] = ["queries.read", "navigation", "annotations.write", "annotations.exchange", "annotations.read", "reviews.read", "storage", "facts.publish"];
-let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes", "resolve_revision_selection"];
+let readCommands: ReadCommand[] = ["query_revisions", "query_revision_summary", "query_revision_diff", "query_review_delta", "query_evolution", "query_operation_history", "query_operation_detail", "query_remotes", "resolve_revision_selection", "query_split_receipts"];
 export interface PluginStatus { manifest: BundledPlugin["manifest"]; enabled: boolean; active: boolean; starting: boolean; error?: string; }
 export interface HostServices {
     query: PluginAPI["query"];
@@ -18,6 +19,7 @@ export interface HostServices {
     reviews: PluginAPI["reviews"];
     data: (plugin: string, operation: PluginOperation, workspace: string) => Promise<PluginData>;
     notes: (plugin: string, context: string, workspace: string, action: PluginNoteAction) => Promise<PluginNotesResponse>;
+    split: (id: RevId, validate: () => void) => Promise<SplitOutcome | null>;
     navigate: (id: RevId, path: string | undefined, validate: () => void) => Promise<void>;
     openView: (id: ReturnType<typeof pluginPanelId>) => Promise<void>;
     closeView: (id: ReturnType<typeof pluginPanelId>) => void;
@@ -98,6 +100,7 @@ export function createPluginHost(plugins: readonly BundledPlugin[], services: Ho
             annotations: () => call("annotations.read", services.annotations),
             reviews: () => call("reviews.read", services.reviews),
             navigation: {
+                split: selected => call("navigation", () => services.split(selected, () => guard("navigation"))),
                 select: (selected, path) => call("navigation", () => services.navigate(selected, path, () => guard("navigation"))),
                 openView: view => call("navigation", async () => {
                     if (!views?.some(item => item.id === view)) throw new Error("Unknown plugin view");

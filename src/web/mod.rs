@@ -294,6 +294,9 @@ async fn handle_mutate(
         "move_revisions" => execute_mutation::<MoveRevisions>(&state, body),
         "adopt_revision" => execute_mutation::<AdoptRevision>(&state, body),
         "move_changes" => execute_mutation::<MoveChanges>(&state, body),
+        "split_revision" => {
+            execute_mutation::<crate::messages::splits::SplitRevision>(&state, body)
+        }
         "copy_changes" => execute_mutation::<CopyChanges>(&state, body),
         "move_hunk" => execute_mutation::<MoveHunk>(&state, body),
         "copy_hunk" => execute_mutation::<CopyHunk>(&state, body),

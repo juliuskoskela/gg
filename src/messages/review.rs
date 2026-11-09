@@ -34,6 +34,9 @@ pub enum ReviewState {
 pub struct FileReview {
     pub path: String,
     pub reviewed_commit_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
+    pub reviewed_change_id: Option<String>,
     pub reviewed_at: DateTime<Utc>,
     pub state: ReviewState,
 }

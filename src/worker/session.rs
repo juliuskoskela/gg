@@ -87,6 +87,10 @@ pub enum SessionEvent {
         tx: Sender<Result<messages::queries::RevsResult>>,
         set: messages::RevSet,
     },
+    QuerySplitReceipts {
+        tx: Sender<Result<Vec<messages::splits::SplitOutcome>>>,
+        ids: Vec<messages::RevId>,
+    },
     QueryReviewDelta {
         tx: Sender<Result<messages::review_delta::ReviewDelta>>,
         request: messages::review_delta::ReviewDeltaRequest,
@@ -359,6 +363,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryRevisions { tx, set } => {
                     tx.send(queries::query_revisions(&self, set).await)?
                 }
+                SessionEvent::QuerySplitReceipts { tx, ids } => {
+                    tx.send(super::splits::query_receipts(&self, ids).await)?;
+                }
                 SessionEvent::QueryReviewDelta { tx, request } => {
                     tx.send(super::review_delta::compare(&self, request).await)?
                 }
@@ -611,6 +618,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryRevisions { tx, set }) => {
                     tx.send(queries::query_revisions(self.ws, set).await)?
+                }
+                Ok(SessionEvent::QuerySplitReceipts { tx, ids }) => {
+                    tx.send(super::splits::query_receipts(self.ws, ids).await)?;
                 }
                 Ok(SessionEvent::QueryReviewDelta { tx, request }) => {
                     tx.send(super::review_delta::compare(self.ws, request).await)?

@@ -13,6 +13,7 @@ pub mod plugins;
 pub mod queries;
 pub mod review;
 pub mod review_delta;
+pub mod splits;
 
 use std::{collections::HashMap, path::Path};
 

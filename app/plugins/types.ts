@@ -11,6 +11,7 @@ import type { PluginFact } from "../messages/PluginFact";
 import type { ReviewProgress } from "../messages/ReviewProgress";
 import type { RevSet } from "../messages/RevSet";
 import type { RepoStatus } from "../messages/RepoStatus";
+import type { SplitOutcome } from "../messages/SplitOutcome";
 
 export type Capability = "queries.read" | "navigation" | "annotations.write" | "annotations.exchange" | "annotations.read" | "reviews.read" | "storage" | "facts.publish";
 export interface PluginManifest {
@@ -21,14 +22,14 @@ export interface PluginManifest {
     apiVersion: 1;
     capabilities: Capability[];
 }
-export type ReadCommand = "query_revisions" | "query_revision_summary" | "query_revision_diff" | "query_review_delta" | "query_evolution" | "query_operation_history" | "query_operation_detail" | "query_remotes" | "resolve_revision_selection";
+export type ReadCommand = "query_revisions" | "query_revision_summary" | "query_revision_diff" | "query_review_delta" | "query_evolution" | "query_operation_history" | "query_operation_detail" | "query_remotes" | "resolve_revision_selection" | "query_split_receipts";
 export type PluginContext = { repository: string; workspace: string; status: RepoStatus | undefined; selection?: RevSet | null };
 export interface PluginAPI {
     readonly context: Readable<PluginContext>;
     query<T>(command: ReadCommand, args: Record<string, unknown>): Promise<Query<T>>;
     annotations(): Promise<AnnotationList>;
     reviews(): Promise<ReviewProgress>;
-    readonly navigation: { select(id: RevId, path?: string): Promise<void>; openView(view: string): Promise<void> };
+    readonly navigation: { split(id: RevId): Promise<SplitOutcome | null>; select(id: RevId, path?: string): Promise<void>; openView(view: string): Promise<void> };
     readonly notes: {
         list(context: string): Promise<AnnotationList>;
         create(context: string, targets: TargetInput[], body: string): Promise<AnnotationList>;

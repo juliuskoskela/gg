@@ -5,6 +5,7 @@ mod queries;
 mod review;
 mod review_delta;
 mod session;
+mod splits;
 
 use anyhow::Result;
 use futures_util::TryStreamExt;

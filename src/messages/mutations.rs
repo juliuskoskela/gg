@@ -22,6 +22,11 @@ pub enum MutationResult {
         new_status: RepoStatus,
         new_selection: Option<RevHeader>,
     },
+    Split {
+        new_status: RepoStatus,
+        new_selection: RevHeader,
+        outcome: super::splits::SplitOutcome,
+    },
     Reconfigured {
         new_config: RepoConfig,
     },

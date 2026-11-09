@@ -26,6 +26,7 @@ mod range_provenance;
 mod review;
 mod review_delta;
 mod session;
+mod splits;
 #[cfg(all(test, not(feature = "ts-rs")))]
 mod tests;
 

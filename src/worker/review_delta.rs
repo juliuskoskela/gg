@@ -28,11 +28,22 @@ pub async fn compare(
             "One of these versions is no longer available locally. It may have been garbage-collected.",
         ));
     };
-    if from.change_id() != to.change_id()
-        || from.change_id().reverse_hex() != request.from.change.hex
+    if from.change_id().reverse_hex() != request.from.change.hex
         || to.change_id().reverse_hex() != request.to.change.hex
     {
         return Ok(unavailable("Choose two versions of the same change."));
+    }
+    if from.change_id() != to.change_id() {
+        let mapped = if let Some(path) = &request.path {
+            super::splits::follows_owner(ws, &request.from, &request.to, path).await?
+        } else {
+            false
+        };
+        if !mapped {
+            return Ok(unavailable(
+                "Choose two versions of the same change or a recorded split file.",
+            ));
+        }
     }
     let matcher: Box<dyn Matcher> = if let Some(path) = &request.path {
         Box::new(FilesMatcher::new([RepoPath::from_internal_string(path)?]))

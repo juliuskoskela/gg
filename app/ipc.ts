@@ -3,6 +3,7 @@ import { operationLabel, operationState, mutationPending } from "./operations";
 import type { MutationResult } from "./messages/MutationResult";
 import { currentInput, currentMutation, progressEvent, repoConfigEvent, repoStatusEvent, revisionSelectEvent } from "./stores";
 import { isTauri, type Query } from "./events";
+import type { SplitOutcome } from "./messages/SplitOutcome";
 
 export { isTauri, onEvent, type Query, type Settable } from "./events";
 
@@ -69,7 +70,7 @@ export function trigger(command: string, request?: InvokeArgs, onError?: () => v
 /**
  * call an IPC which, if successful, modifies the repo
  */
-export async function mutate<T>(command: string, mutation: T, options?: { operation?: string; ignoreImmutable?: boolean }): Promise<boolean> {
+export async function mutate<T>(command: string, mutation: T, options?: { operation?: string; ignoreImmutable?: boolean; onSplit?: (outcome: SplitOutcome) => void }): Promise<boolean> {
     if (get(mutationPending)) return false;
     let operation = { id: Date.now(), label: options?.operation?.replace(/…$/, "") ?? operationLabel(command), phase: "pending" as const };
     operationState.set(operation);
@@ -116,10 +117,10 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
         }
 
         // succeeded; dismiss modals
-        if (value.type == "Unchanged" || value.type == "Updated" || value.type == "Reconfigured") {
+        if (value.type == "Unchanged" || value.type == "Updated" || value.type == "Split" || value.type == "Reconfigured") {
             if (value.type == "Reconfigured") {
                 repoConfigEvent.set(value.new_config);
-            } else if (value.type == "Updated") {
+            } else if (value.type == "Updated" || value.type == "Split") {
                 repoStatusEvent.set(value.new_status);
                 // recovery follows the inspected change; the backend working copy is only a fallback.
                 let recoveringSelection = (command === "undo_operation" || command === "redo_operation") && !!get(revisionSelectEvent);
@@ -129,6 +130,7 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
                         to: value.new_selection.id,
                     });
                 }
+                if (value.type === "Split") options?.onSplit?.(value.outcome);
             }
             currentMutation.set(null);
             operationState.set({ ...operation, phase: "succeeded", detail: command === "external_diff" || command === "external_resolve" ? "launch requested" : undefined });

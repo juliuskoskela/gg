@@ -23,6 +23,7 @@ function setup(plugin: BundledPlugin, overrides: Partial<HostServices> = {}) {
         data: vi.fn(async () => ({ value: null, keys: [], facts: [] })),
         notes: vi.fn(async () => ({ type: "List" as const, value: { location: "local", me: { name: "Reviewer", kind: "human" as const }, threads: [] } })),
         navigate: vi.fn(async () => {}),
+        split: vi.fn(async () => null),
         openView: vi.fn(async () => {}),
         closeView: vi.fn(), loadEnabled: () => [], saveEnabled: vi.fn(), ...overrides,
     };
@@ -166,6 +167,22 @@ describe("bundled plugin host", () => {
         let pending = api.navigation.select({} as never);
         host.enable("review", false);
         finish();
+        await expect(pending).rejects.toThrow("no longer active");
+        expect(changed).toBe(false);
+    });
+
+    it("guards split requests and the confirmation callback after disable", async () => {
+        let api!: PluginAPI;
+        let confirm!: () => void;
+        let changed = false;
+        let { host } = setup(plugin(value => { api = value; return {}; }, ["navigation", "queries.read"]), {
+            split: async (_id, validate) => { await new Promise<void>(resolve => confirm = resolve); validate(); changed = true; return null; },
+        });
+        host.enable("review", true);
+        await vi.waitFor(() => expect(get(host.statuses)[0].active).toBe(true));
+        await expect(api.query("query_split_receipts", { ids: [] })).resolves.toMatchObject({ type: "data" });
+        let pending = api.navigation.split({} as never);
+        host.enable("review", false); confirm();
         await expect(pending).rejects.toThrow("no longer active");
         expect(changed).toBe(false);
     });

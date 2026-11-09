@@ -4,5 +4,6 @@ import type { MultilineString } from "./MultilineString";
 import type { RepoConfig } from "./RepoConfig";
 import type { RepoStatus } from "./RepoStatus";
 import type { RevHeader } from "./RevHeader";
+import type { SplitOutcome } from "./SplitOutcome";
 
-export type MutationResult = { "type": "Unchanged" } | { "type": "Updated", new_status: RepoStatus, new_selection: RevHeader | null, } | { "type": "Reconfigured", new_config: RepoConfig, } | { "type": "InputRequired", request: InputRequest, } | { "type": "PreconditionError", message: string, } | { "type": "InternalError", message: MultilineString, };
+export type MutationResult = { "type": "Unchanged" } | { "type": "Updated", new_status: RepoStatus, new_selection: RevHeader | null, } | { "type": "Split", new_status: RepoStatus, new_selection: RevHeader, outcome: SplitOutcome, } | { "type": "Reconfigured", new_config: RepoConfig, } | { "type": "InputRequired", request: InputRequest, } | { "type": "PreconditionError", message: string, } | { "type": "InternalError", message: MultilineString, };

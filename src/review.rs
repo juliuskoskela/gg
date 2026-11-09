@@ -34,6 +34,7 @@ pub struct FileMark {
     pub commit_id: String,
     pub at: DateTime<Utc>,
     pub hash: String,
+    pub origin_change_id: Option<String>,
 }
 
 #[derive(Default, Debug)]
@@ -74,11 +75,11 @@ impl ReviewStore {
         )
     }
 
-    pub fn marks(&self, person: &ReviewPerson) -> Result<BTreeMap<String, ChangeMarks>> {
+    pub(crate) fn events(&self, person: &ReviewPerson) -> Result<Vec<ReviewEvent>> {
         let entries = match fs::read_dir(&self.dir) {
             Ok(entries) => entries,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return Ok(BTreeMap::new());
+                return Ok(Vec::new());
             }
             Err(error) => return Err(error.into()),
         };
@@ -100,31 +101,40 @@ impl ReviewStore {
             }
         }
         events.sort_by(|a, b| (&a.at, &a.id).cmp(&(&b.at, &b.id)));
-        let mut changes: BTreeMap<String, ChangeMarks> = BTreeMap::new();
-        for event in events {
-            let marks = changes.entry(event.change_id).or_default();
-            if let Some(path) = event.path {
-                marks.whole = None;
-                marks.files.remove(&path);
-            } else {
-                marks.files.clear();
-                marks.whole = event.reviewed.then(|| event.commit_id.clone());
-            }
-            if event.reviewed {
-                for file in event.files {
-                    marks.files.insert(
-                        file.path,
-                        FileMark {
-                            commit_id: event.commit_id.clone(),
-                            at: event.at,
-                            hash: file.hash,
-                        },
-                    );
-                }
-            }
+        Ok(events)
+    }
+
+    pub fn marks(&self, person: &ReviewPerson) -> Result<BTreeMap<String, ChangeMarks>> {
+        let mut changes = BTreeMap::new();
+        for event in self.events(person)? {
+            apply_event(&mut changes, event);
         }
         changes.retain(|_, marks| marks.whole.is_some() || !marks.files.is_empty());
         Ok(changes)
+    }
+}
+
+pub(crate) fn apply_event(changes: &mut BTreeMap<String, ChangeMarks>, event: ReviewEvent) {
+    let marks = changes.entry(event.change_id).or_default();
+    if let Some(path) = event.path {
+        marks.whole = None;
+        marks.files.remove(&path);
+    } else {
+        marks.files.clear();
+        marks.whole = event.reviewed.then(|| event.commit_id.clone());
+    }
+    if event.reviewed {
+        for file in event.files {
+            marks.files.insert(
+                file.path,
+                FileMark {
+                    commit_id: event.commit_id.clone(),
+                    at: event.at,
+                    hash: file.hash,
+                    origin_change_id: None,
+                },
+            );
+        }
     }
 }
 

@@ -16,6 +16,7 @@ pub mod config;
 pub mod messages;
 pub mod plugins;
 pub mod review;
+pub mod splits;
 pub mod web;
 pub mod worker;
 

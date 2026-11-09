@@ -15,6 +15,7 @@ import RefMutator from "../mutators/RefMutator";
 import { handleCommand } from "../mutators/commands";
 import { revisionCapabilities } from "../mutators/revisionActions";
 import { revisionIdCommands } from "./revisionIds";
+import { requestSplit } from "../splits/requestSplit";
 
 let protectionVersion = 0;
 let trackingProtection = false;
@@ -54,18 +55,19 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
     // repository actions work on a continuous range; a scattered pick has no from::to
     let picks = get(pickedRevisions);
     let scattered = headers.length > 1 && picks.length === headers.length && headers.every(h => picks.some(p => p.id.commit.hex === h.id.commit.hex));
-    let definitions: [keyof typeof capabilities | "move" | "insert" | "add_parent" | "remove_parent", string, string, number][] = [
+    let definitions: [keyof typeof capabilities | "move" | "insert" | "add_parent" | "remove_parent" | "split", string, string, number][] = [
         ["new_child", "New child", "plus", 0], ["edit", "Edit as working copy", "edit-3", 0],
         ["new_parent", "New inserted parent", "plus-circle", 0], ["duplicate", "Duplicate", "copy", 0], ["bookmark", "Create bookmark…", "bookmark", 0],
         ["squash", "Squash into parent", "chevrons-up", 1], ["restore", "Restore from parent", "rotate-ccw", 1], ["revert", "Back out into working copy", "corner-up-left", 1],
         ["move", "Move revisions…", "move", 1], ["insert", "Insert revisions between…", "git-commit", 1], ["add_parent", "Add as merge parent…", "git-merge", 1], ["remove_parent", "Remove a parent…", "scissors", 1],
+        ["split", "Split change…", "scissors", 1],
         ["abandon", "Abandon", "trash-2", 2],
     ];
     let commands = definitions.map(([id, label, icon, group]) => {
-        let permitted = id === "add_parent" ? headers.length > 0 : id === "move" || id === "insert" ? headers.length > 0 && !immutable : id === "remove_parent" ? headers.length === 1 && headers[0].parent_ids.length > 1 && !immutable : capabilities[id];
+        let permitted = id === "split" ? headers.length === 1 && !headers[0].is_immutable && !headers[0].has_conflict : id === "add_parent" ? headers.length > 0 : id === "move" || id === "insert" ? headers.length > 0 && !immutable : id === "remove_parent" ? headers.length === 1 && headers[0].parent_ids.length > 1 && !immutable : capabilities[id];
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : !headers.length ? "Select a revision" :
             scattered ? "Select a continuous range with Shift+click for this action" :
-            checkSelection && !selectionCurrent(headers) ? "Selection has changed" : !permitted ?
+            checkSelection && !selectionCurrent(headers) ? "Selection has changed" : id === "split" && headers.some(header => header.is_immutable) ? "Immutable revisions are protected" : id === "split" && headers.some(header => header.has_conflict) ? "Resolve conflicts before splitting" : !permitted ?
             (immutable && ["move", "insert", "add_parent", "remove_parent", "new_parent", "edit", "abandon", "squash", "restore"].includes(id) ? "Immutable revisions are protected" : "This action requires a different selection or one parent") : null;
         return { id, label, icon, scope: "Revision", group, destructive: id === "abandon", reason, execute: () => {
             // Re-evaluate at invocation, including after the palette has opened.
@@ -75,6 +77,7 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
             let selection = get(revisionSelectEvent);
             let protection = currentProtectionVersion();
             let valid = () => protectionVersion === protection && !get(currentMutation) && !get(mutationPending) && get(repoStatusEvent) === status && get(repoConfigEvent) === config && get(revisionSelectEvent) === selection && !revisionCommands(headers, checkSelection).find(c => c.id === id)?.reason;
+            if (id === "split") return requestSplit(headers[0].id, () => { if (!valid()) throw new Error("The split context changed. Reopen the dialog."); }).then(() => {});
             if (id === "move") return moveRevisions(headers, checkSelection, valid);
             if (id === "insert" || id === "add_parent" || id === "remove_parent") return manipulateRevisions(id, headers, valid);
             new RevisionMutator(headers, get(ignoreToggled), valid).handle(id);

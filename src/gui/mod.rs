@@ -330,6 +330,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_operation_preflight,
             query_evolution,
             query_review_delta,
+            query_split_receipts,
             query_operation_history,
             annotations,
             review_progress,
@@ -352,6 +353,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             move_revisions,
             adopt_revision,
             move_changes,
+            split_revision,
             copy_changes,
             move_hunk,
             copy_hunk,
@@ -1802,6 +1804,32 @@ fn query_review_delta(
     app_state
         .get_session(window.label())
         .send(SessionEvent::QueryReviewDelta { tx, request })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn split_revision(
+    window: Window,
+    app_state: State<AppState>,
+    mutation: messages::splits::SplitRevision,
+    options: MutationOptions,
+) -> Result<MutationResult, InvokeError> {
+    try_mutate(window, app_state, mutation, options)
+}
+
+#[tauri::command(async)]
+fn query_split_receipts(
+    window: Window,
+    app_state: State<AppState>,
+    ids: Vec<messages::RevId>,
+) -> Result<Vec<messages::splits::SplitOutcome>, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QuerySplitReceipts { tx, ids })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?

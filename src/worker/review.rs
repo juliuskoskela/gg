@@ -156,7 +156,11 @@ pub(super) async fn handle_with_store(
         })?;
     }
     let mut changes = Vec::new();
-    for (change_id, marks) in store.marks(&me)? {
+    let projected = super::splits::project_events(
+        store.events(&me)?,
+        &super::splits::active_receipts(ws).await?,
+    );
+    for (change_id, marks) in projected {
         ensure!(
             !change_id.is_empty() && change_id.bytes().all(|b| b.is_ascii_lowercase()),
             "Invalid change id in review state"
@@ -204,6 +208,7 @@ pub(super) async fn handle_with_store(
                 FileReview {
                     path: path.clone(),
                     reviewed_commit_id: mark.commit_id.clone(),
+                    reviewed_change_id: mark.origin_change_id.clone(),
                     reviewed_at: mark.at,
                     state,
                 }

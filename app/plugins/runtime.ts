@@ -1,5 +1,6 @@
 import { tick } from "svelte";
 import { selectRevision } from "./navigation";
+import { requestSplit } from "../splits/requestSplit";
 import { loadAnnotations } from "../annotations/store";
 import type { PluginNotesResponse } from "../messages/PluginNotesResponse";
 import { annotate, query } from "../ipc";
@@ -22,6 +23,7 @@ export let pluginHost = createPluginHost(bundledPlugins, {
     reviews: () => localData<ReviewProgress>("review_progress", { request: { type: "List" } }),
     data: (plugin, operation, workspace) => localData<PluginData>("plugin_data", { request: { plugin, operation, workspace } }),
     navigate: selectRevision,
+    split: requestSplit,
     notes: async (plugin, context, workspace, action) => {
         let result = await localData<PluginNotesResponse>("plugin_notes", { request: { plugin, context, workspace, action } });
         if (action.type !== "List" && action.type !== "Export") await loadAnnotations();

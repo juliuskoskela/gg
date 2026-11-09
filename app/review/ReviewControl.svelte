@@ -12,7 +12,8 @@
     let changed = $derived(!reviewed && change?.commit_id === header.id.commit.hex && !!reviewedCommit);
     function compare() {
         if (!reviewedCommit || !onCompare) return;
-        let from = { ...header.id, commit: { ...header.id.commit, hex: reviewedCommit, prefix: reviewedCommit, rest: "" } };
+        let origin = path !== null ? change?.files.find(file => file.path === path)?.reviewed_change_id : undefined;
+        let from = { ...header.id, change: { ...header.id.change, hex: origin ?? header.id.change.hex }, commit: { ...header.id.commit, hex: reviewedCommit, prefix: reviewedCommit, rest: "" } };
         onCompare(from, header.id, path);
     }
     let text = $derived(path !== null ? "File reviewed" : "Change reviewed");
