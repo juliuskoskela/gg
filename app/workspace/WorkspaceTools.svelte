@@ -1,35 +1,30 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onMount, tick } from "svelte";
     import { restoreViewState, saveViewState, workspaceViews } from "./views";
     import { workspaceController } from "./state";
     import { repoStatusEvent, selectionHeaders } from "../stores";
     import Icon from "../controls/Icon.svelte";
-    export let compact = false;
-    export let overFull = false;
-    export let onHistory: () => void;
-    export let onInspect: () => void;
-    let previousFocus: HTMLElement | null = null;
-    let destinationHeading: HTMLHeadingElement;
-    let previousRoute: string | null = null;
-    $: if ($workspaceController.routedTool !== previousRoute) {
-        let hadRoute = previousRoute !== null;
-        previousRoute = $workspaceController.routedTool;
-        if (previousRoute) tick().then(() => destinationHeading?.focus({ preventScroll: true }));
-        else if (hadRoute) tick().then(() => {
-            let target = previousFocus?.isConnected && previousFocus.getClientRects().length ? previousFocus : document.querySelector<HTMLElement>('.full-header h1, .graph-body button[aria-selected="true"]');
-            target?.focus({ preventScroll: true });
-        });
+    interface Props {
+        compact?: boolean;
+        overFull?: boolean;
+        onHistory: () => void;
+        onInspect: () => void;
     }
-    let lastView = "";
-    let viewState: unknown;
-    $: if (active && active.id !== lastView) { lastView = active.id; viewState = restoreViewState(active); }
-    $: if (!active) lastView = "";
+
+    let {
+        compact = false,
+        overFull = false,
+        onHistory,
+        onInspect
+    }: Props = $props();
+    let previousFocus: HTMLElement | null = $state(null);
+    let destinationHeading = $state<HTMLHeadingElement>();
+    let previousRoute: string | null = $state(null);
+    let lastView = $state("");
+    let viewState: unknown = $state.raw();
     function setViewState(value: unknown) { if (active) { viewState = value; saveViewState(active, value); } }
-    $: context = { status: $repoStatusEvent, hasSelection: $selectionHeaders.length > 0 };
-    $: activeId = compact ? $workspaceController.routedTool : $workspaceController.activeTool;
-    $: active = workspaceViews.find(view => view.id === activeId && view.component);
-    $: available = active && (!active.available || active.available(context));
-    $: tabs = $workspaceController.toolTabs.map(id => workspaceViews.find(view => view.id === id)).filter(view => !!view);
     onMount(() => {
         function open(event: Event) {
             let id = (event as CustomEvent<string>).detail;
@@ -46,22 +41,48 @@
     function close() {
         workspaceController.closeView(compact);
     }
+    let activeId = $derived(compact ? $workspaceController.routedTool : $workspaceController.activeTool);
+    let active = $derived(workspaceViews.find(view => view.id === activeId && view.component));
+    $effect.pre(() => {
+        let route = $workspaceController.routedTool;
+        untrack(() => {
+            if (route !== previousRoute) {
+                let hadRoute = previousRoute !== null;
+                previousRoute = route;
+                if (route) tick().then(() => destinationHeading?.focus({ preventScroll: true }));
+                else if (hadRoute) tick().then(() => {
+                    let target = previousFocus?.isConnected && previousFocus.getClientRects().length ? previousFocus : document.querySelector<HTMLElement>('.full-header h1, .graph-body button[aria-selected="true"]');
+                    target?.focus({ preventScroll: true });
+                });
+            }
+        });
+    });
+    $effect.pre(() => {
+        let view = active;
+        untrack(() => {
+            if (!view) lastView = "";
+            else if (view.id !== lastView) { lastView = view.id; viewState = restoreViewState(view); }
+        });
+    });
+    let context = $derived({ status: $repoStatusEvent, hasSelection: $selectionHeaders.length > 0 });
+    let available = $derived(active && (!active.available || active.available(context)));
+    let tabs = $derived($workspaceController.toolTabs.map(id => workspaceViews.find(view => view.id === id)).filter(view => !!view));
 </script>
 
 {#if active}
     <section class="tool-host" class:destination={compact} class:over-full={overFull && !compact} aria-label="Repository tools">
         {#if compact}
-            <header class="tool-header"><button type="button" aria-label="Back from repository tool" on:click={close}><Icon name="arrow-left" /></button><h1 tabindex="-1" bind:this={destinationHeading}>{active.label}</h1></header>
+            <header class="tool-header"><button type="button" aria-label="Back from repository tool" onclick={close}><Icon name="arrow-left" /></button><h1 tabindex="-1" bind:this={destinationHeading}>{active.label}</h1></header>
         {:else}
-            <header class="tool-header"><nav class="tool-tabs" aria-label="Open repository tools">{#each tabs as view (view.id)}<button type="button" aria-current={view.id === active.id ? "page" : undefined} on:click={() => workspaceController.openView(view.id, false)}>{view.label}</button>{/each}</nav><button type="button" aria-label="Close active tool" on:click={() => $workspaceController.routedTool ? workspaceController.closeView(true) : workspaceController.closeTab(active.id)}><Icon name="x" /></button></header>
+            <header class="tool-header"><nav class="tool-tabs" aria-label="Open repository tools">{#each tabs as view (view.id)}<button type="button" aria-current={view.id === active.id ? "page" : undefined} onclick={() => workspaceController.openView(view.id, false)}>{view.label}</button>{/each}</nav><button type="button" aria-label="Close active tool" onclick={() => $workspaceController.routedTool ? workspaceController.closeView(true) : workspaceController.closeTab(active.id)}><Icon name="x" /></button></header>
         {/if}
         <div class="tool-content">
-            {#if available && active.component}<svelte:component this={active.component} {...context} {viewState} onViewStateChange={setViewState} />{:else}<p role="status">{active.label} is unavailable in this repository.</p>{/if}
+            {#if available && active.component}<active.component {...context} {viewState} onViewStateChange={setViewState} />{:else}<p role="status">{active.label} is unavailable in this repository.</p>{/if}
         </div>
-        {#if !compact}<footer><button type="button" on:click={close}>Hide tools</button><button type="button" on:click={() => workspaceController.resetLayout()}>Reset tool layout</button></footer>{/if}
+        {#if !compact}<footer><button type="button" onclick={close}>Hide tools</button><button type="button" onclick={() => workspaceController.resetLayout()}>Reset tool layout</button></footer>{/if}
     </section>
 {:else if !compact && tabs.length}
-    <button class="restore-tools" type="button" on:click={() => workspaceController.openView(tabs[tabs.length - 1].id, false)}>Restore tools</button>
+    <button class="restore-tools" type="button" onclick={() => workspaceController.openView(tabs[tabs.length - 1].id, false)}>Restore tools</button>
 {/if}
 
 <style>

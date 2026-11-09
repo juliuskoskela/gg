@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onDestroy, tick } from "svelte";
     import type { Query } from "../events";
     import type { RevsResult } from "../messages/RevsResult";
@@ -6,25 +8,30 @@
     import SelectionRecovery from "../revision/SelectionRecovery.svelte";
     import RevisionPreview from "./RevisionPreview.svelte";
 
-    export let selection: Query<RevsResult>;
-    export let presentation: "closed" | "collapsed" | "half" | "full";
-    export let onPresentation: (state: "collapsed" | "half") => void;
-    export let onFull: (path?: string) => void;
-    let sheet: HTMLElement;
+    interface Props {
+        selection: Query<RevsResult>;
+        presentation: "closed" | "collapsed" | "half" | "full";
+        onPresentation: (state: "collapsed" | "half") => void;
+        onFull: (path?: string) => void;
+    }
+
+    let {
+        selection,
+        presentation,
+        onPresentation,
+        onFull
+    }: Props = $props();
+    let sheet = $state<HTMLElement>();
     let dragStart: number | null = null;
-    let dragOffset: number | null = null;
+    let dragOffset: number | null = $state(null);
     let startOffset = 0;
     let travel = 0;
     let moved = false;
-    let activePointer: number | null = null;
+    let activePointer: number | null = $state(null);
     let capture: HTMLElement | null = null;
-    let gestureSelection = selection;
-    let gesturePresentation = presentation;
-    let frame = 0;
-    $: if ((activePointer !== null || frame !== 0) && (selection !== gestureSelection || presentation !== gesturePresentation)) resetGesture();
-    $: detail = selection.type === "data" && selection.value.type === "Detail" ? selection.value : null;
-    $: header = detail?.headers[0];
-    $: title = detail && detail.headers.length > 1 ? `${detail.headers.length} revisions` : header?.description.lines[0] || (selection.type === "wait" ? "Loading revision…" : "(no description set)");
+    let gestureSelection = $state.raw(untrack(() => selection));
+    let gesturePresentation = $state(untrack(() => presentation));
+    let frame = $state(0);
 
     function measure(node: HTMLElement) {
         let observer = new ResizeObserver(() => {
@@ -55,7 +62,7 @@
         cancelAnimationFrame(frame);
         gestureSelection = selection;
         gesturePresentation = presentation;
-        startOffset = new DOMMatrixReadOnly(getComputedStyle(sheet).transform).m42;
+        startOffset = new DOMMatrixReadOnly(getComputedStyle(sheet!).transform).m42;
         dragOffset = Math.max(0, Math.min(travel, startOffset));
         activePointer = event.pointerId;
         dragStart = event.clientY;
@@ -88,32 +95,40 @@
     function escape(event: KeyboardEvent) { if (event.key === "Escape" && (activePointer !== null || frame !== 0)) { event.preventDefault(); resetGesture(); } }
     onDestroy(() => { cancelAnimationFrame(frame); release(); });
     async function changePresentation(state: "collapsed" | "half") {
-        let restoreFocus = sheet.contains(document.activeElement);
+        let restoreFocus = sheet?.contains(document.activeElement);
         onPresentation(state);
         await tick();
-        if (restoreFocus) sheet.querySelector<HTMLButtonElement>(".sheet-handle")?.focus({ preventScroll: true });
+        if (restoreFocus) sheet?.querySelector<HTMLButtonElement>(".sheet-handle")?.focus({ preventScroll: true });
     }
     function clickHandle(event: MouseEvent) { if (event.detail === 0 || !moved) { cancelAnimationFrame(frame); dragOffset = null; changePresentation(presentation === "collapsed" ? "half" : "collapsed"); } }
+    $effect.pre(() => {
+        let selected = selection, shown = presentation;
+        let tracking = activePointer !== null || frame !== 0;
+        untrack(() => { if (tracking && (selected !== gestureSelection || shown !== gesturePresentation)) resetGesture(); });
+    });
+    let detail = $derived(selection.type === "data" && selection.value.type === "Detail" ? selection.value : null);
+    let header = $derived(detail?.headers[0]);
+    let title = $derived(detail && detail.headers.length > 1 ? `${detail.headers.length} revisions` : header?.description.lines[0] || (selection.type === "wait" ? "Loading revision…" : "(no description set)"));
 </script>
 
-<svelte:window on:blur={windowBlur} on:keydown={escape} />
+<svelte:window onblur={windowBlur} onkeydown={escape} />
 
 {#if presentation === "collapsed" || presentation === "half"}
     <section bind:this={sheet} use:measure class="inspector-sheet" class:tracking={activePointer !== null} style:transform={dragOffset === null ? undefined : `translateY(${dragOffset}px)`} class:collapsed={presentation === "collapsed"} data-presentation={presentation} aria-label="Revision preview">
         <div class="peek-sizer" aria-hidden="true"></div>
-        <button class="sheet-handle" type="button" aria-label={presentation === "collapsed" ? "Expand revision preview" : "Collapse revision preview"} aria-expanded={presentation === "half"} on:pointerdown={start} on:pointermove={move} on:pointerup={end} on:pointercancel={cancel} on:lostpointercapture={cancel} on:click={clickHandle}><span class="grab-mark"></span><span class="handle-label">{presentation === "collapsed" ? "Expand" : "Collapse"}</span><Icon name={presentation === "collapsed" ? "chevron-up" : "chevron-down"} /></button>
+        <button class="sheet-handle" type="button" aria-label={presentation === "collapsed" ? "Expand revision preview" : "Collapse revision preview"} aria-expanded={presentation === "half"} onpointerdown={start} onpointermove={move} onpointerup={end} onpointercancel={cancel} onlostpointercapture={cancel} onclick={clickHandle}><span class="grab-mark"></span><span class="handle-label">{presentation === "collapsed" ? "Expand" : "Collapse"}</span><Icon name={presentation === "collapsed" ? "chevron-up" : "chevron-down"} /></button>
         {#if presentation === "collapsed" && activePointer === null}
-            <button class="collapsed-summary" type="button" aria-label={`Preview revision: ${title}${header?.is_working_copy ? ", working copy" : ""}${header?.has_conflict ? ", conflict" : ""}`} aria-expanded="false" on:click={() => changePresentation("half")}>
+            <button class="collapsed-summary" type="button" aria-label={`Preview revision: ${title}${header?.is_working_copy ? ", working copy" : ""}${header?.has_conflict ? ", conflict" : ""}`} aria-expanded="false" onclick={() => changePresentation("half")}>
                 <span class="collapsed-title">{title}</span><span class="collapsed-meta">{header?.id.change.hex.slice(0, 8)}{header?.is_working_copy ? " · Working copy" : ""}{header?.has_conflict ? " · Conflict" : ""}</span>
             </button>
         {/if}
         <div class="expanded-content" class:concealed={presentation === "collapsed" && activePointer === null} inert={presentation === "collapsed"}>
-            <div class="preview-heading"><h2 id="preview-title" title={title}>{title}</h2><button type="button" aria-label="Open full revision" disabled={!detail} on:click={() => onFull()}><Icon name="maximize-2" /></button></div>
+            <div class="preview-heading"><h2 id="preview-title" title={title}>{title}</h2><button type="button" aria-label="Open full revision" disabled={!detail} onclick={() => onFull()}><Icon name="maximize-2" /></button></div>
             <!-- svelte-ignore a11y_no_noninteractive_tabindex (overflow region needs keyboard scrolling) -->
             <div class="preview-scroll" role="region" tabindex="0" aria-label="Revision summary">
                 {#if detail}<RevisionPreview revs={detail} {onFull} />{:else if selection.type === "error"}<SelectionRecovery /><p class="message" role="alert">Couldn’t load revision: {selection.message}</p>{:else if selection.type === "wait"}<p class="message" role="status">Loading revision…</p>{:else}<p class="message">This revision is no longer available. Select another revision in the graph.</p>{/if}
             </div>
-            <div class="preview-footer"><button type="button" disabled={!detail} on:click={() => onFull()}>Inspect full revision <Icon name="arrow-right" /></button></div>
+            <div class="preview-footer"><button type="button" disabled={!detail} onclick={() => onFull()}>Inspect full revision <Icon name="arrow-right" /></button></div>
         </div>
     </section>
 {/if}

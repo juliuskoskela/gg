@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { untrack } from "svelte";
+
     import { onMount, tick } from "svelte";
     import { get } from "svelte/store";
     import type { Query } from "../events";
@@ -19,30 +21,18 @@
     import { workspaceController } from "./state";
     import { workspaceViews } from "./views";
 
-    export let workspace: Extract<RepoConfig, { type: "Workspace" }>;
-    export let selection: Query<RevsResult>;
-    export let compact: boolean;
-
-    let selectedPath = "";
-    let previousKey = "";
-    let routedOperation = false;
-
-    $: detail = selection.type === "data" && selection.value.type === "Detail" ? selection.value : null;
-    $: changes = detail ? [...detail.changes, ...detail.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path)) : [];
-    $: reviewKey = detail ? revisionIdentity(detail, repositoryScope($repoConfigEvent)) : "";
-    $: if (reviewKey !== previousKey) {
-        let saved = revisionReviewState.get(reviewKey);
-        selectedPath = changes.find(change => change.path.repo_path === (saved?.path ?? selectedPath))?.path.repo_path ?? changes[0]?.path.repo_path ?? "";
-        previousKey = reviewKey;
+    interface Props {
+        workspace: Extract<RepoConfig, { type: "Workspace" }>;
+        selection: Query<RevsResult>;
+        compact: boolean;
     }
-    $: if ($changeSelectEvent && changes.includes($changeSelectEvent) && $changeSelectEvent.path.repo_path !== selectedPath) selectFile($changeSelectEvent);
-    $: if (reviewKey) revisionReviewState.set(reviewKey, { path: selectedPath, scrollTop: revisionReviewState.get(reviewKey)?.scrollTop ?? 0 });
-    $: requestedPath = $workspaceController.inspector?.activeFilePath ?? null;
-    $: if (requestedPath && requestedPath !== selectedPath) selectedPath = requestedPath;
-    $: if ($workspaceController.routedTool === "operation") {
-        if (!routedOperation) { routedOperation = true; dock.open("operation"); }
-    } else routedOperation = false;
-    $: panels = openPanels($dock.root);
+
+    let { workspace, selection, compact }: Props = $props();
+
+    let selectedPath = $state("");
+    let previousKey = $state("");
+    let routedOperation = $state(false);
+
 
     function selectFile(change: RevChange) {
         selectedPath = change.path.repo_path;
@@ -79,6 +69,40 @@
         window.addEventListener("gg:open-view", openView);
         return () => window.removeEventListener("gg:open-view", openView);
     });
+    let detail = $derived(selection.type === "data" && selection.value.type === "Detail" ? selection.value : null);
+    let changes = $derived(detail ? [...detail.changes, ...detail.conflicts.map(conflict => ({ kind: "None" as const, path: conflict.path, has_conflict: true, hunks: [conflict.hunk] }))].sort((a, b) => a.path.relative_path.localeCompare(b.path.relative_path)) : []);
+    let reviewKey = $derived(detail ? revisionIdentity(detail, repositoryScope($repoConfigEvent)) : "");
+    let requestedPath = $derived($workspaceController.inspector?.activeFilePath ?? null);
+    $effect.pre(() => {
+        let key = reviewKey, files = changes, requested = requestedPath;
+        untrack(() => {
+            if (key !== previousKey) {
+                let saved = revisionReviewState.get(key);
+                selectedPath = requested || files.find(change => change.path.repo_path === (saved?.path ?? selectedPath))?.path.repo_path || files[0]?.path.repo_path || "";
+                previousKey = key;
+            }
+        });
+    });
+    $effect.pre(() => {
+        let path = requestedPath;
+        untrack(() => { if (path && path !== selectedPath) selectedPath = path; });
+    });
+    $effect.pre(() => {
+        let change = $changeSelectEvent, files = changes, path = selectedPath;
+        if (change && files.includes(change) && change.path.repo_path !== path) untrack(() => selectFile(change));
+    });
+    $effect.pre(() => {
+        if (reviewKey) revisionReviewState.set(reviewKey, { path: selectedPath, scrollTop: revisionReviewState.get(reviewKey)?.scrollTop ?? 0 });
+    });
+    $effect.pre(() => {
+        let route = $workspaceController.routedTool;
+        untrack(() => {
+            if (route === "operation") {
+                if (!routedOperation) { routedOperation = true; dock.open("operation"); }
+            } else routedOperation = false;
+        });
+    });
+    let panels = $derived(openPanels($dock.root));
 </script>
 
 <DockDragOverlay />
@@ -86,7 +110,7 @@
     {#if !$dock.root}
         <div class="empty-dock">
             <p>No views open.</p>
-            <button type="button" on:click={() => window.dispatchEvent(new Event("gg:open-views"))}>Choose a view</button>
+            <button type="button" onclick={() => window.dispatchEvent(new Event("gg:open-views"))}>Choose a view</button>
         </div>
     {:else if compact}
         <PanelGroup>
