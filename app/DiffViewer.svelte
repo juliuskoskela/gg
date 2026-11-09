@@ -17,17 +17,20 @@
 </script>
 
 <script lang="ts">
-    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData, type SelectedLineRange } from "@pierre/diffs";
+    import { FileDiff, File, parsePatchFiles, type FileDiffOptions, type FileDiffMetadata, type DiffLineAnnotation, type HunkData, type SelectedLineRange, type PostRenderPhase } from "@pierre/diffs";
     import { onMount, untrack } from "svelte";
     import { createDiffFoldRow } from "./revision/DiffFoldRow";
     import { FoldingFileDiff } from "./revision/FoldingFileDiff";
     import DiffScrollbars from "./revision/DiffScrollbars.svelte";
     import type { RevChange } from "./messages/RevChange";
+    import type { DiffNote } from "./annotations/diffNotes";
+    import { createDiffNoteMarkers } from "./annotations/diffNoteMarkers";
     import { changePatch } from "./diff";
     import { diffStyle, diffWrap, fileHorizontalPositions } from "./stores";
     import { colorVision, effectiveTheme } from "./display/theme";
 
     interface Props {
+        noteMarkers?: DiffNote[];
         change: RevChange;
         readingKey?: string;
         themeOverride?: "light" | "dark";
@@ -35,7 +38,8 @@
         loadFullFiles?: (() => Promise<{ before: string; after: string }>) | null;
         onLineMenu?: ((event: MouseEvent, range: { side: "additions" | "deletions"; start: number; end: number }) => void) | null;
     }
-    let { change, readingKey = "", themeOverride, fullContext = false, loadFullFiles = null, onLineMenu = null }: Props = $props();
+    let { change, noteMarkers = [], readingKey = "", themeOverride, fullContext = false, loadFullFiles = null, onLineMenu = null }: Props = $props();
+    let notesRenderer = createDiffNoteMarkers();
     let selectedRange: SelectedLineRange | null = null;
     let renderedKey = "";
     let disconnectColumns = () => {};
@@ -72,7 +76,7 @@
         onLineSelected: (range: SelectedLineRange | null) => { selectedRange = range; },
         disableFileHeader: true,
         onPostRender: postRender,
-        unsafeCSS: ":host { color-scheme: inherit !important; --diffs-font-family: var(--stack-code); --diffs-font-size: var(--type-code); --diffs-line-height: calc(var(--type-code) * var(--code-leading)); --diffs-bg-context-override: var(--surface); --diffs-bg-buffer-override: var(--diff-buffer); --diffs-bg-separator-override: var(--raised); --diffs-fg-number-override: var(--muted); --diffs-addition-color-override: var(--positive); --diffs-deletion-color-override: var(--negative); --diffs-selection-color-override: var(--selection-bg); --diffs-bg-addition-override: var(--diff-addition); --diffs-bg-addition-emphasis-override: var(--diff-addition-emphasis); --diffs-bg-deletion-override: var(--diff-deletion); --diffs-bg-deletion-emphasis-override: var(--diff-deletion-emphasis); } [data-code] { scrollbar-width: none; } [data-code]::-webkit-scrollbar { height: 0; }" + FOLD_CSS,
+        unsafeCSS: ":host([data-has-note-markers]) [data-column-number] { padding-inline-start: var(--space-6); } slot[data-note-marker] { position: absolute; inset-inline-start: 0; inset-block: 0; width: var(--space-6); display: flex; align-items: stretch; } :host { color-scheme: inherit !important; --diffs-font-family: var(--stack-code); --diffs-font-size: var(--type-code); --diffs-line-height: calc(var(--type-code) * var(--code-leading)); --diffs-bg-context-override: var(--surface); --diffs-bg-buffer-override: var(--diff-buffer); --diffs-bg-separator-override: var(--raised); --diffs-fg-number-override: var(--muted); --diffs-addition-color-override: var(--positive); --diffs-deletion-color-override: var(--negative); --diffs-selection-color-override: var(--selection-bg); --diffs-bg-addition-override: var(--diff-addition); --diffs-bg-addition-emphasis-override: var(--diff-addition-emphasis); --diffs-bg-deletion-override: var(--diff-deletion); --diffs-bg-deletion-emphasis-override: var(--diff-deletion-emphasis); } [data-code] { scrollbar-width: none; } [data-code]::-webkit-scrollbar { height: 0; }" + FOLD_CSS,
     } satisfies FileDiffOptions<number, undefined>);
     async function loadDiffFiles(fileDiff: FileDiffMetadata) {
         let files = await loadFullFiles!();
@@ -133,7 +137,8 @@
         onLineMenu(event, { side, start, end });
     }
 
-    function postRender(node: HTMLElement) {
+    function postRender(node: HTMLElement, _instance: unknown, phase: PostRenderPhase) {
+        if (phase === "unmount") return;
         if (!mounted || !host?.contains(node)) return;
         connectScrollColumns(node);
         let columns = Array.from(node.shadowRoot?.querySelectorAll<HTMLElement>("[data-code]:not([data-diffs-scrollbar-measure])") ?? []);
@@ -150,6 +155,7 @@
                 leadingFold.append(cell);
             }
         }
+        notesRenderer.update(node, noteMarkers);
         restoreAnchor();
     }
     function restoreAnchor() {
@@ -240,6 +246,7 @@
         cancelPendingToggle();
         disconnectColumns();
         renderedKey = `${readingKey}:${resolvedStyle}`;
+        notesRenderer.destroy();
         viewer?.cleanUp();
         host.replaceChildren();
         leadingFold.replaceChildren();
@@ -269,12 +276,17 @@
         let ready = mounted, file = change, settings = options, key = readingKey;
         if (ready && file && settings && key !== undefined) untrack(render);
     });
+    $effect(() => {
+        let markers = noteMarkers, ready = mounted;
+        if (ready) untrack(() => { let container = host.querySelector<HTMLElement>("diffs-container"); if (container) notesRenderer.update(container, markers); });
+    });
     onMount(() => {
         mounted = true;
         return () => {
             mounted = false;
             cancelPendingToggle();
             disconnectColumns();
+            notesRenderer.destroy();
             viewer?.cleanUp();
             viewer = undefined;
         };

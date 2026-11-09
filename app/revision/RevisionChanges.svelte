@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { diffNotes } from "../annotations/diffNotes";
+    import { annotations } from "../annotations/store";
     import ReviewDelta from "../review/ReviewDelta.svelte";
     import type { ReviewComparison, CompareReview } from "../review/comparison";
     import ReviewControl from "../review/ReviewControl.svelte";
@@ -178,7 +180,7 @@
                             {:else}
                                 <div class="file-diff-summary"><span>No editable hunks</span><DiffStat {changes} /></div>
                             {/if}
-                            <DiffViewer change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} onLineMenu={annotateLines} />
+                            <DiffViewer noteMarkers={diffNotes(loaded.value, revs.headers, $annotations)} change={loaded.value} {readingKey} fullContext={loadedFullContext} {loadFullFiles} onLineMenu={annotateLines} />
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
