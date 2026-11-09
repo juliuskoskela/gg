@@ -1,4 +1,5 @@
 <script lang="ts">
+    import ReviewControl from "../review/ReviewControl.svelte";
     import { untrack } from "svelte";
 
     import { repositoryScope } from "../workspace/repository";
@@ -119,7 +120,7 @@
 <div class="changes-module" bind:clientWidth={width}>
     {#if showTools}
         <PanelHeader className="changes-heading" label="Diff tools">
-            <DiffTools {changes} title={focused ? "" : "Changes"} />
+            <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} />
         </PanelHeader>
     {/if}
     {#if changes.length}
@@ -142,6 +143,7 @@
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
                 <PanelFooter className="diff-footer"><div class="diff-toolbar">
+                    {#if currentChange && revs.headers.length === 1}<ReviewControl header={revs.headers[0]} path={currentChange.path.repo_path} />{/if}
                     <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} onclick={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} onclick={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
                     <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
                 </div></PanelFooter>

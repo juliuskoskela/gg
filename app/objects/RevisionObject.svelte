@@ -1,5 +1,6 @@
 <script lang="ts">
     import TimelineStat from "../revision/TimelineStat.svelte";
+    import ReviewCount from "../review/ReviewCount.svelte";
     import { revisionAuthorHeight, revisionTitleHeight, revisionRowGap, revisionRowHeight } from "../graphLayout";
     import type { RevHeader } from "../messages/RevHeader";
     import type { Operand } from "../messages/Operand";
@@ -141,6 +142,7 @@
                 <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
                     {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
                     {#if notes.length}<NoteMarker {notes} />{/if}
+                    <ReviewCount {header} />
                     {dragHint ??
                         dropHint ??
                         (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}

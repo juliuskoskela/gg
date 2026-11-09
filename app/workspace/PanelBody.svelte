@@ -54,7 +54,7 @@
     let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
-{#if id === "diff" && detail && changes.length}<ViewToolbar label="Diff tools"><DiffTools {changes} /></ViewToolbar>{/if}
+{#if id === "diff" && detail && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} /></ViewToolbar>{/if}
 
 {#if id === "evolution"}
     <EvolutionPanel {headers} {active} />

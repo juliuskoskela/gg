@@ -1,4 +1,5 @@
 <script lang="ts">
+    import ReviewLifecycle from "./review/ReviewLifecycle.svelte";
     import { focusModality } from "./display/focus";
     import TextField from "./controls/TextField.svelte";
     import { effectiveTheme, themeFamily, darkDepth, colorVision } from "./display/theme";
@@ -312,6 +313,7 @@
 </script>
 
 <OperationFeedback />
+<ReviewLifecycle />
 
 <svelte:window onfocus={refreshAnnotations} />
 

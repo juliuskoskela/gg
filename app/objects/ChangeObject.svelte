@@ -1,5 +1,6 @@
 <script lang="ts">
     import { categoryLabel, categoryOf } from "../revision/fileCategories";
+    import FileReviewBadge from "../review/FileReviewBadge.svelte";
     import { shortFilename } from "../paths";
     import type { RevChange } from "../messages/RevChange";
     import type { RevHeader } from "../messages/RevHeader";
@@ -93,6 +94,7 @@
             <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
             {#if categoryOf(change) !== "Implementation"}<span class="category">{categoryLabel(change)}</span>{/if}
             {#if notes.length}<NoteMarker {notes} />{/if}
+            {#if headers?.length === 1}<FileReviewBadge header={headers[0]} path={change.path.repo_path} />{/if}
             {#if change.has_conflict}
                 <span class="kind" role="img" aria-label="Unresolved conflict" title="Unresolved conflict"><Icon name="alert-triangle" state={context ? null : "remove"} /></span>
             {:else if change.kind === "Added" || change.kind === "Deleted"}
