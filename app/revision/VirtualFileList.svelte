@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { navigationIndex, revealRow, virtualRange } from "../controls/listNavigation";
     import { untrack } from "svelte";
 
     import { tick } from "svelte";
@@ -29,22 +30,17 @@
             if (files !== previousChanges) { previousChanges = files; top = 0; if (viewport) viewport.scrollTop = 0; }
         });
     });
-    let start = $derived(Math.max(0, Math.floor(top / rowHeight) - 4));
-    let end = $derived(Math.min(changes.length, start + Math.ceil(height / rowHeight) + 8));
+    let range = $derived(virtualRange(top, height, rowHeight, 4, 4));
+    let start = $derived(range.start);
+    let end = $derived(Math.min(changes.length, range.end));
     async function navigate(event: KeyboardEvent) {
         let item = (event.target as HTMLElement).closest<HTMLElement>('[data-file-index]');
         if (!item || event.altKey || event.ctrlKey || event.metaKey) return;
-        let index = Number(item.dataset.fileIndex);
-        if (event.key === "ArrowDown") index++;
-        else if (event.key === "ArrowUp") index--;
-        else if (event.key === "Home") index = 0;
-        else if (event.key === "End") index = changes.length - 1;
-        else return;
+        if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+        let index = navigationIndex(event.key, Number(item.dataset.fileIndex), changes.length);
+        if (index === null) return;
         event.preventDefault();
-        index = Math.max(0, Math.min(changes.length - 1, index));
-        let y = index * rowHeight;
-        if (y < top) top = y;
-        else if (y + rowHeight > top + height) top = y + rowHeight - height;
+        top = revealRow(top, height, rowHeight, index);
         if (viewport) viewport.scrollTop = top;
         await tick();
         viewport?.querySelector<HTMLElement>(`[data-file-index="${index}"] button`)?.focus({ preventScroll: true });

@@ -1,12 +1,15 @@
+import { navigationIndex, visibleItems } from "./listNavigation";
+
 export function navigateOptions(event: KeyboardEvent) {
-    if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
     let target = (event.target as Element).closest<HTMLElement>('[role="option"]');
     if (!target) return;
-    let options = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="option"]')]
-        .filter(option => option.getClientRects().length > 0);
+    let options = visibleItems(event.currentTarget as HTMLElement, '[role="option"]');
     let index = options.indexOf(target);
     if (index < 0) return;
+    // option lists leave page keys to their scroll container.
+    if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+    let next = navigationIndex(event.key, index, options.length);
+    if (next === null) return;
     event.preventDefault();
-    let next = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : Math.max(0, Math.min(options.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
     options[next]?.focus();
 }

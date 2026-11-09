@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+    import { navigationIndex, visibleItems } from "./listNavigation";
     import type { Snippet } from "svelte";
     import { tick } from "svelte";
 
@@ -66,10 +67,10 @@
     function navigate(event: KeyboardEvent, row: LogEntry) {
         if (event.key === "F2" && onRename) { event.preventDefault(); rename(row); return; }
         if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
-        let buttons = [...(event.currentTarget as HTMLElement).closest(".log-list")!.querySelectorAll<HTMLButtonElement>("button[data-log-row]")];
+        let buttons = visibleItems((event.currentTarget as HTMLElement).closest<HTMLElement>(".log-list")!, "button[data-log-row]");
         let index = buttons.indexOf(event.currentTarget as HTMLButtonElement);
         event.preventDefault();
-        let next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : Math.max(0, Math.min(buttons.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
+        let next = navigationIndex(event.key, index, buttons.length)!;
         buttons[next]?.focus(); buttons[next]?.click();
     }
 </script>

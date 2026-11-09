@@ -22,3 +22,19 @@ Arrow keys wrap among enabled items. Home and End select the first and last item
 OptionsMenu's public props are `label`, `icon` and `options` (id, label, group, checked, onToggle). See the interactive example in `DesignSystem.svelte`. ContextMenu remains the repository command adapter; command availability does not move into the generic interaction code.
 
 Verification covers keyboard-only opening, wrapping, type selection, disabled items, Escape restoration, Tab, listener disposal and viewport positioning. Existing browser scenarios and screenshots cover command execution and presentation.
+
+## Lists
+
+`app/controls/listNavigation.ts` shares behavior without forcing a graph, file tree and history list into one rendering component.
+
+- `navigationIndex` computes clamped arrow, page, Home and End destinations. Empty lists and unrelated keys return no destination.
+- `selectionAction` applies the timeline's range and scattered-selection rules. It returns an action; the caller owns selection state, mutations, focus and scrolling.
+- `visibleItems` finds rendered, enabled DOM options. The file-tree option adapter and LogList use it; the tree keeps native folder disclosure.
+- `virtualRange` computes a stable viewport pool with overscan. GraphLog retains slot-index keys and placeholder rotation; VirtualFileList retains file keys.
+- `revealRow` computes the scroll offset needed to reveal a row, including a reserved footer area. Each caller chooses scroll timing and animation.
+
+ListWidget retains its existing public `List` and `Selection` type exports. Its adapter dispatches planned actions to `selectRow`, `extendSelection`, `moveFocus`, `toggleRow`, `clearToggled` and `editRow`. Modified arrows preserve scattered selection; Shift extends the active end. Plain arrows collapse a range in the direction of travel. Page/Home/End preserve their established selection behavior.
+
+File options move focus without selecting until activated. History rows move focus and selection together. These intentionally different policies stay with their owners. No shared controller stores repository state or imports transport, mutation or feature modules.
+
+The keyboard checks cover reversed ranges, selection boundaries, missing optional capabilities, page movement, empty lists, scattered selection and focus/selection handoff. Virtualization checks cover viewport pools, overscan, footer clearance and stable graph slots.

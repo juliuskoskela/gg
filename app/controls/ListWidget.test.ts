@@ -31,4 +31,21 @@ describe("list keyboard paging", () => {
         await fireEvent.keyDown(box, { key: "End" });
         expect(selectRow).toHaveBeenLastCalledWith(99);
     });
+    it("consumes boundary arrow keys without selecting an invalid row", async () => {
+        let { default: ListWidget } = await import("./ListWidget.svelte");
+        let selectRow = vi.fn();
+        let list = {
+            getSize: () => 3,
+            getSelection: () => ({ from: 0, to: 0 }),
+            selectRow,
+            extendSelection: vi.fn(),
+            editRow: vi.fn(),
+        };
+        let { getByRole } = render(ListWidget, { props: { list, type: "Revision" } });
+        let key = new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true });
+        getByRole("listbox").dispatchEvent(key);
+        expect(key.defaultPrevented).toBe(true);
+        expect(selectRow).not.toHaveBeenCalled();
+    });
+
 });

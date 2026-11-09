@@ -5,6 +5,7 @@
 </script>
 
 <script lang="ts">
+    import { virtualRange } from "./controls/listNavigation";
     import { revisionRowHeight } from "./graphLayout";
     import type { Snippet } from "svelte";
     import type { EnhancedLine, EnhancedRow } from "./graphRows";
@@ -88,9 +89,10 @@
     }
 
     let graphHeight = $derived(Math.max(containerHeight, rows.length * rowHeight + endInset));
-    let visibleRows = $derived(Math.ceil(containerHeight / rowHeight) + 1);
-    let startIndex = $derived(Math.floor(Math.max(scrollTop, 0) / rowHeight));
-    let endIndex = $derived(startIndex + visibleRows);
+    let range = $derived(virtualRange(scrollTop, containerHeight, rowHeight));
+    let visibleRows = $derived(range.count);
+    let startIndex = $derived(range.start);
+    let endIndex = $derived(range.end);
     let overlap = $derived(startIndex % visibleRows);
     let visibleSlice = $derived(shiftArray(sliceArray(rows, startIndex, endIndex), overlap));
     let distinctLines = $derived(computeDistinctLines(visibleSlice));

@@ -1,23 +1,9 @@
 <script lang="ts" module>
-    export interface Selection {
-        from: number;
-        to: number;
-    }
-
-    export interface List {
-        getSize(): number;
-        getSelection(): Selection;
-        selectRow(row: number): void;
-        extendSelection(row: number): void;
-        editRow(row: number): void;
-        // optional scattered selection: Ctrl+arrows move without clearing it, Ctrl+Space toggles, Escape clears
-        moveFocus?(row: number): void;
-        toggleRow?(row: number): void;
-        clearToggled?(): boolean;
-    }
+    export type { Selection, List } from "./listNavigation";
 </script>
 
 <script lang="ts">
+    import { selectionAction, revealRow, type List } from "./listNavigation";
     import { onMount, type Snippet } from "svelte";
 
     import type { Operand } from "../messages/Operand";
@@ -118,95 +104,27 @@
     }
 
     function onKeyDown(event: KeyboardEvent) {
-        if (list.getSize() == 0) {
-            return;
-        }
-
-        let selection: Selection;
-        let minIdx: number;
-        let maxIdx: number;
-        let pageRows: number;
-        switch (event.key) {
-            case "ArrowUp":
-                event.preventDefault();
-                selection = list.getSelection();
-                if ((event.ctrlKey || event.metaKey) && !event.shiftKey && list.moveFocus) {
-                    if (selection.to > 0) list.moveFocus(selection.to - 1);
-                } else if (event.shiftKey) {
-                    if (selection.to > 0) {
-                        onExtend(selection.to - 1);
-                    }
-                } else {
-                    minIdx = Math.min(selection.from, selection.to);
-                    if (minIdx > 0) {
-                        onSelect(minIdx - 1);
-                    }
-                }
-                break;
-
-            case "ArrowDown":
-                event.preventDefault();
-                selection = list.getSelection();
-                if ((event.ctrlKey || event.metaKey) && !event.shiftKey && list.moveFocus) {
-                    if (selection.to != -1 && list.getSize() > selection.to + 1) list.moveFocus(selection.to + 1);
-                } else if (event.shiftKey) {
-                    if (selection.to != -1 && list.getSize() > selection.to + 1) {
-                        onExtend(selection.to + 1);
-                    }
-                } else {
-                    maxIdx = Math.max(selection.from, selection.to);
-                    if (maxIdx != -1 && list.getSize() > maxIdx + 1) {
-                        onSelect(maxIdx + 1);
-                    }
-                }
-                break;
-
-            case "PageUp":
-                event.preventDefault();
-                selection = list.getSelection();
-                minIdx = Math.min(selection.from, selection.to);
-                pageRows = Math.round(box.clientHeight / rowHeight);
-                minIdx = Math.max(minIdx - pageRows, 0);
-                onSelect(minIdx);
-                break;
-
-            case "PageDown":
-                event.preventDefault();
-                selection = list.getSelection();
-                maxIdx = Math.max(selection.from, selection.to);
-                pageRows = Math.round(box.clientHeight / rowHeight);
-                maxIdx = Math.min(maxIdx + pageRows, list.getSize() - 1);
-                onSelect(maxIdx);
-                break;
-
-            case " ":
-                if ((event.ctrlKey || event.metaKey) && list.toggleRow) {
-                    event.preventDefault();
-                    selection = list.getSelection();
-                    if (selection.to != -1) list.toggleRow(selection.to);
-                }
-                break;
-
-            case "Escape":
+        let size = list.getSize();
+        if (!size) return;
+        if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key) ||
+            (event.key === " " && (event.ctrlKey || event.metaKey) && list.toggleRow)) event.preventDefault();
+        let action = selectionAction(event, list.getSelection(), size, Math.round(box.clientHeight / rowHeight), {
+            focus: !!list.moveFocus, toggle: !!list.toggleRow, clear: !!list.clearToggled,
+        });
+        if (!action) return;
+        switch (action.type) {
+            case "clear":
                 if (list.clearToggled?.()) event.preventDefault();
-                break;
-
-            case "Home":
-                event.preventDefault();
-                onSelect(0);
-                break;
-
-            case "End":
-                event.preventDefault();
-                onSelect(list.getSize() - 1);
-                break;
-
-            case "Enter":
-                selection = list.getSelection();
-                if (selection.from == selection.to) {
-                    list.editRow(selection.from);
-                }
+                return;
+            case "edit":
+                list.editRow(action.index);
+                return;
+            case "focus": list.moveFocus?.(action.index); break;
+            case "toggle": list.toggleRow?.(action.index); break;
+            case "extend": onExtend(action.index); break;
+            case "select": onSelect(action.index); break;
         }
+        event.preventDefault();
     }
 
     function onSelect(index: number) {
@@ -222,20 +140,12 @@
     }
 
     function scrollToRow(index: number) {
-        let y = index * rowHeight;
-        if (box.scrollTop + box.clientHeight - scrollPaddingBottom < y + rowHeight) {
-            box.scrollTo({
-                left: 0,
-                top: y - box.clientHeight + scrollPaddingBottom + rowHeight,
-                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-            });
-        } else if (box.scrollTop > y) {
-            box.scrollTo({
-                left: 0,
-                top: y,
-                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-            });
-        }
+        let top = revealRow(box.scrollTop, box.clientHeight, rowHeight, index, scrollPaddingBottom);
+        if (top !== box.scrollTop) box.scrollTo({
+            left: 0,
+            top,
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+        });
     }
 </script>
 
