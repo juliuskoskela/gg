@@ -1,12 +1,19 @@
 <script lang="ts">
+    import { tick, untrack } from "svelte";
+    import type { TargetInput } from "../../messages/TargetInput";
     import Markdown from "../../annotations/Markdown.svelte";
     import TargetList from "../../annotations/TargetList.svelte";
     import type { AnnotationList } from "../../messages/AnnotationList";
-    import type { ReviewAPI } from "./api";
+    import type { PluginAPI } from "../types";
     import type { ReviewMember } from "./model";
-    interface Props { api: ReviewAPI; session: string; member: ReviewMember | null; notes: AnnotationList | null; onUpdate: () => Promise<void>; }
-    let { api, session, member, notes, onUpdate }: Props = $props();
+    interface Props { api: PluginAPI; session: string; member: ReviewMember | null; notes: AnnotationList | null; onUpdate: () => Promise<void>; draftTargets?: TargetInput[]; onClear?: () => void; }
+    let { api, session, member, notes, onUpdate, draftTargets = [], onClear = () => {} }: Props = $props();
     let body = $state("");
+    let input: HTMLTextAreaElement | undefined = $state();
+    $effect(() => {
+        let targets = draftTargets;
+        if (targets.length) untrack(() => void tick().then(() => input?.focus()));
+    });
     let reply = $state("");
     let replying = $state<string | null>(null);
     let editing = $state<{ thread: string; post: string; body: string } | null>(null);
@@ -52,10 +59,12 @@
             {/if}
         </article>
     {/each}
-    {#if member}
-        <form onsubmit={event => { event.preventDefault(); run(async () => { await api.notes.create(session, [{ anchor: { kind: "revision", change_id: member!.changeId, commit_id: member!.commitId }, subject: member!.description.split("\n")[0] }], body); body = ""; }); }}>
-            <label>Note on this change<textarea bind:value={body} rows="3"></textarea></label>
+    {#if member || draftTargets.length}
+        <form onsubmit={event => { event.preventDefault(); run(async () => { await api.notes.create(session, draftTargets.length ? draftTargets : [{ anchor: { kind: "revision", change_id: member!.changeId, commit_id: member!.commitId }, subject: member!.description.split("\n")[0] }], body); body = ""; onClear(); }); }}>
+            {#if draftTargets.length}<TargetList targets={draftTargets} />{/if}
+            <label>{draftTargets.length ? "Note on selection" : "Note on this change"}<textarea bind:this={input} bind:value={body} rows="3"></textarea></label>
             <button type="submit" disabled={busy || !body.trim()}>Add note</button>
+            {#if draftTargets.length}<button type="button" disabled={busy} onclick={() => { body = ""; onClear(); }}>Cancel selection note</button>{/if}
         </form>
     {/if}
 </section>

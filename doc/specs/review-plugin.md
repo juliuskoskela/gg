@@ -3,7 +3,11 @@
 Issue: https://git.digimuoto.com/juliuskoskela/gg/issues/16
 
 The optional Review plugin is the first consumer of the bundled plugin host.
-Enable it in Settings, then open Reviews from Views. It stores sessions in
+Configure `user.name` and `user.email` in jj for the repository, enable the plugin
+in Settings, then open Reviews from Views. The plugin refuses to invent a review
+identity when those settings are absent. Participants and verdicts are local records,
+not authenticated identities or server consensus. Sharing happens through explicit
+snapshots; no background collaboration service is provided. It stores sessions in
 GG's repository data directory through its own host namespace. Nothing is
 written into `.jj/`, the working copy, or an upstream forge.
 
@@ -39,7 +43,10 @@ Review notes are core annotation threads with a `(plugin: review, session ID)`
 context. The plugin reads, creates, replies, edits and resolves through the
 host's scoped notes API. Threads keep their core IDs, authors, anchors, and
 rewrite states. They remain visible in the ordinary Annotations view when the
-plugin is disabled. There is no second thread store or localStorage identity.
+plugin is disabled. There is no second thread store or localStorage identity. With a review selected,
+“Add note to current review” in a change, file or hunk context menu opens its
+composer with the exact core anchors. “Start review of selected changes” also
+keeps scattered selections separate.
 
 A note created from the session attaches to the exact current change version.
 File and line anchors from imported/core threads render through the shared
@@ -50,7 +57,9 @@ TargetList. Rewrites do not silently retarget anchors.
 Split is delegated to a core-owned dialog and guarded repository command. A
 session records its intent before opening that dialog; the core's durable
 receipt allows session membership to recover if the app closes after the
-operation but before its plugin event is saved. Only unambiguous whole-file
+operation but before its plugin event is saved. Known inactive receipts restore
+pre-split membership after Undo; unknown receipts imported from another
+computer retain their recorded members with an explicit warning. Only unambiguous whole-file
 ownership can project file marks and annotation targets. Ambiguous anchors
 remain explicit.
 

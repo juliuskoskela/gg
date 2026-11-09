@@ -1,3 +1,4 @@
+import { project } from "./model";
 import { describe, expect, it, vi } from "vitest";
 import { capture, loadSnapshot, saveSnapshot, listSnapshots, parseSnapshot, stringifySnapshot, SNAPSHOT_CHUNK_BYTES, type CaptureAPI } from "./snapshot";
 import { snapshotFixture, legacyFixture } from "./snapshot.fixture";
@@ -41,6 +42,16 @@ describe("portable review snapshots", () => {
         expect(parseSnapshot(JSON.stringify(legacy))).toEqual(legacy);
         legacy.threads[0].anchor = { kind: "line", file: "file", side: "additions", start: 1, end: 1, quote: "invented" };
         expect(() => parseSnapshot(JSON.stringify(legacy))).toThrow("captured source");
+    });
+    it("retains captured inactive receipt state when replaying an undone split", () => {
+        let snapshot = snapshotFixture(), source = snapshot.session.members[0];
+        snapshot.events.push({ id: "split", at: snapshot.capturedAt, type: "members", sessionId: snapshot.session.id, source, members: [source, { changeId: "def", commitId: "456", description: "Remainder" }], receiptId: "receipt" });
+        snapshot.session = project(snapshot.events, { receipt: "inactive" })[0];
+        let restored = parseSnapshot(stringifySnapshot(snapshot));
+        expect(restored.version).toBe(2);
+        if (restored.version !== 2) throw Error();
+        expect(restored.session.members).toEqual([source]);
+        expect(restored.session.receiptStates).toEqual({ receipt: "inactive" });
     });
     it("rejects ambiguous identities, mismatched source revisions and malformed patches", () => {
         let snapshot = snapshotFixture(); snapshot.events.push(snapshot.events[0]);
@@ -91,12 +102,22 @@ describe("portable review snapshots", () => {
         expect([...values.keys()].filter(key => /^snapshot-[a-f0-9]{64}$/.test(key))).toHaveLength(2);
         await expect(loadSnapshot(api, first.id)).rejects.toThrow("Conflicting");
     });
+    it("rejects malformed note operations before any import can persist the session", () => {
+        let snapshot = snapshotFixture(), author = { name: "Reviewer", kind: "human" as const };
+        snapshot.notes.threads = [{ header: { id: "aa", format: "gg.annotation", version: 2, created_at: snapshot.capturedAt, author, contexts: [{ plugin: "review", id: snapshot.session.id }], targets: [{ anchor: { kind: "revision", change_id: "abc", commit_id: "123" }, subject: "Captured" }], subject: "", workspace: "" }, events: [{ id: "bb", at: snapshot.capturedAt, author, type: "post", body: "Valid note" }] }];
+        parseSnapshot(JSON.stringify(snapshot));
+        for (let operation of [{ type: "status" }, { type: "status", status: "maybe" }, { type: "edit", body: "Missing post" }, { type: "add_targets" }, { type: "remove_target" }]) {
+            let invalid = JSON.parse(JSON.stringify(snapshot));
+            invalid.notes.threads[0].events.push({ id: "cc", at: snapshot.capturedAt, author, ...operation });
+            expect(() => parseSnapshot(JSON.stringify(invalid))).toThrow();
+        }
+    });
     it("refuses incomplete manifests and notes from another review", async () => {
         let { api, values } = storage(), snapshot = snapshotFixture();
         await saveSnapshot(api, snapshot);
         values.delete([...values.keys()].find(key => key.startsWith("snapshot-part-"))!);
         await expect(loadSnapshot(api, snapshot.id)).rejects.toThrow();
-        let invalid = { ...snapshotFixture(), notes: { format: "gg.annotation-bundle", version: 1, threads: [{ header: { id: "foreign", format: "gg.annotation", version: 1, created_at: "2026-11-01T00:00:00Z", author: { name: "Reviewer", kind: "human" }, contexts: [{ plugin: "review", id: "another-session" }] }, events: [] }] } };
+        let invalid = { ...snapshotFixture(), notes: { format: "gg.annotation-bundle", version: 1, threads: [{ header: { id: "abcdef", format: "gg.annotation", version: 1, created_at: "2026-11-01T00:00:00Z", author: { name: "Reviewer", kind: "human" }, contexts: [{ plugin: "review", id: "another-session" }] }, events: [] }] } };
         expect(() => parseSnapshot(JSON.stringify(invalid))).toThrow("another review");
     });
 });

@@ -39,8 +39,7 @@ describe("bundled plugin local transport", () => {
         await ctx.page.getByRole("heading", { name: "Bundled plugins" }).scrollIntoViewIfNeeded();
         await expect.poll(() => ctx.page.getByRole("checkbox", { name: "Review", exact: true }).isVisible()).toBe(true);
         expect(await ctx.page.getByRole("checkbox", { name: "Review", exact: true }).isChecked()).toBe(false);
-        await ctx.page.getByText("Permissions", { exact: true }).click();
-        await expect.poll(() => ctx.page.getByText("Read review progress", { exact: true }).isVisible()).toBe(true);
+        expect(await ctx.page.getByText("Read review progress", { exact: true }).count()).toBe(1);
         await mkdir("e2e/results", { recursive: true });
         await ctx.page.screenshot({ path: "e2e/results/plugin-settings.png" });
     });

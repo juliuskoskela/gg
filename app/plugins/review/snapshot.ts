@@ -4,7 +4,7 @@ import type { AnnotationList } from "../../messages/AnnotationList";
 import type { ReviewProgress } from "../../messages/ReviewProgress";
 import type { RevisionSummaryResult } from "../../messages/RevisionSummaryResult";
 import type { RevsResult } from "../../messages/RevsResult";
-import { member as memberOf, project, revision, validateEvent, type ReviewEvent, type ReviewMember, type SessionState } from "./model";
+import { member as memberOf, project, revision, validateEvent, type ReceiptState, type ReviewEvent, type ReviewMember, type SessionState } from "./model";
 import { validateLegacy, type LegacyReviewSnapshot } from "./legacySnapshot";
 import * as check from "./snapshotValidation";
 
@@ -47,21 +47,46 @@ function validateDetail(value: unknown, member: ReviewMember) {
     }
 }
 function annotationAuthor(value: unknown) { let author = check.object(value); check.text(author.name, 1000, true); check.requireValue(["human", "agent"].includes(String(author.kind))); }
+function annotationAnchor(value: unknown) {
+    let anchor = check.object(value);
+    check.requireValue(["revision", "bookmark", "file", "lines"].includes(String(anchor.kind)));
+    for (let key of ["change_id", "commit_id"]) { check.text(anchor[key], 128, true); check.requireValue(/^[a-z0-9]+$/i.test(String(anchor[key]))); }
+    if (anchor.kind === "bookmark") { check.text(anchor.name, 4096, true); if (anchor.remote !== undefined) check.text(anchor.remote, 4096); }
+    if (anchor.kind === "file" || anchor.kind === "lines") { check.text(anchor.path, 4096, true); check.requireValue(!anchor.path.startsWith("/") && !anchor.path.split("/").includes("..")); }
+    if (anchor.kind === "lines") {
+        check.requireValue(anchor.side === "old" || anchor.side === "new"); check.integer(anchor.start, 1); check.integer(anchor.end, Number(anchor.start));
+        check.text(anchor.quote, 20_000); check.requireValue(bytes(anchor.quote) <= 20_000);
+    }
+}
+function annotationTargets(value: unknown) {
+    for (let raw of check.array(value, 500)) { let target = check.object(raw); annotationAnchor(target.anchor); check.text(target.subject, 100_000); }
+}
 function validateNotes(value: unknown, sessionId: string) {
     let bundle = check.object(value);
+    check.requireValue(bytes(JSON.stringify(bundle)) <= 10 * 1024 * 1024, "Annotation bundle exceeds the 10 MiB limit");
     check.requireValue(bundle.format === "gg.annotation-bundle" && bundle.version === 1);
     let threads = check.array(bundle.threads, 2000), ids = new Set<unknown>();
     for (let raw of threads) {
         let archive = check.object(raw), header = check.object(archive.header);
-        check.text(header.id, 300, true); check.requireValue(!ids.has(header.id), "Duplicate annotation archive"); ids.add(header.id);
+        check.text(header.id, 128, true); check.requireValue(/^[a-f0-9-]+$/i.test(header.id)); check.requireValue(!ids.has(header.id), "Duplicate annotation archive"); ids.add(header.id);
         check.requireValue(header.format === "gg.annotation" && (header.version === 1 || header.version === 2)); check.time(header.created_at); annotationAuthor(header.author);
-        check.requireValue(check.array(header.contexts, 100).some(raw => { let context = check.object(raw); return context.plugin === "review" && context.id === sessionId; }), "Annotation archive belongs to another review");
+        let contexts = check.array(header.contexts, 100);
+        check.requireValue(contexts.length > 0 && contexts.every(raw => { let context = check.object(raw); return context.plugin === "review" && context.id === sessionId; }), "Annotation archive belongs to another review");
+        let targets = Array.isArray(header.targets) && header.targets.length ? header.targets : (header.anchor ? [{ anchor: header.anchor, subject: header.subject ?? "" }] : []);
+        check.requireValue(check.array(targets, 500).length > 0); annotationTargets(targets);
         let events = check.array(archive.events, 10_000); check.unique(events);
+        let posts = new Map<string, unknown>();
         for (let raw of events) {
-            let event = check.object(raw); check.text(event.id, 300, true); check.time(event.at); annotationAuthor(event.author);
+            let event = check.object(raw); check.text(event.id, 128, true); check.requireValue(/^[a-f0-9-]+$/i.test(event.id)); check.time(event.at); annotationAuthor(event.author);
             check.requireValue(["post", "edit", "status", "add_targets", "remove_target"].includes(String(event.type)));
-            if (event.type === "post" || event.type === "edit") check.text(event.body, 100_000);
+            if (event.type === "post" || event.type === "edit") { check.text(event.body, 100_000, true); check.requireValue(bytes(event.body) <= 100_000); }
+            if (event.type === "post") posts.set(event.id, event.author);
+            if (event.type === "edit") { check.text(event.post, 128, true); check.requireValue(check.canonical(posts.get(event.post)) === check.canonical(event.author), "Annotation edit has no matching author and post"); }
+            if (event.type === "status") check.requireValue(event.status === "open" || event.status === "resolved");
+            if (event.type === "add_targets") annotationTargets(event.targets);
+            if (event.type === "remove_target") annotationAnchor(event.anchor);
         }
+        check.requireValue(posts.size > 0, "Annotation has no posts");
     }
     return ids;
 }
@@ -94,7 +119,10 @@ export function parseSnapshot(json: string): ReviewSnapshot {
     check.text(snapshot.id, 300, true); check.time(snapshot.capturedAt);
     let events = check.array(snapshot.events, 20_000); check.unique(events);
     for (let event of events) validateEvent(event);
-    let session = check.object(snapshot.session), sessions = project(events as ReviewEvent[]);
+    let session = check.object(snapshot.session), receiptStates = check.object(session.receiptStates ?? {});
+    for (let state of Object.values(receiptStates)) check.requireValue(state === "active" || state === "inactive" || state === "unknown", "Invalid captured split state");
+    let unverified = check.array(session.unverifiedReceipts ?? [], 2000); unverified.forEach(id => check.text(id, 300, true));
+    let sessions = project(events as ReviewEvent[], receiptStates as Record<string, ReceiptState>, new Set(unverified as string[]));
     check.requireValue(sessions.length === 1 && check.canonical(sessions[0]) === check.canonical(session), "Captured session does not match its review history");
     let members = check.array(snapshot.members, 500); check.requireValue(members.length === sessions[0].members.length);
     let capturedIds = new Set<string>();
@@ -144,8 +172,8 @@ export async function capture(api: CaptureAPI, session: SessionState, allEvents:
     let ids = new Set(notes.threads.map(thread => thread.header.id));
     let snapshot: ReviewSnapshotV2 = {
         format: "gg.review", version: 2, id: crypto.randomUUID(), capturedAt: new Date().toISOString(), session, events, members, notes,
-        capturedNotes: { ...capturedNotes, threads: capturedNotes.threads.filter(thread => ids.has(thread.id)) },
-        capturedMarks: { ...progress, changes: progress.changes.filter(change => session.members.some(member => member.changeId === change.change_id)) },
+        capturedNotes: { ...capturedNotes, location: "Captured snapshot", threads: capturedNotes.threads.filter(thread => ids.has(thread.id)) },
+        capturedMarks: { ...progress, location: "Captured snapshot", changes: progress.changes.filter(change => session.members.some(member => member.changeId === change.change_id)) },
     };
     return parseSnapshot(JSON.stringify(snapshot)) as ReviewSnapshotV2;
 }

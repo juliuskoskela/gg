@@ -17,6 +17,14 @@ describe("offline review snapshot", () => {
         await waitFor(() => expect(view.container.querySelector("diffs-container")?.shadowRoot?.textContent).toContain("new"));
         expect(query).not.toHaveBeenCalled();
     });
+    it("does not count approval for an unavailable captured member", () => {
+        let snapshot = snapshotFixture();
+        snapshot.members[0] = { member: snapshot.members[0].member, state: "unavailable", reason: "Removed" };
+        snapshot.session.verdicts = [{ id: "approved", at: snapshot.capturedAt, type: "verdict", sessionId: snapshot.session.id, person: snapshot.session.author, verdict: "approve", body: "", versions: snapshot.session.members }];
+        let view = render(SnapshotView, { snapshot });
+        expect(view.getByText("0 / 0 files")).toBeTruthy();
+        expect(view.getByText(/Versions differ from this snapshot/)).toBeTruthy();
+    });
     it("keeps old marks from approving a newer captured version and can show missing members", async () => {
         let snapshot = snapshotFixture(), captured = snapshot.members[0];
         captured.member = { ...captured.member, commitId: "456" };

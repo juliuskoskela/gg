@@ -4,16 +4,21 @@
     import LogList from "../../controls/LogList.svelte";
     import MetadataList from "../../controls/MetadataList.svelte";
     import MetadataRow from "../../controls/MetadataRow.svelte";
+    import { effectiveAnchor } from "../../annotations/anchors";
     import Markdown from "../../annotations/Markdown.svelte";
     import type { PluginViewProps } from "../types";
     import { controllers } from "./controller";
-    import type { ReviewAPI } from "./api";
+    import type { PluginAPI } from "../types";
+    import SnapshotControls from "./SnapshotControls.svelte";
+    import SnapshotView from "./SnapshotView.svelte";
+    import type { ReviewSnapshot } from "./snapshot";
     import SessionNotes from "./SessionNotes.svelte";
     import { personKey, progressFor, queue, revision, member, verdictFor, type Verdict } from "./model";
     let { api }: PluginViewProps = $props();
-    let reviewApi = untrack(() => api as ReviewAPI);
+    let reviewApi = untrack(() => api);
     let controller = untrack(() => controllers.get(api))!;
     let viewState = controller.state;
+    let openedSnapshot = $state.raw<ReviewSnapshot | null>(null);
     let title = $state("");
     let emails = $state("");
     let body = $state("");
@@ -23,13 +28,14 @@
     let memberIndex = $state(0);
     let editingParticipants = $state(false);
     let participantEmails = $state("");
+    $effect(() => { if ($viewState.creationHeaders) creating = true; });
     let session = $derived($viewState.sessions.find(session => session.id === $viewState.selected));
     let versions = $derived(new Map([...$viewState.current].map(([id, header]) => [id, header?.id.commit.hex ?? null])));
-    let pending = $derived($viewState.progress ? queue($viewState.sessions, $viewState.progress.me, versions, $viewState.progress) : []);
+    let pending = $derived($viewState.progress ? queue($viewState.sessions, $viewState.progress.me, versions, $viewState.progress, $viewState.totals) : []);
     let listed = $derived(showAll ? $viewState.sessions : pending);
     let rows = $derived(listed.map(session => {
-        let progress = progressFor(session, $viewState.progress);
-        return { id: session.id, title: session.title, who: session.author.name, time: session.createdAt, badge: `${progress.reviewed}/${progress.total} files` };
+        let progress = progressFor(session, $viewState.progress, $viewState.totals);
+        return { id: session.id, title: session.title, who: session.author.name, time: session.createdAt, badge: progress.known ? `${progress.reviewed}/${progress.total} files` : "Progress unavailable" };
     }));
     let selectedMember = $derived(session?.members[Math.min(memberIndex, session.members.length - 1)]);
     let current = $derived(selectedMember ? $viewState.current.get(selectedMember.changeId) : null);
@@ -40,8 +46,6 @@
     }
     function select(id: string | null) {
         memberIndex = 0; body = ""; editingParticipants = false; controller.select(id);
-        let first = $viewState.sessions.find(session => session.id === id)?.members[0];
-        if (first) void run(() => reviewApi.navigation.select($viewState.current.get(first.changeId)?.id ?? revision(first)));
     }
     async function step(index: number) {
         if (!session) return;
@@ -62,16 +66,33 @@
     <button type="button" disabled={!$viewState.selection || $viewState.busy} onclick={() => creating = !creating}>New review</button>
 </ViewToolbar>
 <section class="review-view" aria-label="Reviews">
+    <SnapshotControls {api} {controller} {session} currentState={$viewState} onOpen={snapshot => openedSnapshot = snapshot} />
+    {#if openedSnapshot}
+        <div class="actions">
+            <button type="button" onclick={() => openedSnapshot = null}>Back to live reviews</button>
+            {#if openedSnapshot.version === 2}<button type="button" disabled={$viewState.busy} onclick={() => run(async () => {
+                if (openedSnapshot?.version !== 2) return;
+                let snapshot = openedSnapshot;
+                await controller.importEvents(snapshot.events, { sessionId: snapshot.session.id, snapshotId: snapshot.id, capturedAt: snapshot.capturedAt, states: snapshot.session.receiptStates });
+                await api.notes.import(snapshot.session.id, snapshot.notes);
+                controller.select(snapshot.session.id); openedSnapshot = null;
+            })}>Import session and notes</button>{/if}
+        </div>
+        <SnapshotView snapshot={openedSnapshot} />
+    {/if}
     {#if error || $viewState.error}<p role="alert" class="error">{error || $viewState.error}</p>{/if}
+    {#if !openedSnapshot}
     {#if creating}
-        <form class="review-form" onsubmit={event => { event.preventDefault(); run(async () => { await controller.create(title, emails); select($viewState.selected); title = ""; emails = ""; creating = false; memberIndex = 0; }); }}>
-            <label>Title<input required bind:value={title} /></label>
+        <form class="review-form" onsubmit={event => { event.preventDefault(); run(async () => { await controller.create(title, emails); title = ""; emails = ""; creating = false; memberIndex = 0; }); }}>
+            <label>Title<input required maxlength="240" bind:value={title} /></label>
             <label>Other reviewers’ email addresses<input bind:value={emails} placeholder="Separated by commas" /></label>
             <p class="muted">You are included as a reviewer. The selected changes are captured in timeline order.</p>
-            <div class="actions"><button type="submit" disabled={$viewState.busy}>Create review</button><button type="button" onclick={() => creating = false}>Cancel</button></div>
+            <div class="actions"><button type="submit" disabled={$viewState.busy}>Create review</button><button type="button" onclick={() => { creating = false; controller.cancelCreation(); }}>Cancel</button></div>
         </form>
     {/if}
     {#if session}
+        {#if session.unverifiedReceipts.length > 0}<p class="muted">Split history could not be verified on this computer. The recorded changes are retained; check them before approving.</p>{/if}
+        {#if Object.entries(session.receiptStates).some(([id, state]) => state === "inactive" && !session.unverifiedReceipts.includes(id))}<p class="muted">An earlier split was undone. The original change is back in this review.</p>{/if}
         <MetadataList label="Review session">
             <MetadataRow label="Created by">{session.author.name}</MetadataRow>
             <MetadataRow label="Reviewers">{session.participants.map(person => person.name).join(", ")} <button type="button" onclick={() => { participantEmails = session!.participants.map(person => person.email || person.name).join(", "); editingParticipants = !editingParticipants; }}>Edit reviewers</button></MetadataRow>
@@ -91,21 +112,22 @@
             {@const progress = $viewState.progress?.changes.find(change => change.change_id === selectedMember.changeId)}
             <div class="member">
                 <code>{selectedMember.changeId.slice(0, 12)}</code>
-                <span class="muted"> · {progress?.reviewed ?? 0}/{progress?.total ?? 0} files reviewed · {$viewState.notes?.threads.filter(thread => thread.status === "open" && thread.targets.some(target => target.anchor.change_id === selectedMember.changeId)).length ?? 0} open notes</span>
+                <span class="muted"> · {progress?.reviewed ?? 0}/{progress?.total ?? $viewState.totals.get(selectedMember.changeId) ?? "?"} files reviewed · {$viewState.notes?.threads.filter(thread => thread.status === "open" && thread.targets.some(target => effectiveAnchor(target).change_id === selectedMember.changeId)).length ?? 0} open notes</span>
                 <button type="button" onclick={() => run(() => reviewApi.navigation.select(current?.id ?? revision(selectedMember!)))}>Open changes</button>
+                <button type="button" disabled={!current || current.is_immutable || current.has_conflict || $viewState.busy} onclick={() => current && session && run(() => controller.split(session!, current!))}>Split change</button>
                 <Markdown source={current?.description.lines.join("\n") ?? selectedMember.description} />
                 {#if !current}<p class="muted">This change is missing or cannot be resolved. Its captured description is shown.</p>{/if}
                 {#if current && current.id.commit.hex !== selectedMember.commitId}<p class="muted">Rewritten since this review was created.</p>{/if}
             </div>
         {/if}
-        {#key session.id}<SessionNotes api={reviewApi} session={session.id} member={current ? member(current) : null} notes={$viewState.notes} onUpdate={controller.notes} />{/key}
+        {#key session.id}<SessionNotes api={reviewApi} session={session.id} member={current ? member(current) : null} notes={$viewState.notes} onUpdate={controller.notes} draftTargets={$viewState.draftTargets} onClear={controller.clearComposer} />{/key}
         <section aria-label="Participant verdicts">
             <h3>Verdicts</h3>
             <MetadataList label="Participant verdicts">
                 {#each session.participants as person (personKey(person))}
                     {@const decision = verdictFor(session, person, versions)}
                     <MetadataRow label={person.name}>
-                        {#if decision}{decision.event.verdict === "request-changes" ? "Changes requested" : decision.event.verdict === "approve" ? "Approved" : "Commented"}{decision.stale ? " · outdated" : ""}
+                        {#if decision}<span>{decision.event.verdict === "request-changes" ? "Changes requested" : decision.event.verdict === "approve" ? "Approved" : "Commented"}{decision.stale ? " · outdated" : ""}</span>
                         {#if decision.event.body}<Markdown source={decision.event.body} />{/if}
                         {:else}Waiting{/if}
                     </MetadataRow>
@@ -124,6 +146,7 @@
         <div class="queue-filter"><button type="button" aria-pressed={!showAll} onclick={() => showAll = false}>Waiting on you · {pending.length}</button><button type="button" aria-pressed={showAll} onclick={() => showAll = true}>All · {$viewState.sessions.length}</button></div>
         {#if rows.length}<LogList {rows} label="Reviews" onSelect={select} columns={{ code: false, who: true, time: true }} />
         {:else}<p class="muted">{showAll ? "No reviews yet. Select changes in the timeline, then create a review." : "No reviews waiting on you."}</p>{/if}
+    {/if}
     {/if}
 </section>
 <style>

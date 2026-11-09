@@ -28,6 +28,8 @@ describe("review sessions", () => {
         let session = project([created, approve, split, { ...split, id: "duplicate" }])[0];
         expect(session.members).toHaveLength(2);
         expect(session.receipts).toEqual(["receipt"]);
+        expect(project([created, approve, split], { receipt: "inactive" })[0].members).toEqual(members);
+        expect(project([created, approve, split], { receipt: "unknown" })[0].members).toHaveLength(2);
         expect(verdictFor(session, me, new Map([["abc", "123"], ["def", "456"]]))?.stale).toBe(true);
     });
     it("projects independent member splits without replacing unrelated members", () => {

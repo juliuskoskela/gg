@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { writable, get } from "svelte/store";
 import "../../global.css";
+import { reviewPlugin } from "./index";
 import ReviewView from "./ReviewView.svelte";
 import { controllers, createReviewController } from "./controller";
-import type { ReviewAPI } from "./api";
+import type { PluginAPI } from "../types";
 import type { PluginContext } from "../types";
 import type { AnnotationList } from "../../messages/AnnotationList";
 import type { RevHeader } from "../../messages/RevHeader";
@@ -27,14 +28,14 @@ function setup() {
     let api = {
         context: writable<PluginContext>({ repository: "repo", workspace: "/repo", status: undefined, selection: { from: headers[0].id, to: headers[1].id } }),
         query, annotations: async () => notes, reviews: async () => ({ me, location: "", changes: [] }),
-        navigation: { select: vi.fn(async () => {}) },
+        navigation: { select: vi.fn(async () => {}), openView: vi.fn(async () => {}) },
         storage: { keys: async () => [...values.keys()], get: async (key: string) => values.get(key), set: async (key: string, value: unknown) => { values.set(key, value); } },
         notes: {
             list: vi.fn(async () => notes),
             create: vi.fn(async (_session: string, targets: TargetInput[], body: string) => { notes = { ...notes, threads: [{ id: "core-thread", targets: targets.map(target => ({ ...target, state: { type: "current" } })), workspace: "/repo", created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-01T00:00:00Z", status: "open", posts: [{ id: "post", author: notes.me, created_at: "2026-11-01T00:00:00Z", body }] }] }; return notes; }),
             reply: vi.fn(async () => notes), edit: vi.fn(async () => notes), setStatus: vi.fn(async () => notes),
         },
-    } as unknown as ReviewAPI;
+    } as unknown as PluginAPI;
     let controller = createReviewController(api);
     controllers.set(api, controller);
     close.push(() => { controller.dispose(); controllers.delete(api); });
@@ -52,6 +53,23 @@ describe("Review view", () => {
         expect(get(controller.state).sessions[0].members.map(item => item.changeId)).toEqual(["abc", "def"]);
         await fireEvent.click(view.getByRole("button", { name: "Next" }));
         await vi.waitFor(() => expect(api.navigation.select).toHaveBeenCalledWith(headers[1].id));
+    });
+    it("opens the scoped composer from a selected-change context command", async () => {
+        let { api, controller, headers } = setup();
+        controller.dispose();
+        let activation = await reviewPlugin.activate(api);
+        close.push(() => activation.dispose?.());
+        controller = controllers.get(api)!;
+        await controller.refresh();
+        await controller.create("Inline review", "");
+        controller.select(get(controller.state).sessions[0].id);
+        let command = activation.commands![0];
+        expect(command.available?.({ type: "Revision", header: headers[0] })).toBe(true);
+        await command.execute({ type: "Revision", header: headers[0] });
+        expect(api.navigation.openView).toHaveBeenCalledWith("sessions");
+        let view = render(ReviewView, { api });
+        await vi.waitFor(() => expect(view.getByLabelText("Note on selection")).toBeTruthy());
+        expect(get(controller.state).draftTargets[0].anchor).toEqual({ kind: "revision", change_id: "abc", commit_id: "123" });
     });
     it("creates a shared core annotation with the session context and exact member version", async () => {
         let { api, controller } = setup();

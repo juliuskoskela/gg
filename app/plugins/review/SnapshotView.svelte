@@ -20,6 +20,7 @@
     let file = $derived(files.find(file => file.path.repo_path === selectedPath) ?? files[0]);
     let notes = $derived(snapshot.version === 2 ? snapshot.capturedNotes.threads : []);
     let marks = $derived(snapshot.version === 2 ? snapshot.members.reduce((sum, capture) => {
+        if (capture.state !== "captured") return sum;
         let row = snapshot.version === 2 ? snapshot.capturedMarks.changes.find(row => row.change_id === capture.member.changeId && row.commit_id === capture.member.commitId) : undefined;
         return { reviewed: sum.reviewed + (row?.reviewed ?? 0), total: sum.total + (row?.total ?? (capture.state === "captured" ? capture.detail.changes.length : 0)) };
     }, { reviewed: 0, total: 0 }) : null);
@@ -63,7 +64,7 @@
     </section>
     {#if snapshot.version === 2}
         <section class="captured-verdicts" aria-label="Captured verdicts"><h4>Captured verdicts</h4>
-            {#each snapshot.session.verdicts as verdict (verdict.id)}<CapturedDiscussion label={`${verdict.person.name} · ${verdict.verdict} · ${snapshot.members.length === verdict.versions.length && snapshot.members.every(capture => verdict.versions.some(version => version.changeId === capture.member.changeId && version.commitId === capture.member.commitId)) ? "Matches captured versions" : "Versions differ from this snapshot"}`} posts={[{ id: verdict.id, author: verdict.person.name, at: verdict.at, body: verdict.body }]} />
+            {#each snapshot.session.verdicts as verdict (verdict.id)}<CapturedDiscussion label={`${verdict.person.name} · ${verdict.verdict} · ${snapshot.members.length === verdict.versions.length && snapshot.members.every(capture => capture.state === "captured" && verdict.versions.some(version => version.changeId === capture.member.changeId && version.commitId === capture.member.commitId)) ? "Matches captured versions" : "Versions differ from this snapshot"}`} posts={[{ id: verdict.id, author: verdict.person.name, at: verdict.at, body: verdict.body }]} />
             {:else}<p>No verdicts were captured.</p>{/each}
         </section>
     {/if}
@@ -71,7 +72,7 @@
 <style>
     .snapshot-view { min-height: 0; overflow: auto; pointer-events: auto; padding: var(--panel-inset); display: grid; align-content: start; gap: var(--gap-group); }
     header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--gap-row); }
-    h3 { font: var(--font-heading); margin: 0; }
+    h3 { font: var(--font-heading); margin: 0; min-width: 0; overflow-wrap: anywhere; }
     h4 { font: var(--font-emphasis); margin: 0; overflow-wrap: anywhere; }
     code { font: var(--font-id); overflow-wrap: anywhere; }
     p { margin: 0; }

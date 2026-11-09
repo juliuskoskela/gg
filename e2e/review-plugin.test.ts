@@ -1,0 +1,75 @@
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from "vitest";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness";
+
+describe("bundled review sessions", () => {
+    let ctx: TestContext, url: string;
+    let previousConfig = process.env.XDG_CONFIG_HOME;
+    beforeAll(async () => { ctx = await createContext(); process.env.XDG_CONFIG_HOME = join(ctx.dataDir, "config"); extractTestRepo(ctx.tempDir); execFileSync("jj", ["config", "set", "--repo", "-R", ctx.tempDir, "user.name", "Review Tester"]); execFileSync("jj", ["config", "set", "--repo", "-R", ctx.tempDir, "user.email", "review@example.test"]); url = await startGG(ctx); });
+    afterAll(async () => { if (ctx) await destroyContext(ctx); if (previousConfig === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = previousConfig; });
+    it("persists sessions, shares core notes, expires rewritten verdicts and preserves notes when disabled", async () => {
+        let page = ctx.page;
+        onTestFailed(async () => {
+            mkdirSync("e2e/results/review-plugin", { recursive: true });
+            await page.screenshot({ path: "e2e/results/review-plugin/failure.png" });
+            console.log(await page.locator("body").innerText());
+        });
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto(url);
+        await page.evaluate(() => {
+            let group = (active: string, panels = [active]) => ({ type: "tabs", active, panels });
+            localStorage.setItem("gg.plugins.enabled", JSON.stringify(["review"]));
+            localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, compactActive: "plugin:review:sessions", root: { type: "split", direction: "row", ratio: .4, first: group("timeline"), second: group("plugin:review:sessions", ["diff", "plugin:review:sessions"]) } }));
+        });
+        await page.reload();
+        await page.locator(".graph .selection-item").filter({ hasText: "change both" }).first().click();
+        await page.getByRole("button", { name: "New review", exact: true }).click();
+        await page.getByLabel("Title", { exact: true }).fill("Shared feature review");
+        await page.getByRole("button", { name: "Create review", exact: true }).click();
+        await page.getByLabel("Note on this change", { exact: true }).fill("Keep this change explicit.");
+        await page.getByRole("button", { name: "Add note", exact: true }).click();
+        await page.getByRole("article", { name: "Review note", exact: true }).getByText("Keep this change explicit.", { exact: true }).waitFor();
+        await page.getByLabel("Review summary", { exact: true }).fill("Reviewed current version.");
+        await page.getByRole("button", { name: "Approve", exact: true }).click();
+        await page.getByText("Approved", { exact: true }).waitFor();
+        await page.getByText("Snapshots", { exact: true }).click();
+        let downloadPromise = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Export snapshot", exact: true }).click();
+        let snapshotPath = join(ctx.dataDir, "review.gg.review");
+        await (await downloadPromise).saveAs(snapshotPath);
+        expect(JSON.parse(readFileSync(snapshotPath, "utf8")).notes.threads[0].header.version).toBe(2);
+        await page.getByLabel("Open snapshot file", { exact: true }).setInputFiles(snapshotPath);
+        await page.getByRole("region", { name: "Captured review", exact: true }).waitFor();
+        await page.getByText("open · change both", { exact: true }).click();
+        await page.getByRole("region", { name: "Captured review", exact: true }).getByText("Keep this change explicit.", { exact: true }).waitFor();
+        await page.getByRole("button", { name: "Back to live reviews", exact: true }).click();
+        let repoDirectory = readdirSync(join(ctx.dataDir, "repos")).map(name => join(ctx.dataDir, "repos", name)).find(path => existsSync(join(path, "plugins", "review", "values")))!;
+        let values = join(repoDirectory, "plugins", "review", "values");
+        let events = readdirSync(values).filter(name => name.startsWith("event-")).map(name => JSON.parse(readFileSync(join(values, name), "utf8")));
+        let created = events.find(event => event.type === "created");
+        expect(events.some(event => event.type === "verdict" && event.verdict === "approve")).toBe(true);
+        expect(existsSync(join(ctx.tempDir, "plugins"))).toBe(false);
+        execFileSync("jj", ["describe", "--ignore-immutable", "-R", ctx.tempDir, "-r", created.session.members[0].changeId, "-m", "Changed after review"], { stdio: "pipe" });
+        await page.reload();
+        await page.getByRole("button", { name: /All ·/ }).click();
+        await page.locator("button[data-log-row]").filter({ hasText: "Shared feature review" }).click();
+        await page.getByText("Approved · outdated", { exact: true }).waitFor();
+        await page.getByRole("article", { name: "Review note", exact: true }).getByText("Keep this change explicit.", { exact: true }).waitFor();
+        mkdirSync("e2e/results/review-plugin", { recursive: true });
+        await page.screenshot({ path: "e2e/results/review-plugin/session-desktop.png" });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.getByRole("tab", { name: "Reviews", exact: true }).click();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await page.screenshot({ path: "e2e/results/review-plugin/session-mobile.png" });
+        await page.evaluate(() => {
+            let group = (active: string) => ({ type: "tabs", active, panels: [active] });
+            localStorage.setItem("gg.plugins.enabled", "[]");
+            localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, compactActive: "annotations", root: group("annotations") }));
+        });
+        await page.reload();
+        await page.getByText("Keep this change explicit.", { exact: true }).first().waitFor();
+        expect(await page.getByRole("button", { name: "New review", exact: true }).count()).toBe(0);
+    });
+});
