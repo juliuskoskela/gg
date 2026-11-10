@@ -7,11 +7,13 @@
         // an icon button with a menu of independent on/off options, for view settings that don't each earn a toolbar slot
         label: string;
         icon: string;
-        /** options with different groups are separated by a rule */
-        options: { id: string; label: string; group?: number; checked: boolean; onToggle: () => void }[];
+        /** a CSS transform for the trigger's icon, such as one that shows a state */
+        iconTransform?: string;
+        /** options with different groups are separated by a rule; a radio option is one of an exclusive choice */
+        options: { id: string; label: string; group?: number; checked: boolean; radio?: boolean; onToggle: () => void }[];
     }
 
-    let { label, icon, options }: Props = $props();
+    let { label, icon, iconTransform = "", options }: Props = $props();
 
     let open = $state(false);
     let root!: HTMLDivElement;
@@ -49,13 +51,13 @@
 <div class="options" bind:this={root}>
     <button bind:this={trigger} type="button" class="trigger" class:open aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={id}
         onclick={() => open ? close() : show()} onkeydown={event => { if (event.key === "ArrowDown" && !open) { event.preventDefault(); show(true); } }}>
-        <Icon name={icon} /><span class="caret"><Icon name="chevron-down" /></span>
+        <span class="glyph" style:transform={iconTransform || undefined}><Icon name={icon} /></span><span class="caret"><Icon name="chevron-down" /></span>
     </button>
     {#if open}
         <div {id} class="menu" role="menu" tabindex="-1" aria-label={label} style={position} bind:this={list} use:menuBehavior={{ onClose: () => close(), returnFocus: trigger }}>
             {#each options as option, index (option.id)}
                 {#if index > 0 && (option.group ?? 0) !== (options[index - 1].group ?? 0)}<hr />{/if}
-                <button type="button" role="menuitemcheckbox" tabindex="-1" aria-checked={option.checked} onclick={option.onToggle}>
+                <button type="button" role={option.radio ? "menuitemradio" : "menuitemcheckbox"} tabindex="-1" aria-checked={option.checked} onclick={option.onToggle}>
                     <span class="check" aria-hidden="true">{#if option.checked}<Icon name="check" />{/if}</span>{option.label}
                 </button>
             {/each}
@@ -66,6 +68,7 @@
 <style>
     .options { position: relative; display: inline-flex; }
     .trigger { display: inline-flex; align-items: center; gap: 2px; min-height: var(--panel-control-size, 28px); padding: 0 4px 0 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
+    .glyph { display: inline-flex; }
     .caret { display: inline-flex; --icon-size: 10px; }
     .trigger.open { background: var(--active); color: var(--text-strong); }
     @media (hover: hover) { .trigger:not(.open):hover { background: var(--hover); color: var(--text); } }

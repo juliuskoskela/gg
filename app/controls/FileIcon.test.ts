@@ -36,19 +36,19 @@ describe("Material file icons", () => {
         expect(getByRole("img", { name: "Unresolved conflict" })).toBeTruthy();
     });
     it("refreshes icons when virtual file slots are recycled", async () => {
-        let { default: VirtualFileList } = await import("../revision/VirtualFileList.svelte");
+        let { default: FileTreeView } = await import("../tree/FileTreeView.svelte");
         let changes: RevChange[] = Array.from({ length: 240 }, (_, i) => {
             let path = i === 239 ? "last.rs" : `file-${i}.svelte`;
             return { kind: "Modified", has_conflict: false, path: { repo_path: path, relative_path: path }, hunks: [] };
         });
-        let { container } = render(VirtualFileList, { props: { changes, headers: [], selectedPath: "", onSelect: () => {} } });
+        let { container } = render(FileTreeView, { props: { changes, label: "Files", memoryKey: "icons", seedKey: "icons" } });
         container.style.cssText = "height:250px;width:390px;display:flex";
-        await waitFor(() => expect(container.querySelectorAll(".file-row").length).toBeGreaterThan(1));
-        let first = container.querySelector<HTMLButtonElement>(".file-row button")!;
+        await waitFor(() => expect(container.querySelectorAll('[role="treeitem"]').length).toBeGreaterThan(1));
+        let first = container.querySelector<HTMLElement>('[role="treeitem"]')!;
         expect(first.querySelector("img")?.getAttribute("data-file-icon")).toBe("svelte");
         first.focus();
         await fireEvent.keyDown(first, { key: "End" });
-        await waitFor(() => expect(document.activeElement?.textContent).toContain("last.rs"));
+        await waitFor(() => expect(document.activeElement?.getAttribute("aria-label")).toBe("last.rs"));
         expect(document.activeElement?.querySelector("img")?.getAttribute("data-file-icon")).toBe("rust");
     });
 });

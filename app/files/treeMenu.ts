@@ -4,7 +4,7 @@ import type { Command } from "../commands/registry";
 import { EDIT_GROUP } from "../commands/textCommands";
 import type { RevChange } from "../messages/RevChange";
 import type { RevHeader } from "../messages/RevHeader";
-import type { TreeRow } from "../revision/repositoryTree";
+import type { TreeRow } from "../tree/fileTree";
 import { copyPathCommand } from "./editorMenu";
 
 export interface TreeMenuInput {

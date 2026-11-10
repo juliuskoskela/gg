@@ -131,6 +131,6 @@ export async function openChangedFiles(page: Page) {
 }
 
 /** starts every page of the context with the drawer open, for tests about something else */
-export async function seedChangedFilesOpen(page: Page, height = 240) {
-    await page.addInitScript(height => localStorage.setItem("gg.diff.files", JSON.stringify({ open: true, height })), height);
+export async function seedChangedFilesOpen(page: Page, height = 240, side = "bottom") {
+    await page.addInitScript(({ height, side }) => localStorage.setItem("gg.diff.files", JSON.stringify({ open: true, side, width: 280, height })), { height, side });
 }

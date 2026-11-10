@@ -257,7 +257,8 @@ describe("GG+ workspace", () => {
         let search = drawer.getByRole("searchbox", { name: "Filter changed files" });
         await search.press("Escape");
         expect(await files.isVisible()).toBe(true);
-        let file = files.getByRole("option").first();
+        // folders carry no aria-selected, so the first such row is a file
+        let file = files.locator('[role="treeitem"][aria-selected]').first();
         let selectedFile = await file.getAttribute("aria-label");
         await file.click();
         await ctx.page.locator(".diff-viewer pre").waitFor();

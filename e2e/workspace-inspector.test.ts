@@ -237,27 +237,30 @@ describe("compact workspace inspector", () => {
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
         let drawer = await openChangedFiles(ctx.page);
-        let list = drawer.locator(".virtual-files");
+        let list = drawer.getByRole("tree", { name: "Changed files" });
         await list.waitFor();
+        // the tree lists its folders too: bulk and the four that hold the other 30 files
+        let rows = 270 + 5;
         // visibility can precede the resize observer that establishes virtual row geometry
-        await expect.poll(() => list.evaluate(el => {
+        await expect.poll(() => list.evaluate((el, rows) => {
             let rowHeight = el.querySelector(".row-measure")!.getBoundingClientRect().height;
-            let space = el.querySelector(".file-space")!.getBoundingClientRect().height;
-            return rowHeight > 0 && space === 270 * rowHeight && el.scrollHeight > el.clientHeight;
-        })).toBe(true);
-        expect(await list.locator("[data-file-index]").count()).toBeLessThan(40);
+            let space = el.querySelector(".tree-space")!.getBoundingClientRect().height;
+            return rowHeight > 0 && space === rows * rowHeight && el.scrollHeight > el.clientHeight;
+        }, rows)).toBe(true);
+        expect(await list.locator("[data-index]").count()).toBeLessThan(40);
         await list.evaluate(el => { el.scrollTop = el.scrollHeight; });
-        await expect.poll(() => list.locator('[data-file-index="269"]').count()).toBe(1);
+        await expect.poll(() => list.locator(`[data-index="${rows - 1}"]`).count()).toBe(1);
         await list.evaluate(el => { el.scrollTop = 0; });
-        let first = list.locator('[data-file-index="0"] button');
+        let first = list.locator('[data-index="0"]');
         await first.waitFor();
         await first.focus();
         await first.press("End");
-        await expect.poll(() => list.locator('[data-file-index="269"] button').evaluate(el => document.activeElement === el)).toBe(true);
+        await expect.poll(() => list.locator(`[data-index="${rows - 1}"]`).evaluate(el => el.contains(document.activeElement) || el === document.activeElement)).toBe(true);
         let search = drawer.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("item-187.txt");
-        await expect.poll(() => list.locator("[data-file-index]").count()).toBe(1);
-        await list.getByRole("option", { name: /item-187\.txt/ }).click();
+        // the filter leaves the file and the folder that holds it
+        await expect.poll(() => list.locator("[data-index]").count()).toBe(2);
+        await list.getByRole("treeitem", { name: /item-187\.txt/ }).click();
         await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("item-187.txt");
         expect(await ctx.page.locator('.diff-toolbar [title="bulk/item-187.txt"]').count()).toBeGreaterThan(0);
     });

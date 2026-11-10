@@ -209,8 +209,13 @@
   --field-focus-border: color-mix(in srgb, var(--text) 55%, var(--surface));
   --input-surface: var(--palette-input);
   --control-hover: color-mix(in srgb, var(--text) 45%, var(--input-surface));
-  --scrollbar-thumb: light-dark(#0000002b, #ffffff24);
-  --scrollbar-thumb-hover: light-dark(#00000050, #ffffff40);
+  /* ink over whatever surface the bar crosses, strong enough to find without a track behind it */
+  --scrollbar-thumb: color-mix(in srgb, var(--text) 30%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--text) 50%, transparent);
+  /* a 10px track holding a 6px thumb 2px off each side; the thumb under the pointer grows to 8px */
+  --scrollbar-track: 10px;
+  --scrollbar-inset: 2px;
+  --scrollbar-inset-hover: 1px;
   --text: var(--palette-text);
   --text-strong: var(--palette-strong);
   --muted: var(--palette-muted);

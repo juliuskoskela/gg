@@ -11,15 +11,17 @@
         title?: string;
         headers?: RevHeader[];
         onCompare?: CompareReview;
+        /** the changed-files pane can be moved around the diff, which compact views do not have */
+        placement?: boolean;
     }
 
-    let { changes, title = "", headers = [], onCompare }: Props = $props();
+    let { changes, title = "", headers = [], onCompare, placement = false }: Props = $props();
 </script>
 
 <div class="diff-tools"><PanelTools label="Diff tools" summaryVisible={true}>
     {#snippet summary()}{#if title}<h3>{title}</h3>{/if}<DiffStat {changes} />{/snippet}
     {#if headers.length === 1}<ReviewControl header={headers[0]} {onCompare} />{/if}
-    {#if changes.length}<DiffDisplayOptions />{/if}
+    {#if changes.length}<DiffDisplayOptions {placement} />{/if}
 </PanelTools></div>
 
 <style>

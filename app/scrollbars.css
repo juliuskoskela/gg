@@ -1,19 +1,23 @@
-/* retain native scrolling and hit areas without a persistent track. */
+/* native scrolling and hit areas without a persistent track; app/scrollbars.ts decides when a bar shows. */
 * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
 [data-scrollbar-active] { scrollbar-color: var(--scrollbar-thumb) transparent; }
-*::-webkit-scrollbar { width: 6px; height: 6px; }
+/* the thumb floats inside a slightly wider track, clear of the edge it scrolls against */
+*::-webkit-scrollbar { width: var(--scrollbar-track); height: var(--scrollbar-track); }
 *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
-*::-webkit-scrollbar-thumb { border-radius: 999px; background: transparent; }
-[data-scrollbar-active]::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); }
+*::-webkit-scrollbar-thumb { border: var(--scrollbar-inset) solid transparent; border-radius: 999px; background-clip: padding-box; background-color: transparent; transition: background-color var(--motion-feedback) ease-out; }
+[data-scrollbar-active]::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }
 *::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 @supports selector(::-webkit-scrollbar) {
   /* standard scrollbar properties otherwise override the rounded webkit thumb. */
   *, [data-scrollbar-active] { scrollbar-width: auto; scrollbar-color: auto; }
 }
 @media (hover: hover) {
-  [data-scrollbar-active]::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+  /* the thumb under the pointer grows into its track and darkens, so it reads as grabbable */
+  [data-scrollbar-active]::-webkit-scrollbar-thumb:hover { border-width: var(--scrollbar-inset-hover); background-color: var(--scrollbar-thumb-hover); }
+  [data-scrollbar-active]::-webkit-scrollbar-thumb:active { border-width: var(--scrollbar-inset-hover); background-color: var(--scrollbar-thumb-hover); }
 }
+@media (prefers-reduced-motion: reduce) { *::-webkit-scrollbar-thumb { transition: none; } }
 @media (forced-colors: active) {
   *, [data-scrollbar-active] { scrollbar-color: auto; }
-  *::-webkit-scrollbar-thumb { background: CanvasText; }
+  *::-webkit-scrollbar-thumb { background-color: CanvasText; }
 }

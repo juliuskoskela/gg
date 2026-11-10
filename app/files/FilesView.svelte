@@ -9,7 +9,6 @@
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Badge from "../controls/Badge.svelte";
     import TextField from "../controls/TextField.svelte";
-    import OptionsMenu from "../controls/OptionsMenu.svelte";
     import Icon from "../controls/Icon.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
@@ -17,9 +16,13 @@
     import type { FileContent } from "../messages/FileContent";
     import type { RevChange } from "../messages/RevChange";
     import type { WriteFile } from "../messages/WriteFile";
+    import BrowserPane from "../tree/BrowserPane.svelte";
+    import PaneBar from "../tree/PaneBar.svelte";
+    import PlacementMenu from "../tree/PlacementMenu.svelte";
+    import { isHorizontal } from "../tree/placement";
     import RepositoryTree from "../revision/RepositoryTree.svelte";
     import TreeTools from "../revision/TreeTools.svelte";
-    import type { treeSummary } from "../revision/repositoryTree";
+    import type { treeSummary } from "../tree/fileTree";
     import { currentMutation, repoConfigEvent, repoStatusEvent, workingCopySelection } from "../stores";
     import { fileBuffers, dirtyPaths } from "./buffers";
     import { gutterMarks } from "./gutterMarks";
@@ -28,11 +31,11 @@
     import { editorCommands, type EditorMenu } from "./editorMenu";
     import { treeCommands } from "./treeMenu";
     import { lineNotes } from "./noteGutter";
-    import type { TreeRow } from "../revision/repositoryTree";
+    import type { TreeRow } from "../tree/fileTree";
     import type { Command } from "../commands/registry";
     import { loadRevisionDiff, loadRevisionSummary, type RevisionDetail } from "../revision/data";
     import { repositoryScope } from "../workspace/repository";
-    import { KEY_STEP, MIN_TREE_WIDTH, NARROW_WIDTH, clampTreeWidth, filesLayout, maxTreeWidth } from "./layout";
+    import { NARROW_WIDTH, filesLayout } from "./layout";
     import { formatSize } from "./size";
 
     interface Props {
@@ -46,7 +49,6 @@
     let CHANGED = "This file changed since it was opened.";
     let LOADING_DELAY = 150;
 
-    let root = $state<HTMLElement>();
     let width = $state(0);
     let openPath = $state(untrack(() => openFiles.get(repositoryKey()) ?? ""));
     let page = $state<"tree" | "editor">(untrack(() => openPath ? "editor" : "tree"));
@@ -63,7 +65,6 @@
     let filter = $state("");
     let changedOnly = $state(false);
     let summary = $state.raw<ReturnType<typeof treeSummary> | null>(null);
-    let resizing = $state(false);
     let generation = 0;
     let loadingTimer: ReturnType<typeof setTimeout> | undefined;
     // after a save the next answers for the old version are stale and must not undo it
@@ -100,7 +101,6 @@
     function repositoryKey() { let config = get(repoConfigEvent); return config.type === "Workspace" ? config.absolute_path : ""; }
     let scope = $derived($repoConfigEvent.type === "Workspace" ? $repoConfigEvent.absolute_path : "");
     let narrow = $derived(width > 0 && width < NARROW_WIDTH);
-    let treeWidth = $derived(clampTreeWidth($filesLayout.treeWidth, width || 1000));
     let treeShown = $derived(narrow ? page === "tree" : $filesLayout.treeOpen);
     let editorShown = $derived(!narrow || page === "editor");
     let openChange = $derived(openPath ? changes.find(change => change.path.repo_path === openPath) : undefined);
@@ -278,53 +278,15 @@
     function retry() {
         void load(openPath, true);
     }
-
-    function setWidth(next: number) {
-        filesLayout.setTreeWidth(clampTreeWidth(next, width || 1000));
-    }
-
-    // which way a pointer or arrow key widens the tree: right for a leading tree in left-to-right text
-    function direction() {
-        let rtl = root && getComputedStyle(root).direction === "rtl" ? -1 : 1;
-        return $filesLayout.treeSide === "end" ? -rtl : rtl;
-    }
-
-    function splitterKey(event: KeyboardEvent) {
-        let step = event.key === "ArrowRight" ? KEY_STEP * direction() : event.key === "ArrowLeft" ? -KEY_STEP * direction() : 0;
-        if (step) setWidth(treeWidth + step);
-        else if (event.key === "Home") setWidth(MIN_TREE_WIDTH);
-        else if (event.key === "End") setWidth(maxTreeWidth(width || 1000));
-        else return;
-        event.preventDefault();
-    }
-
-    let drag: { x: number; width: number } | null = null;
-    function splitterDown(event: PointerEvent) {
-        event.preventDefault();
-        drag = { x: event.clientX, width: treeWidth };
-        resizing = true;
-        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    }
-    function splitterMove(event: PointerEvent) {
-        if (drag) setWidth(drag.width + (event.clientX - drag.x) * direction());
-    }
-    function splitterUp() {
-        drag = null;
-        resizing = false;
-    }
 </script>
 
-<div class="files-view" class:narrow bind:this={root} bind:clientWidth={width}>
+<div class="files-view" class:narrow bind:clientWidth={width}>
     <ViewToolbar label="Editor tools">
         <TreeTools bind:filter bind:changedOnly {summary} filterField={false} filters={!(narrow && page === "editor")} trayLabel="Editor options">
             <ToggleItem icon="corner-down-left" label="Wrap lines" on={$filesLayout.wrap} onClick={() => filesLayout.toggleWrap()} />
         </TreeTools>
         {#if !narrow}
-            <OptionsMenu label="Editor layout" icon="sidebar" options={[
-                { id: "tree", label: "File tree", group: 0, checked: $filesLayout.treeOpen, onToggle: () => filesLayout.toggleTree() },
-                { id: "left", label: "Tree on the left", group: 1, checked: $filesLayout.treeSide === "start", onToggle: () => filesLayout.setTreeSide("start") },
-                { id: "right", label: "Tree on the right", group: 1, checked: $filesLayout.treeSide === "end", onToggle: () => filesLayout.setTreeSide("end") },
-            ]} />
+            <PlacementMenu label="Editor layout" paneLabel="File tree" open={$filesLayout.treeOpen} side={$filesLayout.treeSide} onOpen={open => filesLayout.setTreeOpen(open)} onSide={side => filesLayout.setTreeSide(side)} />
         {/if}
     </ViewToolbar>
     {#if revisionError}
@@ -333,22 +295,14 @@
     {#if !detail}
         {#if !revisionError}<p class="message" role="status">Loading…</p>{/if}
     {:else}
-    <div class="body" class:tree-end={$filesLayout.treeSide === "end"}>
-        <!-- the tree stays mounted while hidden so its scroll position, folders and filter survive -->
-        <div class="tree-pane" hidden={!treeShown} style:width={narrow ? undefined : `${treeWidth}px`}>
+    {#snippet treePane()}
+        <div class="tree-pane">
             <!-- the tree's bar continues the editor's file bar, so the two read as one band split by the divider -->
-            <div class="pane-bar tree-bar"><TextField className="tree-search" type="search" label="Filter files" placeholder="Find a file…" bind:value={filter} /></div>
+            <PaneBar><div class="bar-field"><TextField className="tree-search" type="search" label="Filter files" placeholder="Find a file…" bind:value={filter} /></div></PaneBar>
             <RepositoryTree {headers} {changes} selectedPath="" onSelect={() => {}} toolbar={false} bind:filter bind:changedOnly bind:summary onOpen={path => open(path)} {openPath} dirty={dirtySet} onMenu={treeMenu} />
         </div>
-        {#if treeShown && !narrow}
-            <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (a focusable separator follows the window splitter pattern) -->
-            <div class="splitter" class:dragging={resizing} role="separator" tabindex="0" aria-label="Resize file tree" aria-orientation="vertical"
-                aria-valuemin={MIN_TREE_WIDTH} aria-valuemax={maxTreeWidth(width || 1000)} aria-valuenow={treeWidth}
-                style:inset-inline-start={$filesLayout.treeSide === "end" ? undefined : `calc(${treeWidth}px - var(--space-1))`}
-                style:inset-inline-end={$filesLayout.treeSide === "end" ? `calc(${treeWidth}px - var(--space-1))` : undefined}
-                onpointerdown={splitterDown} onpointermove={splitterMove} onpointerup={splitterUp} onpointercancel={splitterUp} onlostpointercapture={splitterUp} onkeydown={splitterKey}></div>
-        {/if}
-        {#if editorShown}
+    {/snippet}
+    {#snippet editorPane()}
             <section class="editor-pane" aria-label="File editor">
                 <!-- the bar stays without a file, so the band across both panes never breaks -->
                 {#if !openPath}<div class="pane-bar editor-bar"></div>{/if}
@@ -398,31 +352,30 @@
                     <p class="message">Select a file to open it.</p>
                 {/if}
             </section>
-        {/if}
-    </div>
+    {/snippet}
+    {#if narrow}
+        <!-- two pages: the tree stays mounted while hidden so its scroll position, folders and filter survive -->
+        <div class="body">
+            <div class="page" hidden={!treeShown}>{@render treePane()}</div>
+            {#if editorShown}{@render editorPane()}{/if}
+        </div>
+    {:else}
+        <div class="body">
+            <BrowserPane side={$filesLayout.treeSide} open={$filesLayout.treeOpen} size={isHorizontal($filesLayout.treeSide) ? $filesLayout.treeWidth : $filesLayout.treeHeight} onResize={size => isHorizontal($filesLayout.treeSide) ? filesLayout.setTreeWidth(size) : filesLayout.setTreeHeight(size)} label="Resize file tree" keepMounted content={editorPane} pane={treePane} />
+        </div>
+    {/if}
     {/if}
 </div>
 
 <style>
     .files-view { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--surface); }
     .body { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; }
-    .tree-pane { display: flex; flex-direction: column; flex: none; min-width: 0; min-height: 0; border-inline-end: 1px solid var(--view-inner-rule); pointer-events: auto; }
+    .tree-pane { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; pointer-events: auto; }
     .tree-pane > :global(:last-child) { flex: 1; min-height: 0; }
-    .tree-end { flex-direction: row-reverse; }
-    .tree-end .tree-pane { border-inline-end: 0; border-inline-start: 1px solid var(--view-inner-rule); }
+    .page { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+    .page[hidden] { display: none; }
     /* both panes open on a bar of the same height and shade, closed by the inner rule */
     .pane-bar { display: flex; flex: none; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-toolbar-height); box-sizing: border-box; background: var(--panel-header-bg); border-block-end: 1px solid var(--view-inner-rule); --control-height: var(--panel-control-size); --control-padding-block: var(--control-padding-compact); --input-surface: var(--panel-header-bg); }
-    /* the field sits as far from the bar's edges as the title bar's pills sit from the tile's */
-    .tree-bar { padding-inline: var(--view-bar-inset); }
-    .tree-bar :global(.tree-search) { width: 100%; }
-    .tree-pane[hidden] { display: none; }
-    .narrow .tree-pane { flex: 1; border-inline: 0; }
-    .splitter { position: absolute; inset-block: 0; z-index: 2; inline-size: var(--space-2); cursor: col-resize; touch-action: none; user-select: none; pointer-events: auto; }
-    .splitter::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: calc(50% - 1px); width: 2px; border-radius: var(--radius-sm); background: transparent; pointer-events: none; transition: background var(--motion-feedback) ease-out; }
-    .splitter:focus-visible { outline: none; }
-    .splitter.dragging::after, .splitter:focus-visible::after { background: var(--accent); }
-    @media (hover: hover) { .splitter:hover::after { background: var(--control-hover); } }
-    @media (pointer: coarse) { .splitter { inline-size: var(--space-4); } }
     .editor-pane { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--surface); pointer-events: auto; }
     .editor-bar { padding-inline: var(--panel-inset); --hover: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg)); }
     .crumbs { display: flex; flex: 0 1 auto; align-items: baseline; gap: var(--space-1); min-width: 0; overflow: hidden; white-space: nowrap; }

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { RevChange } from "../messages/RevChange";
-import { defaultExpanded, treeSummary, visibleRows } from "./repositoryTree";
+import { defaultExpanded, groupKey, treeSummary, visibleRows } from "./fileTree";
 
-function change(path: string, kind: RevChange["kind"] = "Modified"): RevChange {
-    return { kind, has_conflict: false, path: { repo_path: path, relative_path: path }, hunks: [] };
+function change(path: string, kind: RevChange["kind"] = "Modified", category?: RevChange["category"]): RevChange {
+    return { kind, category, has_conflict: false, path: { repo_path: path, relative_path: path }, hunks: [] };
 }
 
 let files = ["README.md", "app/main.ts", "app/lib/util.ts", "app/lib/Zed.ts", "src/a.rs", "src/b.rs", "docs/guide.md"];
 let paths = (rows: ReturnType<typeof visibleRows>) => rows.map(row => row.path);
 
-describe("repository tree model", () => {
+describe("file tree model", () => {
     it("sorts folders before files and shows only the top level when nothing is expanded", () => {
         let rows = visibleRows({ files, changes: [], expanded: new Set(), filter: "", changedOnly: false });
         expect(paths(rows)).toEqual(["app", "docs", "src", "README.md"]);
@@ -59,5 +59,42 @@ describe("repository tree model", () => {
         expect(paths(rows)).toEqual(["src", "src/b.rs", "README.md"]);
         let both = visibleRows({ files, changes, expanded: new Set(["src"]), filter: "readme", changedOnly: true });
         expect(paths(both)).toEqual(["README.md"]);
+    });
+
+    describe("grouping by type", () => {
+        let changes = [change("src/main.rs"), change("src/util.rs"), change("spec/main.rs", "Added", "Test"), change("doc/guide.md", "Modified", "Documentation")];
+        let all = (extra: Partial<Parameters<typeof visibleRows>[0]> = {}) => visibleRows({ files: [], changes, expanded: defaultExpanded(changes), filter: "", changedOnly: false, groupByType: true, ...extra });
+
+        it("adds a top-level row per category with its count, in category order", () => {
+            let rows = all();
+            expect(rows.filter(row => row.kind === "group").map(row => [row.name, row.count, row.depth])).toEqual([["Implementation", 2, 0], ["Tests", 1, 0], ["Documentation", 1, 0]]);
+            expect(paths(rows)).toEqual([groupKey("Implementation"), "src", "src/main.rs", "src/util.rs", groupKey("Test"), "spec", "spec/main.rs", groupKey("Documentation"), "doc", "doc/guide.md"]);
+            expect(rows.map(row => row.depth)).toEqual([0, 1, 2, 2, 0, 1, 2, 0, 1, 2]);
+        });
+
+        it("hides the rows of a collapsed group but keeps its row", () => {
+            let rows = all({ collapsedGroups: new Set([groupKey("Implementation")]) });
+            expect(paths(rows)).toEqual([groupKey("Implementation"), groupKey("Test"), "spec", "spec/main.rs", groupKey("Documentation"), "doc", "doc/guide.md"]);
+            expect(rows[0]).toMatchObject({ kind: "group", expanded: false, count: 2 });
+        });
+
+        it("lists files without a change last, as unchanged", () => {
+            let rows = all({ files: ["README.md", "src/main.rs"] });
+            let last = rows.filter(row => row.kind === "group").at(-1)!;
+            expect(last).toMatchObject({ name: "Unchanged", count: 1 });
+            expect(rows.at(-1)?.path).toBe("README.md");
+        });
+
+        it("filters inside groups, drops empty ones, counts matches and opens collapsed groups", () => {
+            let rows = all({ filter: "main", collapsedGroups: new Set([groupKey("Test")]) });
+            expect(paths(rows)).toEqual([groupKey("Implementation"), "src", "src/main.rs", groupKey("Test"), "spec", "spec/main.rs"]);
+            expect(rows.filter(row => row.kind === "group").map(row => row.count)).toEqual([1, 1]);
+            expect(all({ filter: "nothing" })).toEqual([]);
+        });
+
+        it("narrows to changed files with the groups that hold them", () => {
+            let rows = all({ files: ["README.md", "src/main.rs"], changedOnly: true });
+            expect(rows.filter(row => row.kind === "group").map(row => row.name)).toEqual(["Implementation", "Tests", "Documentation"]);
+        });
     });
 });

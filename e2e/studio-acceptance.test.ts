@@ -75,7 +75,7 @@ describe("workspace complex-state acceptance", () => {
         await expect.poll(() => drawer.textContent()).toContain("a.txt");
         await expect.poll(() => drawer.textContent()).toContain("binary.bin");
         await drawer.getByRole("searchbox", { name: "Filter changed files" }).fill("binary.bin");
-        await drawer.getByRole("option", { name: "binary.bin" }).click();
+        await drawer.getByRole("treeitem", { name: "binary.bin" }).click();
         await ctx.page.getByRole("region", { name: "File diff" }).getByText(/binary/i).first().waitFor();
         let response = await fetch(`${base}/api/query/query_revision_summary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set: revset("@"), client_id: "complex-fixture" }) });
         let summary = await response.json();

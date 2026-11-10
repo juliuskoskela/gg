@@ -74,7 +74,7 @@
     let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
-{#if id === "diff" && detail && !separate.length && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} /></ViewToolbar>{/if}
+{#if id === "diff" && detail && !separate.length && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} placement /></ViewToolbar>{/if}
 
 {#if id.startsWith("plugin:")}
     <PluginPanel {id} />

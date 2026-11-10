@@ -3,7 +3,7 @@
     import TextField from "../controls/TextField.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
     import ToggleTray from "../controls/ToggleTray.svelte";
-    import type { treeSummary } from "./repositoryTree";
+    import type { treeSummary } from "../tree/fileTree";
 
     interface Props {
         filter: string;

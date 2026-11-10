@@ -9,7 +9,7 @@
     import type { RevChange } from "./messages/RevChange";
     import { hasModal, fileTreeWidth, changeSelectEvent, revisionReviewState, repoConfigEvent } from "./stores";
     import ActionWidget from "./controls/ActionWidget.svelte";
-    import RevisionFiles from "./revision/RevisionFiles.svelte";
+    import ChangedFiles from "./revision/ChangedFiles.svelte";
     import RevisionOverviewPanel from "./revision/RevisionOverviewPanel.svelte";
     import { revisionModules } from "./revision/modules";
     import { onEvent } from "./ipc";
@@ -103,7 +103,7 @@
         <button type="button" class="files-separator" class:dragging={resizingFiles} role="separator" aria-label="Resize changed files" aria-controls="changed-files" aria-orientation="vertical" aria-valuenow={Math.round(filesWidth)} aria-valuemin={180} aria-valuemax={maxFilesWidth}
             onpointerdown={event => { event.preventDefault(); resizingFiles = true; event.currentTarget.setPointerCapture(event.pointerId); }}
             onpointermove={moveFilesSplitter} onpointerup={() => resizingFiles = false} onpointercancel={() => resizingFiles = false} onlostpointercapture={() => resizingFiles = false} onkeydown={filesSplitterKeydown}></button>
-        <RevisionFiles changes={syntheticChanges} headers={revs.headers} {selectedPath} {reviewKey} visible={true} overlay={false} onSelect={selectFile} onClose={null} />
+        <ChangedFiles id="changed-files" changes={syntheticChanges} headers={revs.headers} {selectedPath} {reviewKey} onSelect={selectFile} />
     </div>
 </section>
 

@@ -1,29 +1,16 @@
 import { writable } from "svelte/store";
+import { minPaneSize, parseSide, type PaneSide } from "../tree/placement";
 
-/** the changed-files drawer of the diff view; height is remembered while closed */
-export type FilesDrawer = { open: boolean; height: number };
+/** the changed-files pane of the diff view; width and height are remembered separately, and while it is closed */
+export type FilesDrawer = { open: boolean; side: PaneSide; width: number; height: number };
+export let DEFAULT_WIDTH = 280;
 export let DEFAULT_HEIGHT = 240;
-export let MIN_HEIGHT = 120;
-export let CLOSE_BELOW = 60;
-export let MAX_FRACTION = 0.7;
-export let KEY_STEP = 24;
+export let MIN_WIDTH = minPaneSize("left");
+export let MIN_HEIGHT = minPaneSize("top");
 let KEY = "gg.diff.files";
-let DEFAULT: FilesDrawer = { open: false, height: DEFAULT_HEIGHT };
+let DEFAULT: FilesDrawer = { open: false, side: "bottom", width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
 
-/** the tallest the drawer may be in a view of this height, never below the minimum */
-export function maxHeight(viewHeight: number): number {
-    return Math.max(MIN_HEIGHT, Math.floor(viewHeight * MAX_FRACTION));
-}
-
-export function clampHeight(height: number, viewHeight: number): number {
-    if (!Number.isFinite(height)) return DEFAULT_HEIGHT;
-    return Math.min(maxHeight(viewHeight), Math.max(MIN_HEIGHT, Math.round(height)));
-}
-
-/** a drag released this low closes the drawer instead of resizing it */
-export function shouldClose(height: number): boolean {
-    return height < CLOSE_BELOW;
-}
+let stored = (value: unknown, minimum: number, fallback: number) => typeof value === "number" && Number.isFinite(value) ? Math.max(minimum, value) : fallback;
 
 function restore(storage?: Pick<Storage, "getItem">): FilesDrawer {
     try {
@@ -31,7 +18,10 @@ function restore(storage?: Pick<Storage, "getItem">): FilesDrawer {
         if (value && typeof value === "object") {
             return {
                 open: value.open === true,
-                height: typeof value.height === "number" && Number.isFinite(value.height) ? Math.max(MIN_HEIGHT, value.height) : DEFAULT_HEIGHT,
+                // the first version stored only { open, height }, and its drawer was at the bottom
+                side: parseSide(value.side, "bottom"),
+                width: stored(value.width, MIN_WIDTH, DEFAULT_WIDTH),
+                height: stored(value.height, MIN_HEIGHT, DEFAULT_HEIGHT),
             };
         }
     } catch { /* fall back to the default */ }
@@ -51,9 +41,11 @@ export function createFilesDrawer(storage?: Pick<Storage, "getItem" | "setItem">
         subscribe: store.subscribe,
         setOpen(open: boolean) { update(value => ({ ...value, open })); },
         toggle() { update(value => ({ ...value, open: !value.open })); },
-        /** height is stored unclamped to the view so a small window does not shrink the remembered size */
+        setSide(side: PaneSide) { update(value => ({ ...value, side })); },
+        /** stored unclamped to the view so a small window does not shrink the remembered size */
+        setWidth(width: number) { update(value => ({ ...value, width: Math.max(MIN_WIDTH, Math.round(width)) })); },
         setHeight(height: number) { update(value => ({ ...value, height: Math.max(MIN_HEIGHT, Math.round(height)) })); },
-        set(next: FilesDrawer) { update(() => ({ open: next.open, height: Math.max(MIN_HEIGHT, next.height) })); },
+        set(next: FilesDrawer) { update(() => ({ open: next.open, side: next.side, width: Math.max(MIN_WIDTH, next.width), height: Math.max(MIN_HEIGHT, next.height) })); },
     };
 }
 

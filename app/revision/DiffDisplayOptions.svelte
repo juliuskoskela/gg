@@ -2,6 +2,10 @@
     import { diffStyle, diffWrap, diffFullContext } from "../stores";
     import ToggleTray from "../controls/ToggleTray.svelte";
     import ToggleItem from "../controls/ToggleItem.svelte";
+    import PlacementMenu from "../tree/PlacementMenu.svelte";
+    import { filesDrawer } from "./filesDrawer";
+
+    let { placement = false }: { placement?: boolean } = $props();
 
     let layouts: { value: "auto" | "split" | "unified"; label: string; icon: string }[] = [
         { value: "auto", label: "Auto", icon: "layout" },
@@ -20,6 +24,7 @@
             <ToggleItem icon={layout.icon} label={layout.label} on={$diffStyle === layout.value} onClick={() => diffStyle.set(layout.value)} />
         {/each}
     </ToggleTray>
+    {#if placement}<PlacementMenu label="Changed files layout" paneLabel="Changed files" open={$filesDrawer.open} side={$filesDrawer.side} onOpen={open => filesDrawer.setOpen(open)} onSide={side => filesDrawer.setSide(side)} />{/if}
 </div>
 
 <style>

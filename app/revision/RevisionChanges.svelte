@@ -18,7 +18,11 @@
     import DiffViewer from "../DiffViewer.svelte";
     import ChangeObject from "../objects/ChangeObject.svelte";
     import HunkObject from "../objects/HunkObject.svelte";
-    import ChangedFilesDrawer from "./ChangedFilesDrawer.svelte";
+    import ChangedFilesBar from "./ChangedFilesBar.svelte";
+    import ChangedFiles from "./ChangedFiles.svelte";
+    import BrowserPane from "../tree/BrowserPane.svelte";
+    import { isHorizontal } from "../tree/placement";
+    import { filesDrawer } from "./filesDrawer";
     import PanelHeader from "../controls/PanelHeader.svelte";
     import DiffStat from "./DiffStat.svelte";
     import DiffTools from "./DiffTools.svelte";
@@ -29,8 +33,6 @@
     import { navigateOptions } from "../controls/optionNavigation";
 
     let width = $state(1200);
-    // 0 until measured, so the drawer never clamps against a guessed height while the view remounts
-    let height = $state(0);
     interface Props {
         comparison?: ReviewComparison | null;
         onCompare?: CompareReview;
@@ -160,14 +162,24 @@
     });
 </script>
 
-<div class="changes-module" bind:clientWidth={width} bind:clientHeight={height}>
+<div class="changes-module" bind:clientWidth={width}>
     {#if showTools}
         <PanelHeader className="changes-heading" label="Diff tools">
-            <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} onCompare={compare} />
+            <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} onCompare={compare} placement={!onRequestFiles} />
         </PanelHeader>
     {/if}
-    {#if changes.length || activeComparison}
-        <div class="changes-layout">
+    {#snippet fileBar()}
+        <ChangedFilesBar total={changes.length} index={selectedIndex} pane={!onRequestFiles} open={$filesDrawer.open} side={$filesDrawer.side} controls="changed-files-drawer" onToggle={() => filesDrawer.toggle()}>
+                    {#if activeComparison}<button class="review-back" type="button" onclick={closeComparison}>Back to file diff</button>
+                    {:else}
+                    {#if currentChange}{@const owners = owningHeaders(currentChange, revs.headers)}{#if owners[0]}<ReviewControl header={owners[0]} path={currentChange.path.repo_path} onCompare={compare} />{/if}{/if}
+                    <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} onclick={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} onclick={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
+                    {#if revs.headers.length > 1 && currentChange?.origin}<OriginLink origin={currentChange.origin} path={currentChange.path.repo_path} />{/if}
+                    <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
+                    {/if}
+        </ChangedFilesBar>
+    {/snippet}
+    {#snippet reading()}
             <div class="file-review">
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex (overflow region needs keyboard scrolling) -->
                 <div class="diff-scroll" role="region" aria-label="File diff" tabindex="0" bind:this={scrollElement} onscroll={event => { if (!activeComparison) { scrollTop = event.currentTarget.scrollTop; if (loaded.type === "data") fileScrollPositions.set(readingKey, scrollTop); } }}>
@@ -186,16 +198,16 @@
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
-                <ChangedFilesDrawer {changes} headers={revs.headers} {selectedPath} reviewKey={key} viewHeight={height} index={selectedIndex} drawer={!onRequestFiles} onSelect={selectFile}>
-                    {#if activeComparison}<button class="review-back" type="button" onclick={closeComparison}>Back to file diff</button>
-                    {:else}
-                    {#if currentChange}{@const owners = owningHeaders(currentChange, revs.headers)}{#if owners[0]}<ReviewControl header={owners[0]} path={currentChange.path.repo_path} onCompare={compare} />{/if}{/if}
-                    <div class="file-navigation" role="group" aria-label="Changed files"><button type="button" aria-label="Previous changed file" title="Previous file" disabled={selectedIndex <= 0} onclick={() => selectFile(changes[selectedIndex - 1])}><Icon name="chevron-up" /></button><button type="button" aria-label="Next changed file" title="Next file" disabled={selectedIndex >= changes.length - 1} onclick={() => selectFile(changes[selectedIndex + 1])}><Icon name="chevron-down" /></button></div>
-                    {#if revs.headers.length > 1 && currentChange?.origin}<OriginLink origin={currentChange.origin} path={currentChange.path.repo_path} />{/if}
-                    <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
-                    {/if}
-                </ChangedFilesDrawer>
+                {@render fileBar()}
             </div>
+    {/snippet}
+    {#snippet filesPane()}
+        <ChangedFiles {changes} headers={revs.headers} {selectedPath} reviewKey={key} onSelect={selectFile} />
+    {/snippet}
+    {#if changes.length || activeComparison}
+        <div class="changes-layout">
+            {#if onRequestFiles}{@render reading()}
+            {:else}<BrowserPane side={$filesDrawer.side} open={$filesDrawer.open} size={isHorizontal($filesDrawer.side) ? $filesDrawer.width : $filesDrawer.height} onResize={size => isHorizontal($filesDrawer.side) ? filesDrawer.setWidth(size) : filesDrawer.setHeight(size)} label="Resize changed files" id="changed-files-drawer" content={reading} pane={filesPane} />{/if}
         </div>
     {:else}
         <div class="empty-change" role="status"><h3>No file changes</h3><p>This revision is empty. You can describe it, create a child, or select another revision in the graph.</p></div>
@@ -206,8 +218,8 @@
     .diff-message { padding: 16px; color: var(--muted); font: var(--font-body); }
     .diff-message button { min-height: 44px; }
     .changes-module { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
-    .changes-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-width: 0; min-height: 0; isolation: isolate; }
-    .file-review { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+    .changes-layout { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; isolation: isolate; }
+    .file-review { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
     .diff-scroll > :global(.review-delta) { padding-inline: var(--panel-inset); }
     .diff-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; pointer-events: auto; scroll-padding-block: 12px; }
     .hunk-actions { margin: var(--space-1) var(--panel-inset); pointer-events: auto; }

@@ -1,50 +1,60 @@
 import { describe, expect, it } from "vitest";
 import { get } from "svelte/store";
-import { clampHeight, createFilesDrawer, DEFAULT_HEIGHT, maxHeight, MIN_HEIGHT, shouldClose } from "./filesDrawer";
+import { createFilesDrawer, DEFAULT_HEIGHT, DEFAULT_WIDTH, MIN_HEIGHT, MIN_WIDTH } from "./filesDrawer";
 
 function memory(initial?: string) {
     let data = new Map<string, string>();
     if (initial !== undefined) data.set("gg.diff.files", initial);
-    return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
+    return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
 }
+let closed = { open: false, side: "bottom", width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
 
-describe("files drawer state", () => {
-    it("clamps between the minimum and 70% of the view", () => {
-        expect(maxHeight(1000)).toBe(700);
-        expect(maxHeight(100)).toBe(MIN_HEIGHT);
-        expect(clampHeight(10, 1000)).toBe(MIN_HEIGHT);
-        expect(clampHeight(900, 1000)).toBe(700);
-        expect(clampHeight(300, 1000)).toBe(300);
-        expect(clampHeight(Number.NaN, 1000)).toBe(DEFAULT_HEIGHT);
+describe("changed files pane state", () => {
+    it("defaults to closed at the bottom, 280px wide and 240px tall", () => {
+        expect(get(createFilesDrawer(memory()))).toEqual(closed);
+        expect(DEFAULT_WIDTH).toBe(280);
+        expect(DEFAULT_HEIGHT).toBe(240);
     });
 
-    it("closes below 60px only", () => {
-        expect(shouldClose(59)).toBe(true);
-        expect(shouldClose(60)).toBe(false);
-    });
-
-    it("defaults to closed at 240px", () => {
-        expect(get(createFilesDrawer(memory()))).toEqual({ open: false, height: 240 });
-    });
-
-    it("persists and restores", () => {
+    it("persists and restores every field", () => {
         let storage = memory();
         let drawer = createFilesDrawer(storage);
         drawer.toggle();
-        drawer.setHeight(310);
-        expect(get(createFilesDrawer(storage))).toEqual({ open: true, height: 310 });
+        drawer.setSide("right");
+        drawer.setWidth(310);
+        drawer.setHeight(200);
+        expect(get(createFilesDrawer(storage))).toEqual({ open: true, side: "right", width: 310, height: 200 });
     });
 
-    it("keeps the height while closing", () => {
+    it("keeps width and height separately while closing and changing side", () => {
         let drawer = createFilesDrawer(memory());
         drawer.setHeight(200);
+        drawer.setWidth(350);
         drawer.setOpen(true);
+        drawer.setSide("left");
         drawer.setOpen(false);
-        expect(get(drawer)).toEqual({ open: false, height: 200 });
+        drawer.setSide("top");
+        expect(get(drawer)).toEqual({ open: false, side: "top", width: 350, height: 200 });
+        drawer.setWidth(10);
+        drawer.setHeight(10);
+        expect(get(drawer)).toMatchObject({ width: MIN_WIDTH, height: MIN_HEIGHT });
+    });
+
+    it("migrates the first stored form, { open, height }, to a bottom pane", () => {
+        let storage = memory(JSON.stringify({ open: true, height: 310 }));
+        let drawer = createFilesDrawer(storage);
+        expect(get(drawer)).toEqual({ open: true, side: "bottom", width: DEFAULT_WIDTH, height: 310 });
+        drawer.setSide("left");
+        expect(JSON.parse(storage.data.get("gg.diff.files")!)).toEqual({ open: true, side: "left", width: DEFAULT_WIDTH, height: 310 });
+    });
+
+    it("reads the older start and end sides and ignores unknown ones", () => {
+        expect(get(createFilesDrawer(memory('{"open":true,"side":"end"}'))).side).toBe("right");
+        expect(get(createFilesDrawer(memory('{"open":true,"side":"middle"}'))).side).toBe("bottom");
     });
 
     it("ignores malformed storage", () => {
-        expect(get(createFilesDrawer(memory("{nope")))).toEqual({ open: false, height: 240 });
-        expect(get(createFilesDrawer(memory('{"open":"yes","height":"tall"}')))).toEqual({ open: false, height: 240 });
+        expect(get(createFilesDrawer(memory("{nope")))).toEqual(closed);
+        expect(get(createFilesDrawer(memory('{"open":"yes","height":"tall","width":null}')))).toEqual(closed);
     });
 });

@@ -16,6 +16,9 @@ Core component for direct-manipulation objects. A drag&drop source.
 
     interface Props {
         tabIndex?: number;
+        /** "option" in a list; a tree supplies "treeitem" with its level */
+        role?: "option" | "treeitem";
+        level?: number | undefined;
         setSize?: number | undefined;
         position?: number | undefined;
         suffix?: string | null;
@@ -31,6 +34,8 @@ Core component for direct-manipulation objects. A drag&drop source.
 
     let {
         tabIndex = -1,
+        role = "option",
+        level = undefined,
         setSize = undefined,
         position = undefined,
         suffix = null,
@@ -169,7 +174,8 @@ Core component for direct-manipulation objects. A drag&drop source.
     class:hint={dragHint}
     tabindex={tabIndex}
     draggable={operand != null}
-    role="option"
+    {role}
+    aria-level={level}
     aria-label={label}
     title={label}
     aria-selected={selected}

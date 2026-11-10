@@ -9,6 +9,8 @@
     import type { ExternalDiff } from "../messages/ExternalDiff";
     import type { ExternalResolve } from "../messages/ExternalResolve";
     import FileIcon from "../controls/FileIcon.svelte";
+    import FileRow from "../tree/FileRow.svelte";
+    import type { TreeRow } from "../tree/fileTree";
     import Icon from "../controls/Icon.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Object from "./Object.svelte";
@@ -24,7 +26,11 @@
         headers: RevHeader[] | null;
         change: RevChange;
         selected: boolean;
+        /** the row of a file tree, drawn by the tree's own row so it looks like every other tree row */
         tree?: boolean;
+        /** where the row sits in the tree; without it the file stands alone at the top */
+        row?: TreeRow | undefined;
+        tabIndex?: number | undefined;
         wrap?: boolean;
         compactPath?: boolean;
         setSize?: number | undefined;
@@ -37,6 +43,8 @@
         change,
         selected,
         tree = false,
+        row = undefined,
+        tabIndex = undefined,
         wrap = false,
         compactPath = false,
         setSize = undefined,
@@ -76,6 +84,7 @@
     })) : []);
     let hasDiffTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_diff_tool);
     let hasMergeTool = $derived($repoConfigEvent.type === "Workspace" && $repoConfigEvent.has_external_merge_tool);
+    let treeRow = $derived<TreeRow>(row ?? { kind: "file", name: change.path.repo_path.split("/").pop() ?? "", path: change.path.repo_path, depth: 0, changed: 1, change });
     let insertions = $derived(change.stat?.added ?? countLines(change, "+"));
     let deletions = $derived(change.stat?.removed ?? countLines(change, "-"));
 </script>
@@ -85,7 +94,9 @@
     {setSize}
     {position}
     {selected}
-    tabIndex={tree ? 0 : -1}
+    role={tree ? "treeitem" : "option"}
+    level={tree ? treeRow.depth + 1 : undefined}
+    tabIndex={tabIndex ?? (tree ? 0 : -1)}
     suffix={change.path.repo_path}
     conflicted={change.has_conflict}
     label={change.path.relative_path}
@@ -95,10 +106,27 @@
     {#snippet children({ context, hint })}
     <Zone {operand}>
     {#snippet children({ target })}
-        <div class="layout" class:tree class:target class:wrap class:deleted={change.kind === "Deleted"}>
+        {#if tree}
+            {#snippet extras()}
+                {#if headers && headers.length > 1 && change.origin}<span class="category" title={`Originating change ${change.origin.change.hex}`}>{change.origin.change.hex.slice(0, 8)}</span>{/if}
+                {#if categoryOf(change) !== "Implementation"}<span class="category">{categoryLabel(change)}</span>{/if}
+                {#if notes.length}<NoteMarker {notes} />{/if}
+                {#if owners[0]}<FileReviewBadge header={owners[0]} path={change.path.repo_path} />{/if}
+                {#if hasMergeTool && change.has_conflict && operand}
+                    <span class="tool"><ActionWidget tip="resolve in merge tool" onClick={onExternalResolve}>
+                        <Icon name="external-link" /> Resolve
+                    </ActionWidget></span>
+                {:else if hasDiffTool && operand}
+                    <span class="tool"><ActionLink tip="open in diff tool" onClick={onExternalDiff}>
+                        <Icon name="external-link" />
+                    </ActionLink></span>
+                {/if}
+            {/snippet}
+            <div class="tree-drop" class:target><FileRow row={treeRow} name={hint ?? undefined} plain={context} trailing={extras} /></div>
+        {:else}
+        <div class="layout" class:target class:wrap class:deleted={change.kind === "Deleted"}>
             <FileIcon path={change.path.repo_path} />
-            <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : tree ? change.path.repo_path.split("/").pop() : change.path.relative_path)}</span>
-            {#if tree && headers && headers.length > 1 && change.origin}<span class="category" title={`Originating change ${change.origin.change.hex}`}>{change.origin.change.hex.slice(0, 8)}</span>{/if}
+            <span class="name" dir="auto" title={change.path.relative_path}>{hint ?? (compactPath ? shortFilename(change.path.relative_path) : change.path.relative_path)}</span>
             {#if categoryOf(change) !== "Implementation"}<span class="category">{categoryLabel(change)}</span>{/if}
             {#if notes.length}<NoteMarker {notes} />{/if}
             {#if owners[0]}<FileReviewBadge header={owners[0]} path={change.path.repo_path} />{/if}
@@ -122,6 +150,7 @@
                 </ActionLink></span>
             {/if}
         </div>
+        {/if}
 
     {/snippet}
 </Zone>
@@ -142,9 +171,9 @@
         padding-inline-start: 3px;
     }
 
-    .layout.tree { min-height: var(--file-row-height); padding-block: 2px; }
-    .layout.tree:has(.tool) { padding-block: 0; }
-    .layout.tree .tool :global(button) { min-height: var(--file-row-height); min-width: var(--file-row-height); padding-block: 0; }
+    .tree-drop { inline-size: 100%; }
+    .tree-drop.target { outline: 2px solid var(--text); outline-offset: -2px; border-radius: var(--radius-control); color: var(--text); }
+    .tree-drop .tool :global(button) { min-height: var(--file-row-height); min-width: var(--file-row-height); padding-block: 0; }
 
     .name {
         overflow: hidden;
@@ -164,7 +193,7 @@
     .stat.plain span { color: inherit; }
     .tool { display: flex; flex: 0 0 auto; margin-inline-start: auto; }
 
-    @media (pointer: coarse), (max-width: 600px) { .layout:not(.tree) { min-height: 44px; } }
+    @media (pointer: coarse), (max-width: 600px) { .layout { min-height: 44px; } }
     .layout.wrap .name { white-space: normal; overflow-wrap: anywhere; }
 
     .layout.target {

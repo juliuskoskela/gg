@@ -72,7 +72,8 @@ describe("files view", () => {
         // both are module state that outlives a test
         fileBuffers.clear();
         filesLayout.setTreeOpen(true);
-        filesLayout.setTreeSide("start");
+        filesLayout.setTreeSide("left");
+        filesLayout.setTreeHeight(240);
         filesLayout.setTreeWidth(260);
         filesLayout.setWrap(false);
         content = path => text(path, `contents of ${path}\n`);
@@ -378,21 +379,21 @@ describe("files view", () => {
         expect(container.querySelector(".editor-bar")?.textContent).toContain("Working copy");
     });
 
-    // the layout menu holds the tree's visibility and side
+    // the layout menu holds the tree's visibility, then the exclusive choice of side
     async function layoutOption(getByRole: (role: string, options: { name: string }) => HTMLElement, name: string) {
         // the menu stays open after a choice, so only open it when it is closed
         let trigger = getByRole("button", { name: "Editor layout" });
         if (trigger.getAttribute("aria-expanded") !== "true") await fireEvent.click(trigger);
-        return await waitFor(() => getByRole("menuitemcheckbox", { name }));
+        return await waitFor(() => getByRole(name === "File tree" ? "menuitemcheckbox" : "menuitemradio", { name }));
     }
 
     it("toggles the tree and resizes it from the keyboard", async () => {
         let { container, getByRole } = await mount();
         expect((await layoutOption(getByRole, "File tree")).getAttribute("aria-checked")).toBe("true");
         let splitter = getByRole("separator", { name: "Resize file tree" });
-        let pane = () => container.querySelector<HTMLElement>(".tree-pane")!;
+        let pane = () => container.querySelector<HTMLElement>(".browser > .pane")!;
         expect(splitter.getAttribute("aria-valuenow")).toBe("260");
-        expect(pane().style.width).toBe("260px");
+        expect(pane().style.inlineSize).toBe("260px");
         await fireEvent.keyDown(splitter, { key: "ArrowRight" });
         await waitFor(() => expect(splitter.getAttribute("aria-valuenow")).toBe("284"));
         await fireEvent.keyDown(splitter, { key: "ArrowLeft" });
@@ -405,27 +406,27 @@ describe("files view", () => {
         expect(JSON.parse(localStorage.getItem("gg.files.layout")!).treeWidth).toBe(450);
 
         await fireEvent.click(await layoutOption(getByRole, "File tree"));
-        await waitFor(() => expect(pane().hidden).toBe(true));
+        await waitFor(() => expect(pane().classList.contains("closed")).toBe(true));
         expect(container.querySelector('[role="separator"]')).toBeNull();
         expect(JSON.parse(localStorage.getItem("gg.files.layout")!).treeOpen).toBe(false);
         await fireEvent.click(await layoutOption(getByRole, "File tree"));
-        await waitFor(() => expect(pane().hidden).toBe(false));
+        await waitFor(() => expect(pane().classList.contains("closed")).toBe(false));
+        expect(pane().style.inlineSize).toBe("450px");
     });
 
     it("moves the tree to the right, where the splitter grows it leftwards", async () => {
         let { container, getByRole } = await mount();
-        await fireEvent.click(await layoutOption(getByRole, "Tree on the right"));
-        let body = () => container.querySelector<HTMLElement>(".body")!;
-        await waitFor(() => expect(body().classList.contains("tree-end")).toBe(true));
+        await fireEvent.click(await layoutOption(getByRole, "Right"));
+        await waitFor(() => expect(container.querySelector(".browser.right")).not.toBeNull());
         let pane = container.querySelector<HTMLElement>(".tree-pane")!.getBoundingClientRect();
         let editor = container.querySelector<HTMLElement>(".editor-pane")!.getBoundingClientRect();
         expect(pane.left).toBeGreaterThan(editor.left);
-        expect(JSON.parse(localStorage.getItem("gg.files.layout")!).treeSide).toBe("end");
+        expect(JSON.parse(localStorage.getItem("gg.files.layout")!).treeSide).toBe("right");
         let splitter = getByRole("separator", { name: "Resize file tree" });
         await fireEvent.keyDown(splitter, { key: "ArrowLeft" });
         await waitFor(() => expect(splitter.getAttribute("aria-valuenow")).toBe("284"));
-        expect((await layoutOption(getByRole, "Tree on the right")).getAttribute("aria-checked")).toBe("true");
-        expect((await layoutOption(getByRole, "Tree on the left")).getAttribute("aria-checked")).toBe("false");
+        expect((await layoutOption(getByRole, "Right")).getAttribute("aria-checked")).toBe("true");
+        expect((await layoutOption(getByRole, "Left")).getAttribute("aria-checked")).toBe("false");
     });
 
     it("opens both panes on bars of one height, so they read as one band", async () => {
@@ -434,7 +435,7 @@ describe("files view", () => {
         expect(bars).toHaveLength(2);
         expect(bars[0].top).toBe(bars[1].top);
         expect(bars[0].height).toBe(bars[1].height);
-        let field = container.querySelector<HTMLElement>(".tree-bar input")!.getBoundingClientRect(), bar = container.querySelector<HTMLElement>(".tree-bar")!.getBoundingClientRect();
+        let field = container.querySelector<HTMLElement>(".tree-pane input")!.getBoundingClientRect(), bar = container.querySelector<HTMLElement>(".tree-pane .pane-bar")!.getBoundingClientRect();
         expect(Math.round(field.top - bar.top)).toBe(Math.round(field.left - bar.left));
     });
 
@@ -480,9 +481,9 @@ describe("files view", () => {
         expect(container.querySelector(".editor-pane")).toBeNull();
         await open(container, "README.md");
         await editor(container);
-        expect(container.querySelector<HTMLElement>(".tree-pane")!.hidden).toBe(true);
+        expect(container.querySelector<HTMLElement>(".page")!.hidden).toBe(true);
         await fireEvent.click(getByRole("button", { name: "Back to file tree" }));
-        await waitFor(() => expect(container.querySelector<HTMLElement>(".tree-pane")!.hidden).toBe(false));
+        await waitFor(() => expect(container.querySelector<HTMLElement>(".page")!.hidden).toBe(false));
         expect(container.querySelector(".editor-pane")).toBeNull();
     });
 
