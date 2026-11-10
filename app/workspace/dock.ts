@@ -48,7 +48,7 @@ export function defaultLayout(): DockNode {
         tabs("timeline"),
         split("column", 0.34,
             tabs("description"),
-            split("row", 0.32, tabs("tree"), tabs("diff")),
+            tabs("diff"),
         ),
     );
 }

@@ -159,3 +159,30 @@ async fn history_rejects_invalid_or_mismatched_identifiers() -> Result<()> {
     );
     Ok(())
 }
+
+#[tokio::test]
+async fn revision_tree_lists_every_file_once() -> Result<()> {
+    let directory = mkrepo();
+    let mut session = WorkerSession::default();
+    let ws = session.load_workspace(directory.path()).await?;
+
+    let tree = history::revision_tree(&ws, full(&ws, revs::main_bookmark())?)?;
+    assert!(!tree.truncated);
+    assert!(tree.files.contains(&"a.txt".to_owned()));
+    assert!(tree.files.windows(2).all(|pair| pair[0] < pair[1]));
+
+    let conflicted = history::revision_tree(&ws, full(&ws, revs::conflict_bookmark())?)?;
+    assert_eq!(conflicted.files.iter().filter(|f| *f == "b.txt").count(), 1);
+
+    let mut wrong = full(&ws, revs::main_bookmark())?;
+    wrong.change.hex = full(&ws, revs::working_copy())?.change.hex;
+    assert!(history::revision_tree(&ws, wrong).is_err());
+    Ok(())
+}
+
+fn full(
+    ws: &crate::worker::WorkspaceSession,
+    id: crate::messages::RevId,
+) -> Result<crate::messages::RevId> {
+    Ok(ws.format_id(&get_by_chid(ws, &id)?))
+}

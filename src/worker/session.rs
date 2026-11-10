@@ -104,6 +104,10 @@ pub enum SessionEvent {
         id: messages::RevId,
         offset: usize,
     },
+    QueryRevisionTree {
+        tx: Sender<Result<messages::queries::RevisionTree>>,
+        id: messages::RevId,
+    },
     ReviewProgress {
         tx: Sender<Result<messages::review::ReviewProgress>>,
         request: messages::review::ReviewRequest,
@@ -379,6 +383,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryEvolution { tx, id, offset } => {
                     tx.send(super::history::evolution_page(&self, id, offset).await)?
                 }
+                SessionEvent::QueryRevisionTree { tx, id } => {
+                    tx.send(super::history::revision_tree(&self, id))?
+                }
                 SessionEvent::ReviewProgress { tx, request } => {
                     tx.send(super::review::handle(&self, request).await)?
                 }
@@ -637,6 +644,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryEvolution { tx, id, offset }) => {
                     tx.send(super::history::evolution_page(self.ws, id, offset).await)?
+                }
+                Ok(SessionEvent::QueryRevisionTree { tx, id }) => {
+                    tx.send(super::history::revision_tree(self.ws, id))?
                 }
                 Ok(SessionEvent::ReviewProgress { tx, request }) => {
                     tx.send(super::review::handle(self.ws, request).await)?

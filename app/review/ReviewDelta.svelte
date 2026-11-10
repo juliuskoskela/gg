@@ -7,9 +7,10 @@
     import { repositoryScope } from "../workspace/repository";
     import DiffViewer from "../DiffViewer.svelte";
     import SelectWidget from "../controls/SelectWidget.svelte";
+    import ActionWidget from "../controls/ActionWidget.svelte";
 
-    let { from, to, path = null, title = "Changes since review" }: {
-        from: RevId; to: RevId; path?: string | null; title?: string;
+    let { from, to, path = null, title = "Changes since review", embedded = false }: {
+        from: RevId; to: RevId; path?: string | null; title?: string; embedded?: boolean;
     } = $props();
     let result = $state.raw<ReviewDelta | null>(null);
     let loading = $state(false);
@@ -54,11 +55,11 @@
     }
 </script>
 
-<section class="review-delta" aria-label={title}>
-    <h3>{title}</h3>
+<section class="review-delta" class:embedded aria-label={title}>
+    {#if !embedded}<h3>{title}</h3>{/if}
     <p class="comparison-note">Parent-only changes are excluded. From {from.commit.hex.slice(0, 8)} → to {to.commit.hex.slice(0, 8)}.</p>
     {#if loading}<p role="status">Comparing versions…</p>
-    {:else if error}<p role="alert">Couldn’t compare versions: {error}</p><button type="button" onclick={load}>Retry comparison</button>
+    {:else if error}<p role="alert">Couldn’t compare versions: {error}</p><ActionWidget safe tip="Retry comparison" onClick={load}>Retry comparison</ActionWidget>
     {:else if result?.type === "Unavailable"}<p role="status">{result.reason}</p>
     {:else if result?.type === "Ready"}
         {#if result.description_before !== result.description_after}
@@ -77,6 +78,8 @@
 
 <style>
     .review-delta { min-width: 0; padding-block: var(--space-3); border-block-start: 1px solid var(--rule); }
+    /* inside a section that already has a heading and rule */
+    .embedded { padding-block: 0; border-block-start: 0; }
     h3 { font: var(--font-heading); margin: 0 0 var(--space-2); }
     p, pre { font: var(--font-body); overflow-wrap: anywhere; }
     pre { white-space: pre-wrap; }

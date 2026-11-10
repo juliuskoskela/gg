@@ -111,3 +111,26 @@ export function extractTestRepo(destDir: string): void {
         execSync(`unzip -q "${TEST_REPO_ZIP}" -d "${destDir}"`, { stdio: "pipe" });
     }
 }
+
+/** the changed-files drawer at the bottom of the Diff view */
+export function changedFilesDrawer(page: Page) {
+    return page.locator("#changed-files-drawer");
+}
+
+/** opens the drawer from its toggle (switching to the Diff tab first if the dock is tabbed) and returns it */
+export async function openChangedFiles(page: Page) {
+    let drawer = changedFilesDrawer(page);
+    let tab = page.getByRole("tab", { name: "Diff", exact: true });
+    // in a single-group dock the Diff tab may be unselected; split layouts show it already
+    if (await tab.count() && (await tab.getAttribute("aria-selected")) !== "true") await tab.click();
+    let toggle = page.getByRole("button", { name: "Show changed files", exact: true });
+    await toggle.or(page.getByRole("button", { name: "Hide changed files", exact: true })).first().waitFor();
+    if (await toggle.count()) await toggle.click();
+    await drawer.locator("aside").waitFor();
+    return drawer;
+}
+
+/** starts every page of the context with the drawer open, for tests about something else */
+export async function seedChangedFilesOpen(page: Page, height = 240) {
+    await page.addInitScript(height => localStorage.setItem("gg.diff.files", JSON.stringify({ open: true, height })), height);
+}

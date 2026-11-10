@@ -217,7 +217,7 @@ describe("shared panel chrome", () => {
         await ctx.page.getByRole("button", { name: "Wrap lines", exact: true }).waitFor();
         expect(await ctx.page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Hide Diff toolbar");
         await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
-        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
+        let search = ctx.page.getByRole("searchbox", { name: "Filter files" });
         await search.fill("c.txt");
         await ctx.page.getByRole("button", { name: "Hide Files toolbar" }).click();
         expect(await search.count()).toBe(0);

@@ -123,7 +123,7 @@
         </div>
     {:else if compact}
         <PanelGroup>
-            <PanelTabs items={panels.map(id => ({ id, label: panelLabelFor(id, $pluginContributions), count: id === "tree" || id === "diff" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} />
+            <PanelTabs items={panels.map(id => ({ id, label: panelLabelFor(id, $pluginContributions), count: id === "diff" ? changes.length : undefined }))} active={$dock.compactActive} onSelect={id => dock.focus(id)} onClose={closePanel} />
             {#each panels as id (id)}
                 <div class="panel-body" id="panel-{id}" role={panels.length > 1 ? "tabpanel" : "region"} aria-labelledby="panel-tab-{id}" hidden={$dock.compactActive !== id} inert={$dock.compactActive !== id}>
                     <PanelBody {id} active={$dock.compactActive === id} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} onSelectFile={selectFile} />

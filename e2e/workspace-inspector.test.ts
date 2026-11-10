@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+import { createContext, destroyContext, extractTestRepo, openChangedFiles, seedChangedFilesOpen, startGG, type TestContext } from "./harness.js";
 
 async function showTab(page: Page, name: string) {
     let tab = page.getByRole("tab", { name, exact: true });
@@ -56,14 +56,15 @@ describe("compact workspace inspector", () => {
         let config = await fetch(`${backend}/api/query/query_workspace`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: ctx.tempDir, client_id: "inspect-route" }) }).then(response => response.json());
         let snapshot = await fetch(`${backend}/api/query/query_snapshot`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: "inspect-route" }) }).then(response => response.json());
         let inspect = (snapshot ?? config.status).working_copy.hex as string;
+        await seedChangedFilesOpen(ctx.page);
         await ctx.page.goto(`${backend}/?inspect=${inspect}`);
-        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("account-preferences-migration-step-00.txt");
+        await expect.poll(() => ctx.page.locator("#changed-files-drawer").textContent()).toContain("account-preferences-migration-step-00.txt");
         expect(new URL(ctx.page.url()).searchParams.get("inspect")).toBe(inspect);
         await showTab(ctx.page, "Timeline");
         await expect.poll(() => ctx.page.locator(".graph").isVisible()).toBe(true);
         await ctx.page.reload();
         await expect.poll(() => new URL(ctx.page.url()).searchParams.get("inspect")).toBe(inspect);
-        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("account-preferences-migration-step-00.txt");
+        await expect.poll(() => ctx.page.locator("#changed-files-drawer").textContent()).toContain("account-preferences-migration-step-00.txt");
         await showTab(ctx.page, "Timeline");
         await expect.poll(() => ctx.page.locator(".graph").isVisible()).toBe(true);
     });
@@ -75,7 +76,7 @@ describe("compact workspace inspector", () => {
         expect(await ctx.page.getByRole("tab", { name: "Timeline", exact: true }).getAttribute("aria-selected")).toBe("true");
         await showTab(ctx.page, "Description");
         await expect.poll(() => ctx.page.locator(".description-panel").textContent()).toContain("Working copy");
-        expect(await ctx.page.locator("#panel-tab-tree").textContent()).toContain("30");
+        expect(await ctx.page.locator("#panel-tab-diff").textContent()).toContain("30");
     });
     it("keeps the dock inside compact widths", async () => {
         await ctx.page.emulateMedia({ reducedMotion: "reduce" });
@@ -106,7 +107,7 @@ describe("compact workspace inspector", () => {
         });
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await expect.poll(() => ctx.page.locator("#panel-tab-tree").textContent()).toContain("30");
+        await expect.poll(() => ctx.page.locator("#panel-tab-diff").textContent()).toContain("30");
         expect(new Set(paths).size).toBeLessThanOrEqual(1);
         await showTab(ctx.page, "Diff");
         await expect.poll(() => paths.some(path => path.endsWith("step-00.txt"))).toBe(true);
@@ -129,24 +130,21 @@ describe("compact workspace inspector", () => {
         await showTab(ctx.page, "Diff");
         await ctx.page.getByRole("heading", { name: "File no longer available" }).waitFor();
         expect(await ctx.page.getByRole("button", { name: "Choose another file" }).count()).toBe(0);
-        await showTab(ctx.page, "Files");
-        await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).waitFor();
+        let drawer = await openChangedFiles(ctx.page);
+        await drawer.getByRole("searchbox", { name: "Filter changed files" }).waitFor();
         expect(new URL(ctx.page.url()).searchParams.get("file")).toBe("missing/file.txt");
     });
 
     it("searches files and restores each diff's scroll position", async () => {
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await showTab(ctx.page, "Files");
-        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
+        let drawer = await openChangedFiles(ctx.page);
+        let search = drawer.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("migration-step-20");
-        await ctx.page.getByText("account-preferences-migration-step-20.txt", { exact: true }).click();
-        await showTab(ctx.page, "Diff");
+        await drawer.getByText("account-preferences-migration-step-20.txt", { exact: true }).click();
         await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("step-20.txt");
-        await showTab(ctx.page, "Files");
         await search.fill("migration-step-00");
-        await ctx.page.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
-        await showTab(ctx.page, "Diff");
+        await drawer.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
         let diff = ctx.page.locator(".diff-scroll");
         await expect.poll(() => diff.evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(1000);
         await diff.evaluate(el => { el.scrollTop = 600; });
@@ -164,10 +162,9 @@ describe("compact workspace inspector", () => {
         await graph.evaluate(el => { el.scrollTop = 500; });
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBeGreaterThan(400);
         let graphPosition = await graph.evaluate(el => el.scrollTop);
-        await showTab(ctx.page, "Files");
-        await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).fill("migration-step-20");
-        await ctx.page.getByText("account-preferences-migration-step-20.txt", { exact: true }).click();
-        await showTab(ctx.page, "Diff");
+        let drawer = await openChangedFiles(ctx.page);
+        await drawer.getByRole("searchbox", { name: "Filter changed files" }).fill("migration-step-20");
+        await drawer.getByText("account-preferences-migration-step-20.txt", { exact: true }).click();
         await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("step-20.txt");
         await showTab(ctx.page, "Timeline");
         await expect.poll(() => graph.evaluate(el => el.scrollTop)).toBe(graphPosition);
@@ -239,8 +236,8 @@ describe("compact workspace inspector", () => {
         for (let i = 0; i < 240; i++) writeFileSync(join(bulk, `item-${String(i).padStart(3, "0")}.txt`), `File ${i}\n`);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await showTab(ctx.page, "Files");
-        let list = ctx.page.locator(".virtual-files");
+        let drawer = await openChangedFiles(ctx.page);
+        let list = drawer.locator(".virtual-files");
         await list.waitFor();
         // visibility can precede the resize observer that establishes virtual row geometry
         await expect.poll(() => list.evaluate(el => {
@@ -257,11 +254,10 @@ describe("compact workspace inspector", () => {
         await first.focus();
         await first.press("End");
         await expect.poll(() => list.locator('[data-file-index="269"] button').evaluate(el => document.activeElement === el)).toBe(true);
-        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
+        let search = drawer.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("item-187.txt");
         await expect.poll(() => list.locator("[data-file-index]").count()).toBe(1);
         await list.getByRole("option", { name: /item-187\.txt/ }).click();
-        await showTab(ctx.page, "Diff");
         await expect.poll(() => ctx.page.locator(".diff-toolbar").textContent()).toContain("item-187.txt");
         expect(await ctx.page.locator('.diff-toolbar [title="bulk/item-187.txt"]').count()).toBeGreaterThan(0);
     });
@@ -278,10 +274,10 @@ describe("compact workspace inspector", () => {
         ctx.page.on("request", request => { if (request.url().includes("/api/mutate/")) mutations.push(request.url().split("/").pop()!); });
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await showTab(ctx.page, "Files");
-        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
+        let drawer = await openChangedFiles(ctx.page);
+        let search = drawer.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("migration-step-00");
-        await ctx.page.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
+        await drawer.getByText("account-preferences-migration-step-00.txt", { exact: true }).click();
         let command = async () => {
             await ctx.page.keyboard.press("Control+k");
             let palette = ctx.page.getByRole("dialog", { name: "Commands" });

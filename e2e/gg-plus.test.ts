@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { closeView, createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+import { closeView, createContext, destroyContext, extractTestRepo, openChangedFiles, startGG, type TestContext } from "./harness.js";
 
 describe("GG+ workspace", () => {
     let ctx: TestContext;
@@ -246,21 +246,20 @@ describe("GG+ workspace", () => {
         await filter.fill("yvtwywll");
         await filter.press("Tab");
         await ctx.page.locator(".graph").getByRole("option").filter({ hasText: "yvtwywll" }).first().click();
-        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
-        let files = ctx.page.getByRole("complementary", { name: "Changed files", exact: true });
+        let drawer = await openChangedFiles(ctx.page);
+        let files = drawer.getByRole("complementary", { name: "Changed files", exact: true });
         await files.waitFor();
         let dock = (await ctx.page.locator(".workspace-dock").boundingBox())!;
         let panel = (await files.boundingBox())!;
         expect(panel.x).toBeGreaterThanOrEqual(dock.x);
         expect(panel.x + panel.width).toBeLessThanOrEqual(dock.x + dock.width + 1);
         expect(await ctx.page.getByRole("dialog", { name: "Changed files" }).count()).toBe(0);
-        let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
+        let search = drawer.getByRole("searchbox", { name: "Filter changed files" });
         await search.press("Escape");
         expect(await files.isVisible()).toBe(true);
         let file = files.getByRole("option").first();
         let selectedFile = await file.getAttribute("aria-label");
         await file.click();
-        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
         await ctx.page.locator(".diff-viewer pre").waitFor();
         expect(await ctx.page.locator(".file-path").textContent()).toContain(selectedFile);
         await ctx.page.keyboard.press("Escape");

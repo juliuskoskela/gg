@@ -24,6 +24,7 @@ pub fn router() -> Router<AppState> {
         .route("/query_log_next_page", post(query_log_next_page))
         .route("/query_revisions", post(query_revisions))
         .route("/query_evolution", post(query_evolution))
+        .route("/query_revision_tree", post(query_revision_tree))
         .route("/query_review_delta", post(query_review_delta))
         .route("/query_split_receipts", post(query_split_receipts))
         .route(
@@ -267,6 +268,20 @@ async fn query_evolution(
         id: req.id,
         offset: req.offset,
     })?;
+    Ok(Json(rx.recv()??))
+}
+#[derive(Deserialize)]
+struct QueryRevisionTree {
+    id: crate::messages::RevId,
+}
+async fn query_revision_tree(
+    State(state): State<AppState>,
+    Json(req): Json<QueryRevisionTree>,
+) -> Result<Json<crate::messages::queries::RevisionTree>, ApiError> {
+    let (tx, rx) = channel();
+    state
+        .worker_tx
+        .send(SessionEvent::QueryRevisionTree { tx, id: req.id })?;
     Ok(Json(rx.recv()??))
 }
 #[derive(Deserialize)]

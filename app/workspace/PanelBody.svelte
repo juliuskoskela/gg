@@ -15,7 +15,7 @@
     import RevisionTools from "../revision/RevisionTools.svelte";
     import SelectionReview from "../revision/SelectionReview.svelte";
     import RevisionChanges from "../revision/RevisionChanges.svelte";
-    import RevisionFiles from "../revision/RevisionFiles.svelte";
+    import RepositoryTree from "../revision/RepositoryTree.svelte";
     import RevisionOverviewPanel from "../revision/RevisionOverviewPanel.svelte";
     import SelectionRecovery from "../revision/SelectionRecovery.svelte";
     import { repoConfigEvent, repoStatusEvent, pickedRevisions } from "../stores";
@@ -117,7 +117,7 @@
 {:else if id === "tree"}
     {#if separate.length}<p class="panel-status">Each selected change has its own files in the Diff view.</p>
     {:else if detail}
-        <RevisionFiles {changes} {headers} {selectedPath} {reviewKey} visible={true} overlay={false} onSelect={onSelectFile} onClose={null} showHeading={false} />
+        <RepositoryTree {changes} {headers} {selectedPath} onSelect={onSelectFile} />
     {:else}
         <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : "This revset matches nothing."}</p>
     {/if}

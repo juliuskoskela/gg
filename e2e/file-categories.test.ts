@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness";
+import { createContext, destroyContext, extractTestRepo, openChangedFiles, startGG, type TestContext } from "./harness";
 import type { RepoConfig } from "../app/messages/RepoConfig";
 import type { RepoStatus } from "../app/messages/RepoStatus";
 
@@ -29,9 +29,10 @@ describe("review file categories", () => {
         await ctx.page.goto(`${url}/?inspect=${commit}&file=implementation.rs`);
         let counts = ctx.page.locator('.panel-view-top .diff-stat[aria-label="Implementation: 1 additions, 0 deletions. All files: 5 additions, 0 deletions"]');
         await expect.poll(() => counts.count()).toBe(1);
-        await ctx.page.getByRole("button", { name: "Group by type", exact: true }).click();
-        await ctx.page.getByRole("heading", { name: "Tests 1" }).waitFor();
-        await ctx.page.getByRole("option", { name: "spec/check.rs", exact: true }).click();
+        let drawer = await openChangedFiles(ctx.page);
+        await drawer.getByRole("button", { name: "Group by type", exact: true }).click();
+        await drawer.getByRole("heading", { name: "Tests 1" }).waitFor();
+        await drawer.getByRole("option", { name: "spec/check.rs", exact: true }).click();
         await expect.poll(() => ctx.page.locator(".diff-viewer").evaluate(node => node.querySelector("diffs-container")?.shadowRoot?.textContent ?? "")).toContain("test one");
         await expect.poll(() => ctx.page.locator(".graph .diff-stat").filter({ hasText: "+1" }).count()).toBeGreaterThan(0);
         await ctx.page.screenshot({ path: "e2e/results/file-categories.png" });

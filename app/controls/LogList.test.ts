@@ -1,3 +1,8 @@
+import "../global.css";
+import "../display/palettes.css";
+import { page } from "vitest/browser";
+import { beforeAll } from "vitest";
+beforeAll(async () => { await page.viewport(1280, 720); });
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 import { userEvent } from "vitest/browser";
@@ -21,5 +26,24 @@ describe("history list navigation", () => {
         await userEvent.keyboard("{Home}");
         expect(document.activeElement).toBe(getByRole("button", { name: "First" }));
         expect(onSelect).toHaveBeenLastCalledWith("a");
+    });
+});
+
+describe("entry kinds", () => {
+    it("leads the line with a labelled icon and keeps rows one line tall", () => {
+        let rows = [
+            { id: "a", title: "Describe it", kind: { icon: "edit-3", tone: "rewrite" as const, label: "Rewritten" } },
+            { id: "b", title: "Plain entry" },
+        ];
+        let { container, getByRole } = render(LogList, { props: { label: "History", rows, onSelect: () => {} } });
+        let icon = container.querySelector<HTMLElement>(".kind")!;
+        expect(icon.getAttribute("aria-label")).toBe("Rewritten");
+        expect(icon.title).toBe("Rewritten");
+        expect(icon.getBoundingClientRect().width).toBe(16);
+        expect(container.querySelectorAll(".kind").length).toBe(1);
+        expect(getByRole("button", { name: /Rewritten Describe it/ })).toBeTruthy();
+        let heights = [...container.querySelectorAll("button")].map(button => button.getBoundingClientRect().height);
+        expect(new Set(heights).size).toBe(1);
+        expect(heights[0]).toBe(28);
     });
 });

@@ -80,6 +80,32 @@ pub async fn evolution_page(
     })
 }
 
+pub const TREE_LIMIT: usize = 50_000;
+
+pub fn revision_tree(ws: &WorkspaceSession<'_>, id: RevId) -> Result<RevisionTree> {
+    let commit_id =
+        CommitId::try_from_hex(&id.commit.hex).ok_or_else(|| anyhow!("invalid commit ID"))?;
+    let commit = ws.repo().store().get_commit(&commit_id)?;
+    if commit.change_id().reverse_hex() != id.change.hex {
+        return Err(anyhow!("the commit does not belong to this change"));
+    }
+    let mut files = Vec::new();
+    let mut truncated = false;
+    for (path, value) in commit.tree().entries() {
+        // conflicted paths appear once, as a single entry
+        if value?.is_absent() {
+            continue;
+        }
+        if files.len() == TREE_LIMIT {
+            truncated = true;
+            break;
+        }
+        files.push(path.as_internal_file_string().to_owned());
+    }
+    files.sort();
+    Ok(RevisionTree { files, truncated })
+}
+
 pub async fn operation_page(
     ws: &WorkspaceSession<'_>,
     head: Option<String>,

@@ -1,20 +1,10 @@
-.history-browser .history-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; margin-block-end: 8px; }
-.history-browser .history-heading h2 { margin: 0; color: var(--text-strong); font: var(--font-title); overflow-wrap: anywhere; }
-.history-browser .history-copy { max-width: var(--prose-measure); margin: 0 0 var(--gap-group); color: var(--muted); font: var(--font-body); overflow-wrap: anywhere; }
+/* one rhythm for the detail pane: siblings sit a group apart, sections a section apart behind a faint hairline */
+.history-browser .history-detail > * + * { margin-block-start: var(--gap-group); }
+.history-browser .history-detail > * + .history-section { margin-block-start: var(--gap-section); }
+.history-browser .history-section { min-width: 0; padding-block-start: var(--gap-section); border-block-start: 1px solid var(--view-inner-rule); }
+.history-browser .history-section > * + * { margin-block-start: var(--gap-group); }
+.history-browser .history-section > .section-heading + * { margin-block-start: 0; }
+.history-browser .history-copy { max-width: var(--prose-measure); margin: 0; color: var(--muted); font: var(--font-body); overflow-wrap: anywhere; }
 .history-browser .history-copy.description { color: var(--text); font: var(--font-prose); white-space: pre-wrap; }
-/* the same key/value rhythm as MetadataList */
-.history-browser .history-metadata { display: grid; grid-template-columns: minmax(3.5rem, max-content) minmax(0, 1fr); align-items: baseline; gap: var(--gap-row) 16px; margin: var(--gap-group) 0 var(--gap-section); }
-.history-browser .history-metadata dt { color: var(--muted); font: var(--font-label); }
-.history-browser .history-metadata dd { margin: 0; color: var(--text); font: var(--font-body); overflow-wrap: anywhere; }
-.history-browser .history-section { padding-block: var(--gap-section); border-block-start: 1px solid var(--rule); }
-.history-browser .history-section h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 var(--gap-group); color: var(--text-strong); font: var(--font-heading); }
-.history-browser .history-section h3 > span { color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; }
-.history-browser .history-section p { margin: var(--gap-row) 0; font: var(--font-body); overflow-wrap: anywhere; }
-.history-browser .history-button { min-height: 32px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; font-size: var(--type-ui); }
-.history-browser .history-link { min-height: 28px; max-width: 100%; padding: 4px 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; font: var(--font-body); overflow-wrap: anywhere; text-align: start; }
 .history-browser .history-empty { margin: 0; color: var(--muted); font: var(--font-body); }
-.history-browser .history-code, .history-browser .history-metadata .history-code { font: var(--font-id); font-variant-ligatures: none; }
-@media (hover: hover) { .history-browser .history-button:not(:disabled):hover, .history-browser .history-link:hover { background: var(--interaction-hover); } }
-.history-browser .history-button:not(:disabled):active, .history-browser .history-link:active { background: var(--interaction-pressed); }
-.history-browser .history-button:disabled { color: var(--text-disabled); cursor: default; }
-@media (pointer: coarse), (max-width: 600px) { .history-browser .history-button, .history-browser .history-link { min-height: 44px; } }
+.history-browser .history-code { font: var(--font-id); font-variant-ligatures: none; }

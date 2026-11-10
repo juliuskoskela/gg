@@ -9,11 +9,12 @@
 </script>
 
 <!-- one grid for the whole list: keys share a column sized to the longest key, and keys and values share baselines -->
-<dl class="metadata-list" aria-label={label}>{@render children?.()}</dl>
+<div class="metadata-frame"><dl class="metadata-list" aria-label={label}>{@render children?.()}</dl></div>
 
 <style>
+    /* a query can't style its own container, so the frame is the container and the list responds to it */
+    .metadata-frame { container: metadata / inline-size; min-width: 0; }
     .metadata-list {
-        container: metadata / inline-size;
         display: grid; grid-template-columns: minmax(3.5rem, max-content) minmax(0, 1fr); align-items: baseline;
         gap: var(--gap-row) 16px; margin: 0; min-width: 0;
     }

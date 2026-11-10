@@ -343,6 +343,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             resolve_revision_selection,
             query_operation_preflight,
             query_evolution,
+            query_revision_tree,
             query_review_delta,
             query_split_receipts,
             query_split_receipt_states,
@@ -691,6 +692,22 @@ fn query_evolution(
             id,
             offset: offset.unwrap_or(0),
         })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
+fn query_revision_tree(
+    window: Window,
+    app_state: State<AppState>,
+    id: messages::RevId,
+) -> Result<messages::queries::RevisionTree, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryRevisionTree { tx, id })
         .map_err(InvokeError::from_error)?;
     rx.recv()
         .map_err(InvokeError::from_error)?

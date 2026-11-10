@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+import { createContext, destroyContext, extractTestRepo, openChangedFiles, startGG, type TestContext } from "./harness.js";
 
 describe("reviewed revision navigation", () => {
     let ctx: TestContext;
@@ -56,8 +56,8 @@ describe("reviewed revision navigation", () => {
         let backend = await startGG(ctx);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
-        let list = ctx.page.getByRole("listbox", { name: "Changed files" });
+        let drawer = await openChangedFiles(ctx.page);
+        let list = drawer.getByRole("listbox", { name: "Changed files" });
         let options = list.getByRole("option");
         await expect.poll(() => options.count()).toBe(2);
         expect(await list.getByRole("group", { name: "folder", exact: true }).count()).toBe(1);

@@ -9,11 +9,17 @@
     import { repoConfigEvent } from "../stores";
     import { repositoryScope } from "../workspace/repository";
     import DiffViewer from "../DiffViewer.svelte";
+    import ActionWidget from "../controls/ActionWidget.svelte";
+    import SectionHeading from "../controls/SectionHeading.svelte";
+    import type { Snippet } from "svelte";
     interface Props {
         id: RevId;
+        title?: string;
+        /** controls for the section heading's trailing edge */
+        actions?: Snippet | undefined;
     }
 
-    let { id }: Props = $props();
+    let { id, title = "Version patch", actions = undefined }: Props = $props();
     let detail: RevisionDetail | null = $state.raw(null);
     let selected = $state("");
     let change: RevChange | null = $state.raw(null);
@@ -60,22 +66,20 @@
     });
 </script>
 
-<section class="version-patch" aria-label="Version patch">
-    <h3>Version patch</h3><p class="history-copy">Changes against this version’s own parents.</p>
-    {#if loading}<p role="status">Loading version…</p>
-    {:else if error}<p role="alert">{error}</p><button class="history-button" type="button" onclick={() => load(id, repository)}>Retry version</button>
+<section class="history-section version-patch" aria-label="Version patch">
+    <SectionHeading {title} {actions} />
+    {#if loading}<p class="history-empty" role="status">Loading version…</p>
+    {:else if error}<p class="history-copy" role="alert">{error}</p><div><ActionWidget safe tip="Retry version" onClick={() => load(id, repository)}>Retry version</ActionWidget></div>
     {:else if detail && !detail.changes.length}<p class="history-empty">This version has no file changes.</p>
     {:else if detail}
         <label class="file-choice"><span>File</span><select aria-label="Version file" bind:value={selected}>{#each detail.changes as file}<option value={file.path.repo_path}>{file.path.relative_path}</option>{/each}</select></label>
-        {#if change}{#key change}<DiffViewer {change} readingKey={`history:${repository}:${id.commit.hex}:${selected}`} loadFullFiles={fullFiles} />{/key}{:else}<p role="status">Loading file…</p>{/if}
+        {#if change}{#key change}<DiffViewer {change} readingKey={`history:${repository}:${id.commit.hex}:${selected}`} loadFullFiles={fullFiles} />{/key}{:else}<p class="history-empty" role="status">Loading file…</p>{/if}
     {/if}
 </section>
 
 <style>
-    .version-patch { min-width: 0; border-block-start: 1px solid var(--rule); padding-block-start: 16px; }
-    h3 { margin: 0 0 6px; font-size: var(--type-ui); font-weight: 500; }
-    p { line-height: 1.6; overflow-wrap: anywhere; }
-    .file-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 12px; color: var(--muted); }
-    select { min-width: 0; max-width: 100%; flex: 1; }
+    .file-choice { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+    .file-choice span { flex: none; color: var(--muted); font: var(--font-label); }
+    select { flex: 1; min-width: 0; max-width: 100%; }
     .version-patch :global(.diff-viewer) { min-height: 80px; }
 </style>

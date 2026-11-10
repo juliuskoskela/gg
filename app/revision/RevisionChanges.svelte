@@ -18,7 +18,7 @@
     import DiffViewer from "../DiffViewer.svelte";
     import ChangeObject from "../objects/ChangeObject.svelte";
     import HunkObject from "../objects/HunkObject.svelte";
-    import PanelFooter from "../controls/PanelFooter.svelte";
+    import ChangedFilesDrawer from "./ChangedFilesDrawer.svelte";
     import PanelHeader from "../controls/PanelHeader.svelte";
     import DiffStat from "./DiffStat.svelte";
     import DiffTools from "./DiffTools.svelte";
@@ -29,6 +29,7 @@
     import { navigateOptions } from "../controls/optionNavigation";
 
     let width = $state(1200);
+    let height = $state(600);
     interface Props {
         comparison?: ReviewComparison | null;
         onCompare?: CompareReview;
@@ -158,7 +159,7 @@
     });
 </script>
 
-<div class="changes-module" bind:clientWidth={width}>
+<div class="changes-module" bind:clientWidth={width} bind:clientHeight={height}>
     {#if showTools}
         <PanelHeader className="changes-heading" label="Diff tools">
             <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} onCompare={compare} />
@@ -184,7 +185,7 @@
                         {/key}
                     {:else}<p class="diff-message" role="status">This file is no longer available. Choose another file or refresh the revision.</p>{/if}
                 </div>
-                <PanelFooter className="diff-footer"><div class="diff-toolbar">
+                <ChangedFilesDrawer {changes} headers={revs.headers} {selectedPath} reviewKey={key} viewHeight={height} index={selectedIndex} drawer={!onRequestFiles} onSelect={selectFile}>
                     {#if activeComparison}<button class="review-back" type="button" onclick={closeComparison}>Back to file diff</button>
                     {:else}
                     {#if currentChange}{@const owners = owningHeaders(currentChange, revs.headers)}{#if owners[0]}<ReviewControl header={owners[0]} path={currentChange.path.repo_path} onCompare={compare} />{/if}{/if}
@@ -192,7 +193,7 @@
                     {#if revs.headers.length > 1 && currentChange?.origin}<OriginLink origin={currentChange.origin} path={currentChange.path.repo_path} />{/if}
                     <div class="file-path">{#if currentChange}<ChangeObject compactPath={width < 620} change={currentChange} headers={revs.headers} selected={false} onSelected={() => onRequestFiles ? onRequestFiles() : currentChange && onSelectFile(currentChange)} />{/if}</div>
                     {/if}
-                </div></PanelFooter>
+                </ChangedFilesDrawer>
             </div>
         </div>
     {:else}
@@ -206,14 +207,6 @@
     .changes-module { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
     .changes-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-width: 0; min-height: 0; isolation: isolate; }
     .file-review { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-    .diff-toolbar { display: flex; align-items: center; gap: 2px; width: 100%; min-width: 0; min-height: var(--control-height); }
-    .file-path { flex: 1; min-width: 0; }
-    .file-path :global(.layout) { min-height: 32px; padding: 4px; font-size: var(--type-ui); }
-    .file-path :global(.layout span) { white-space: nowrap; }
-    .file-navigation { display: flex; align-items: center; flex-shrink: 0; }
-    .diff-toolbar button { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 24px; min-height: 28px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 15px; }
-    .diff-toolbar .review-back { width: auto; padding-inline: var(--space-2); font: var(--font-label); white-space: nowrap; }
-    .diff-toolbar button:disabled { color: var(--text-disabled); cursor: default; }
     .diff-scroll > :global(.review-delta) { padding-inline: var(--panel-inset); }
     .diff-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; pointer-events: auto; scroll-padding-block: 12px; }
     .hunk-actions { margin: 0 12px 4px; pointer-events: auto; }
@@ -228,7 +221,7 @@
     .empty-change { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; }
     .empty-change h3 { margin: 0; color: var(--text-strong); font: var(--font-heading); }
     .empty-change p { max-width: 340px; margin: 0; color: var(--muted); font: var(--font-body); }
-    @media (hover: hover) { .diff-toolbar button:not(:disabled):hover, .hunk-actions summary:hover { background: var(--hover); color: var(--text); } }
-    .diff-toolbar button:not(:disabled):active, .hunk-actions summary:active { background: var(--control-pressed); }
-    @media (pointer: coarse), (max-width: 600px) { .file-path :global(.layout) { min-height: 44px; } .diff-toolbar button { min-width: 44px; min-height: 44px; } .hunk-actions summary { min-height: 44px; } }
+    @media (hover: hover) { .hunk-actions summary:hover { background: var(--hover); color: var(--text); } }
+    .hunk-actions summary:active { background: var(--control-pressed); }
+    @media (pointer: coarse), (max-width: 600px) { .hunk-actions summary { min-height: 44px; } }
 </style>

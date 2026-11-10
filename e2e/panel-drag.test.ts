@@ -80,7 +80,7 @@ describe("pointer docking", () => {
         await ctx.page.reload();
         await ctx.page.locator("#panel-tab-description").waitFor({ state: "visible" });
         await expect.poll(root).toEqual(expected);
-        expect(flatPanels(await root()).sort()).toEqual(["description", "diff", "timeline", "tree"]);
+        expect(flatPanels(await root()).sort()).toEqual(["description", "diff", "timeline"]);
     }
 
     it("shows plain draggable titles until views are stacked", async () => {

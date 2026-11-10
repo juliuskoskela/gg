@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { type DockNode, type Edge, type PanelId, closePanel, createDock, defaultLayout, movePanel, openPanel, openPanels, restoreDock, setRatio } from "./dock";
 
 describe("panel dock", () => {
-    it("starts with timeline, description, tree, and diff", () => {
-        expect(openPanels(defaultLayout())).toEqual(["timeline", "description", "tree", "diff"]);
+    it("starts with timeline, description, and diff, and leaves the repository tree to the Views menu", () => {
+        expect(openPanels(defaultLayout())).toEqual(["timeline", "description", "diff"]);
+        expect(openPanels(openPanel(defaultLayout(), "tree"))).toContain("tree");
     });
 
     it("opens revision tools to the right of Description without changing saved defaults", () => {
@@ -39,7 +40,7 @@ describe("panel dock", () => {
         let storage = { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => { memory.set(key, value); } };
         let layout = createDock(storage);
         layout.open("settings"); layout.open("settings");
-        expect(openPanels(get(layout).root)).toEqual(["timeline", "settings", "description", "tree", "diff"]);
+        expect(openPanels(get(layout).root)).toEqual(["timeline", "settings", "description", "diff"]);
         expect(findTabs(get(layout).root, "timeline")?.active).toBe("settings");
         expect(get(createDock(storage)).compactActive).toBe("settings");
         layout.close("settings");
@@ -74,7 +75,7 @@ describe("panel dock", () => {
     });
 
     it("splits a panel onto an edge", () => {
-        let next = movePanel(defaultLayout(), "tree", "timeline", "bottom");
+        let next = movePanel(openPanel(defaultLayout(), "tree"), "tree", "timeline", "bottom");
         expect(openPanels(next)).toContain("tree");
         expect(findTabs(next, "timeline")?.panels).toEqual(["timeline"]);
     });
@@ -109,18 +110,20 @@ describe("panel dock", () => {
         let later = movePanel(earlier, "timeline", "tree", "tab");
         expect(findTabs(later, "timeline")?.panels).toEqual(["diff", "description", "timeline", "tree"]);
         expect(openPanels(later).sort()).toEqual(openPanels(initial).sort());
-        let separate = movePanel(defaultLayout(), "tree", "description", "tab");
+        let full = openPanel(defaultLayout(), "tree");
+        let separate = movePanel(full, "tree", "description", "tab");
         expect(findTabs(separate, "description")?.panels).toEqual(["tree", "description"]);
-        expect(openPanels(separate).sort()).toEqual(openPanels(defaultLayout()).sort());
+        expect(openPanels(separate).sort()).toEqual(openPanels(full).sort());
     });
 
     it("moves a tab to the end of its own or another group", () => {
         let initial: DockNode = { type: "tabs", active: "timeline", panels: ["timeline", "description", "diff"] };
         let reordered = movePanel(initial, "timeline", "timeline", "tab-end");
         expect(reordered).toEqual({ type: "tabs", active: "timeline", panels: ["description", "diff", "timeline"] });
-        let moved = movePanel(defaultLayout(), "tree", "description", "tab-end");
+        let full = openPanel(defaultLayout(), "tree");
+        let moved = movePanel(full, "tree", "description", "tab-end");
         expect(findTabs(moved, "description")?.panels).toEqual(["description", "tree"]);
-        expect(openPanels(moved).sort()).toEqual(openPanels(defaultLayout()).sort());
+        expect(openPanels(moved).sort()).toEqual(openPanels(full).sort());
         let singleton: DockNode = { type: "tabs", active: "diff", panels: ["diff"] };
         expect(movePanel(singleton, "diff", "diff", "tab-end")).toBe(singleton);
     });
@@ -159,9 +162,9 @@ describe("panel dock", () => {
         layout.close("timeline");
         expect(openPanels(get(layout).root)).not.toContain("timeline");
         layout.reset();
-        expect(openPanels(get(layout).root)).toEqual(["timeline", "description", "tree", "diff"]);
+        expect(openPanels(get(layout).root)).toEqual(["timeline", "description", "diff"]);
         let restored = createDock(storage);
-        expect(openPanels(get(restored).root)).toEqual(["timeline", "description", "tree", "diff"]);
+        expect(openPanels(get(restored).root)).toEqual(["timeline", "description", "diff"]);
     });
 
     it("keeps a resize inside the usable range", () => {

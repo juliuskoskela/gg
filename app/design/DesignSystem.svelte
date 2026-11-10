@@ -26,6 +26,7 @@
     import SelectWidget from "../controls/SelectWidget.svelte";
     import type { RevChange } from "../messages/RevChange";
     import HistoryColors from "./HistoryColors.svelte";
+    import HistoryComponents from "./HistoryComponents.svelte";
     import RepositoryNavigation from "../shell/RepositoryNavigation.svelte";
 
     setContext("settings", { markUnpushedBookmarks: true });
@@ -94,6 +95,7 @@
             </dl>
         </section>
         <section id="history-colors" class="description-specimen"><h2>History colors</h2><p>Text-grade lane colors are shared by graph stations and revision prefixes. Workspaces use GG+ blue in every family.</p><HistoryColors /></section>
+        <section id="history-components" class="description-specimen"><h2>History components</h2><p>Section headings, status pills, operation kinds, reference lines and one-line revision lines are shared by History and Evolution.</p><HistoryComponents /></section>
         <section id="description" class="description-specimen" aria-label="Description component preview">
             <h2>Description and metadata</h2><p>One document, aligned fields, and wrapping references. This specimen uses the production description components.</p>
             <div class="description-sample"><PanelTabs items={[{ id: "description", label: "Description" }]} active="description" prefix="specimen" onSelect={() => {}} /><div id="specimen-description" role="region" aria-labelledby="specimen-tab-description"><RevisionOverview revs={revisionFixture} readOnly /></div></div>

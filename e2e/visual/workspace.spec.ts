@@ -65,11 +65,17 @@ for (let theme of ["light", "dark"] as const) for (let width of [1440, 390]) {
             await expect(page.locator(".description-panel h2")).toHaveText("resolve the conflict");
             await snapshot("description");
             await panel("tree");
-            await expect(page.getByRole("listbox", { name: "Changed files" }).getByRole("option").first()).toBeVisible();
+            await expect(page.getByRole("tree", { name: "Repository files" }).getByRole("treeitem").first()).toBeVisible();
             await snapshot("files");
             await panel("diff");
             let pre = page.locator(".diff-viewer pre").first();
             await expect(pre).toBeVisible();
+            // the changed files are a drawer of the diff, closed by default
+            await page.getByRole("button", { name: "Show changed files", exact: true }).click();
+            await expect(page.locator("#changed-files-drawer").getByRole("option").first()).toBeVisible();
+            await snapshot("changed-files");
+            await page.getByRole("button", { name: "Hide changed files", exact: true }).click();
+            await expect(page.locator("#changed-files-drawer").getByRole("option")).toHaveCount(0);
             await page.getByRole("button", { name: "Stacked", exact: true }).click();
             await expect(pre).toHaveAttribute("data-diff-type", "single");
             await snapshot("diff-unified");

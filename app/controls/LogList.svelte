@@ -1,4 +1,5 @@
 <script lang="ts" module>
+    export type Tone = "neutral" | "create" | "rewrite" | "remove" | "remote" | "undo" | "workspace";
     export type LogEntry = {
         id: string;
         title: string;
@@ -8,10 +9,14 @@
         time?: string;
         badge?: string;
         tone?: "default" | "muted" | "warning";
+        /** a leading icon that classifies the entry; its label is the icon's accessible name */
+        kind?: { icon: string; tone: Tone; label: string };
     };
 </script>
 
 <script lang="ts">
+    import Badge from "./Badge.svelte";
+    import Icon from "./Icon.svelte";
     import { navigationIndex, visibleItems } from "./listNavigation";
     import type { Snippet } from "svelte";
     import { tick } from "svelte";
@@ -84,9 +89,10 @@
             {:else}
                 <button type="button" data-log-row aria-pressed={selected === row.id} title={row.time ? new Date(row.time).toLocaleString() : undefined}
                     onclick={() => onSelect(row.id)} ondblclick={() => rename(row)} onkeydown={event => navigate(event, row)}>
+                    {#if row.kind}<span class="kind" data-tone={row.kind.tone} role="img" aria-label={row.kind.label} title={row.kind.label}><Icon name={row.kind.icon} /></span>{/if}
                     {#if show.code && row.code}<code class="code">{row.code}</code>{/if}
                     <span class="title">{row.title}</span>
-                    {#if row.badge}<span class="badge {row.tone ?? 'default'}">{row.badge}</span>{/if}
+                    {#if row.badge}<Badge tone={row.tone ?? "default"}>{row.badge}</Badge>{/if}
                     {#if show.who && row.who}<span class="who">{row.who}</span>{/if}
                     {#if show.time && row.time}<time datetime={row.time}>{when(row.time)}</time>{/if}
                 </button>
@@ -107,10 +113,13 @@
     .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .selected .title { color: var(--text-strong); font-weight: var(--weight-medium); }
     .selected .code { color: var(--text); }
-    /* badges read like the annotations' counts: small ink pills, quiet unless they warn */
-    .badge { flex: none; align-self: center; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); font: var(--weight-medium) 11px/16px var(--stack-ui); white-space: nowrap; }
-    .badge.muted { background: transparent; color: var(--muted); }
-    .badge.warning { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+    .kind { display: inline-flex; flex: none; align-self: center; color: var(--muted); }
+    .kind[data-tone="create"] { color: var(--positive); }
+    .kind[data-tone="rewrite"] { color: var(--lane-0); }
+    .kind[data-tone="remove"] { color: var(--negative); }
+    .kind[data-tone="remote"] { color: var(--lane-2); }
+    .kind[data-tone="undo"] { color: var(--warning); }
+    .kind[data-tone="workspace"] { color: var(--brand); }
     .who { flex: 0 1 auto; min-width: 0; max-width: 30%; overflow: hidden; color: var(--muted); font: var(--font-label); text-overflow: ellipsis; white-space: nowrap; }
     time { flex: none; color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .trailing { display: inline-flex; flex: none; padding-inline-end: 4px; }

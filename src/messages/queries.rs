@@ -263,6 +263,13 @@ pub struct OperationRecord {
 
 #[derive(Serialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct RevisionTree {
+    pub files: Vec<String>,
+    pub truncated: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct EvolutionEntry {
     pub revision: HistoryRevision,
     pub predecessor_ids: Vec<String>,

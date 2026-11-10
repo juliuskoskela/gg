@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createContext, destroyContext, extractTestRepo, startGG, type TestContext } from "./harness.js";
+import { createContext, destroyContext, extractTestRepo, openChangedFiles, startGG, type TestContext } from "./harness.js";
 
 function revset(expression: string) {
     let id = { change: { type: "ChangeId", hex: expression, prefix: expression, rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId", hex: "", prefix: "", rest: "" } };
@@ -71,12 +71,11 @@ describe("workspace complex-state acceptance", () => {
         let base = await startGG(ctx);
         await ctx.page.goto(base);
         await ctx.page.locator(".graph .selection-item").first().click();
-        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("a.txt");
-        await expect.poll(() => ctx.page.locator(".file-tree").textContent()).toContain("binary.bin");
-        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
-        await ctx.page.getByRole("searchbox", { name: "Filter changed files" }).fill("binary.bin");
-        await ctx.page.getByRole("option", { name: "binary.bin" }).click();
-        await ctx.page.getByRole("tab", { name: "Diff", exact: true }).click();
+        let drawer = await openChangedFiles(ctx.page);
+        await expect.poll(() => drawer.textContent()).toContain("a.txt");
+        await expect.poll(() => drawer.textContent()).toContain("binary.bin");
+        await drawer.getByRole("searchbox", { name: "Filter changed files" }).fill("binary.bin");
+        await drawer.getByRole("option", { name: "binary.bin" }).click();
         await ctx.page.getByRole("region", { name: "File diff" }).getByText(/binary/i).first().waitFor();
         let response = await fetch(`${base}/api/query/query_revision_summary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ set: revset("@"), client_id: "complex-fixture" }) });
         let summary = await response.json();

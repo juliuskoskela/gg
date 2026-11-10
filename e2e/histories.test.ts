@@ -61,11 +61,11 @@ describe("native history inspection", () => {
         let evolution = ctx.page.getByRole("region", { name: "Evolution", exact: true });
         await evolution.getByRole("button", { name: /Initial parser implementation/ }).waitFor();
         await evolution.getByRole("button", { name: /Initial parser implementation/ }).click();
-        await expect.poll(() => evolution.locator(".history-heading h2").textContent()).toBe("Initial parser implementation");
+        await expect.poll(() => evolution.getByRole("heading", { level: 2 }).textContent()).toBe("Initial parser implementation");
         await evolution.getByRole("combobox", { name: "Version file" }).waitFor();
         await expect.poll(() => evolution.locator("diffs-container").evaluateAll(nodes => nodes.map(node => node.shadowRoot?.textContent ?? "").join(""))).toContain("answer");
         let commit = versions.entries.find(entry => entry.revision.description.lines[0] === "Initial parser implementation")!.revision.id.commit.hex;
-        expect(await evolution.locator(".history-metadata dd").allTextContents()).toContain(commit.slice(0, 12));
+        expect(await evolution.locator("dl[aria-label='Version metadata'] dd").allTextContents()).toContain(commit.slice(0, 12));
         let first = evolution.getByRole("button", { name: /Refine parser state transitions/ });
         await first.focus();
         await ctx.page.keyboard.press("ArrowDown");
@@ -77,12 +77,12 @@ describe("native history inspection", () => {
         await history.getByRole("button", { name: /describe commit/ }).first().waitFor();
         let previous = operations.entries.find(entry => entry.id !== operations.head_id)!;
         await history.locator("button[data-log-row]").nth(1).click();
-        await expect.poll(() => history.locator(".history-metadata dd").first().textContent()).toBe(previous.id.slice(0, 12));
+        await expect.poll(() => history.locator("dl[aria-label='Operation metadata'] dd").first().textContent()).toBe(previous.id.slice(0, 12));
         await history.getByRole("region", { name: "Historical graph" }).waitFor();
         expect(await history.getByRole("region", { name: "Historical workspaces" }).textContent()).toContain("default");
         expect(await history.getByRole("region", { name: "Historical bookmarks" }).textContent()).toContain("main");
         await ctx.page.screenshot({ path: `e2e/results/histories/operations-${theme}-${width}.png` });
-        await history.locator(".snapshot-row").first().click();
+        await history.locator(".revision-row button").first().click();
         await history.getByRole("button", { name: "Back to state", exact: true }).waitFor();
         await history.getByRole("combobox", { name: "Version file" }).waitFor();
         await history.getByRole("button", { name: "Back to state", exact: true }).click();
@@ -118,13 +118,13 @@ describe("native history inspection", () => {
         await history.locator("button[data-log-row]").first().click();
         await expect.poll(() => started).toBe(true);
         await history.locator("button[data-log-row]").nth(1).click();
-        await expect.poll(() => history.locator(".history-metadata dd").first().textContent()).toBe(operations.entries[1].id.slice(0, 12));
+        await expect.poll(() => history.locator("dl[aria-label='Operation metadata'] dd").first().textContent()).toBe(operations.entries[1].id.slice(0, 12));
         let completed = ctx.page.waitForResponse(response => response.url().endsWith("/query_operation_detail") && response.request().postDataJSON().id === operations.entries[0].id);
         release!();
         await completed;
         await ctx.page.unrouteAll({ behavior: "wait" });
         await ctx.page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-        await expect.poll(() => history.locator(".history-metadata dd").first().textContent()).toBe(operations.entries[1].id.slice(0, 12));
+        await expect.poll(() => history.locator("dl[aria-label='Operation metadata'] dd").first().textContent()).toBe(operations.entries[1].id.slice(0, 12));
         expect(errors).toEqual([]);
     });
     it("keeps text-field focus to a single neutral stroke and themes the resize corner", async () => {

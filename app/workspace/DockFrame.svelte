@@ -115,7 +115,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions (the same views are in the Views menu) -->
     <div class="tabs" bind:this={frame} tabindex="-1" data-panel-group={node.active} oncontextmenucapture={() => node.type === "tabs" && noteMenuPanel(node.active)} oncontextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
         <PanelGroup>
-            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabelFor(id, $pluginContributions), count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
+            <PanelTabs items={node.panels.map(id => ({ id, label: panelLabelFor(id, $pluginContributions), count: id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
                 onSelect={onFocus} {onClose} {onMove} />
             <div class="stack">
                 {#each node.panels as id (id)}

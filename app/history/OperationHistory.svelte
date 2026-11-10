@@ -11,7 +11,14 @@
     import { repoConfigEvent, repoStatusEvent } from "../stores";
     import { repositoryScope } from "../workspace/repository";
     import HistoryBrowser from "./HistoryBrowser.svelte";
-    import SnapshotGraph from "./SnapshotGraph.svelte";
+    import RevisionLines from "./RevisionLines.svelte";
+    import RefLine from "./RefLine.svelte";
+    import DetailHeader from "./DetailHeader.svelte";
+    import { operationKind } from "./operationKind";
+    import SectionHeading from "../controls/SectionHeading.svelte";
+    import MetadataList from "../controls/MetadataList.svelte";
+    import MetadataRow from "../controls/MetadataRow.svelte";
+    import ActionWidget from "../controls/ActionWidget.svelte";
     import VersionPatch from "./VersionPatch.svelte";
     interface Props {
         active?: boolean;
@@ -72,46 +79,37 @@
         let id = selected;
         untrack(() => loadDetail(id));
     });
-    let rows = $derived(entries.map(entry => ({ id: entry.id, title: compactDescription(entry.description) || "Repository initialized", code: entry.id.slice(0, 8), who: entry.workspace || entry.username || "Repository", time: entry.finished_at, badge: entry.id === head ? (updated ? "At refresh" : "Latest") : entry.parent_ids.length > 1 ? "Concurrent merge" : entry.is_snapshot ? "Snapshot" : undefined, tone: entry.id === head ? "default" as const : entry.parent_ids.length > 1 ? "warning" as const : "muted" as const })));
+    let available = (id: string) => !!detail?.revisions.some(revision => revision.id.commit.hex === id);
+    let rows = $derived(entries.map(entry => ({ id: entry.id, title: compactDescription(entry.description) || "Repository initialized", code: entry.id.slice(0, 8), who: entry.workspace || entry.username || "Repository", time: entry.finished_at, kind: operationKind(entry.description), badge: entry.id === head ? (updated ? "At refresh" : "Latest") : entry.parent_ids.length > 1 ? "Concurrent merge" : undefined, tone: entry.id === head ? "default" as const : entry.parent_ids.length > 1 ? "warning" as const : "muted" as const })));
 </script>
 
 <HistoryBrowser label="Repository history" caption={updated ? "Repository changed. Refresh to see new operations; your historical selection stays available." : "Explore past repository states without changing your working copy. Operations are local and subject to retention and garbage collection."} {rows} {selected} {loading} {error} {more} onSelect={id => selected = id} onMore={load} onRefresh={() => reset()}>
     {#if detailLoading}<p class="history-empty" role="status">Loading repository state…</p>
-    {:else if detailError}<p class="history-copy" role="alert">{detailError}</p><button class="history-button" type="button" onclick={() => loadDetail(selected)}>Retry operation</button>
+    {:else if detailError}<p class="history-copy" role="alert">{detailError}</p><div><ActionWidget safe tip="Retry operation" onClick={() => loadDetail(selected)}>Retry operation</ActionWidget></div>
     {:else if detail}
-        <div class="history-heading"><h2>{compactDescription(detail.operation.description) || "Repository initialized"}</h2></div>
-        <p class="history-copy">{selected === head && !updated ? "Latest repository state" : "Historical repository state"} · Read only</p>
-        <dl class="history-metadata">
-            <dt>Operation</dt><dd class="history-code" title={detail.operation.id}>{detail.operation.id.slice(0, 12)}</dd>
-            <dt>Recorded</dt><dd>{new Date(detail.operation.finished_at).toLocaleString()}</dd>
-            <dt>By</dt><dd>{detail.operation.username || "Unknown user"}{#if detail.operation.hostname} on {detail.operation.hostname}{/if}</dd>
-            {#if detail.operation.workspace}<dt>Workspace</dt><dd>{detail.operation.workspace}</dd>{/if}
-            {#if detail.parents.length}<dt>Previous</dt><dd>{#each detail.parents as parent}<button class="history-link" title={parent.description} type="button" onclick={() => selected = parent.id}>{parent.id.slice(0, 8)} · {compactDescription(parent.description) || "Repository initialized"}</button>{/each}</dd>{/if}
-        </dl>
+        <DetailHeader title={compactDescription(detail.operation.description) || "Repository initialized"} pills={[selected === head && !updated ? { label: "Latest" } : { label: "Historical" }, { label: "Read only", tone: "muted" }]} />
+        <MetadataList label="Operation metadata">
+            <MetadataRow label="Operation"><span class="history-code" title={detail.operation.id}>{detail.operation.id.slice(0, 12)}</span></MetadataRow>
+            <MetadataRow label="Recorded">{new Date(detail.operation.finished_at).toLocaleString()}</MetadataRow>
+            <MetadataRow label="By">{detail.operation.username || "Unknown user"}{#if detail.operation.hostname} on {detail.operation.hostname}{/if}</MetadataRow>
+            {#if detail.operation.workspace}<MetadataRow label="Workspace">{detail.operation.workspace}</MetadataRow>{/if}
+            {#each detail.parents as parent}<MetadataRow label="Previous"><button class="text-link" title={parent.description} type="button" onclick={() => selected = parent.id}><span class="history-code">{parent.id.slice(0, 8)}</span> {compactDescription(parent.description) || "Repository initialized"}</button></MetadataRow>{/each}
+        </MetadataList>
         {#if version}
-            <div class="patch-title"><h3>{version.description.lines[0] || "No description set"}</h3><button class="history-button" type="button" onclick={() => version = null}>Back to state</button></div>
-            {#key version.id.commit.hex}<VersionPatch id={version.id} />{/key}
+            {#key version.id.commit.hex}<VersionPatch id={version.id} title={version.description.lines[0] || "No description set"}>{#snippet actions()}<ActionWidget safe tip="Back to state" onClick={() => version = null}>Back to state</ActionWidget>{/snippet}</VersionPatch>{/key}
         {:else}
-            <section class="history-section" aria-label="Historical workspaces"><h3>Working copies <span>{detail.workspaces.length}</span></h3>
-                {#each detail.workspaces as workspace}<div class="state-ref"><span>{workspace.name}</span><button class="history-link history-code" type="button" title={workspace.commit_id} onclick={() => inspectCommit(workspace.commit_id)} disabled={!detail.revisions.some(revision => revision.id.commit.hex === workspace.commit_id)}>{workspace.commit_id.slice(0, 8)}</button></div>{:else}<p class="history-empty">No working copies recorded.</p>{/each}
+            <section class="history-section" aria-label="Historical workspaces"><SectionHeading title="Working copies" count={detail.workspaces.length} />
+                {#if detail.workspaces.length}<div role="list" aria-label="Working copies">{#each detail.workspaces as workspace}<RefLine kind="workspace" name={workspace.name} ids={[workspace.commit_id]} available={available} onInspect={inspectCommit} />{/each}</div>
+                {:else}<p class="history-empty">No working copies recorded.</p>{/if}
             </section>
-            <section class="history-section" aria-label="Historical bookmarks"><h3>Bookmarks <span>{detail.bookmarks.length}</span></h3>
-                {#each detail.bookmarks as bookmark}<div class="state-ref"><span>{bookmark.name}{#if bookmark.has_conflict}<small>Conflicted target</small>{/if}</span><span>{#each bookmark.added_ids as id}<button class="history-link history-code" type="button" title={id} onclick={() => inspectCommit(id)} disabled={!detail.revisions.some(revision => revision.id.commit.hex === id)}>{id.slice(0, 8)}</button>{/each}{#if bookmark.removed_ids.length}<small>Removed: {bookmark.removed_ids.map(id => id.slice(0, 8)).join(", ")}</small>{/if}</span></div>{:else}<p class="history-empty">No local bookmarks recorded.</p>{/each}
+            <section class="history-section" aria-label="Historical bookmarks"><SectionHeading title="Bookmarks" count={detail.bookmarks.length} />
+                {#if detail.bookmarks.length}<div role="list" aria-label="Bookmarks">{#each detail.bookmarks as bookmark}<RefLine kind="bookmark" name={bookmark.name} ids={bookmark.added_ids} removed={bookmark.removed_ids} conflicted={bookmark.has_conflict} available={available} onInspect={inspectCommit} />{/each}</div>
+                {:else}<p class="history-empty">No local bookmarks recorded.</p>{/if}
             </section>
-            <section class="history-section" aria-label="Historical graph"><h3>Revision graph <span>{detail.revisions.length}{detail.has_more_revisions ? "+" : ""}</span></h3><p class="history-copy">Select a revision to inspect its patch at this moment.</p>
-                <SnapshotGraph revisions={detail.revisions} heads={detail.heads} onSelect={revision => version = revision} />
+            <section class="history-section" aria-label="Historical graph"><SectionHeading title="Revision graph" count={`${detail.revisions.length}${detail.has_more_revisions ? "+" : ""}`} /><p class="history-copy">Select a revision to inspect its patch at this moment.</p>
+                <RevisionLines revisions={detail.revisions} heads={detail.heads} onSelect={revision => version = revision} />
                 {#if detail.has_more_revisions}<p class="history-copy">Showing the newest 60 revisions in this repository state.</p>{/if}
             </section>
         {/if}
     {:else if !loading && !error}<p class="history-empty">Select an operation to explore the repository at that moment.</p>{/if}
 </HistoryBrowser>
-
-<style>
-    h3 span { color: var(--muted); font-weight: 400; margin-inline-start: 6px; }
-    .state-ref { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; min-height: 34px; padding-block: 3px; }
-    .state-ref > span { min-width: 0; overflow-wrap: anywhere; }
-    small { display: block; color: var(--muted); font-size: var(--type-caption); }
-    .patch-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; }
-    .patch-title h3 { font-size: var(--type-ui); font-weight: 500; }
-    .history-link:disabled { color: var(--muted); cursor: default; }
-</style>
