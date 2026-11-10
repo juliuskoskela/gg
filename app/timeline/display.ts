@@ -1,11 +1,11 @@
 import { writable } from "svelte/store";
 
 /** what timeline rows show besides the description; authors are the tall density in graphLayout */
-export type TimelineDisplay = { change: boolean; commit: boolean; bookmarks: boolean; tags: boolean };
+export type TimelineDisplay = { change: boolean; commit: boolean; stats: boolean; bookmarks: boolean; tags: boolean };
 const KEY = "gg.timeline.display";
 // the first version stored only the two ids
 const LEGACY_KEY = "gg.timeline.ids";
-const DEFAULT: TimelineDisplay = { change: true, commit: false, bookmarks: true, tags: true };
+const DEFAULT: TimelineDisplay = { change: true, commit: false, stats: true, bookmarks: true, tags: true };
 
 function restore(storage?: Pick<Storage, "getItem">): TimelineDisplay {
     for (let key of [KEY, LEGACY_KEY]) {

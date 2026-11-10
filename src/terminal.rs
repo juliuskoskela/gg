@@ -2,6 +2,8 @@
 
 mod prompt;
 
+pub use prompt::{Shell, print as print_prompt};
+
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::mpsc::{SyncSender, sync_channel};
@@ -41,6 +43,10 @@ impl Terminal {
         // a development launcher may export a prompt belonging to a different shell.
         for variable in ["PS1", "PS2", "PROMPT", "PROMPT2", "RPROMPT", "RPS1"] {
             command.env_remove(variable);
+        }
+        // the prompt asks this binary for the change id, so jj itself need not be installed
+        if let Ok(executable) = std::env::current_exe() {
+            command.env("GG_EXE", executable);
         }
         let startup = prompt::configure(&mut command, &shell)?;
         let (mut terminal, output) = Self::spawn(command, cols, rows)?;

@@ -1,10 +1,83 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
+use clap::ValueEnum;
+use pollster::FutureExt as _;
 use portable_pty::CommandBuilder;
 use tempfile::TempDir;
+
+use crate::config;
+use crate::messages::ChangeId;
+use crate::worker::{EventSink, WorkerSession};
+
+/// The shell whose prompt syntax `gg prompt` should produce.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum Shell {
+    Bash,
+    Zsh,
+    Fish,
+}
+
+const SHORT_ID: usize = 8;
+
+/// Prints the working copy's change id as a prompt, e.g. `[kvptxrkr] `.
+pub fn print(cwd: &Path, shell: Shell) -> Result<()> {
+    print!("{}", format(&working_copy_change(cwd)?, shell));
+    Ok(())
+}
+
+fn working_copy_change(cwd: &Path) -> Result<ChangeId> {
+    let cwd = dunce::canonicalize(cwd).unwrap_or_else(|_| cwd.to_owned());
+    let root = cwd
+        .ancestors()
+        .find(|path| path.join(".jj").is_dir())
+        .ok_or_else(|| anyhow!("{} is not inside a jj workspace", cwd.display()))?;
+    let (settings, _, _, _) = config::read_config(Some(root))?;
+    let mut session = WorkerSession::new(
+        Arc::new(SilentSink),
+        Some(root.to_owned()),
+        settings,
+        false,
+        false,
+    );
+    // read-only so that drawing a prompt never snapshots or writes an operation
+    let ws = session.load_workspace_readonly(root).block_on()?;
+    let commit = ws.get_commit(ws.wc_id())?;
+    Ok(ws.format_change_id(commit.id(), commit.change_id()))
+}
+
+struct SilentSink;
+impl EventSink for SilentSink {
+    fn send(&self, _event_name: &str, _payload: serde_json::Value) {}
+}
+
+/// Colours are ANSI slots, which the terminal maps onto the GG theme: magenta is the
+/// change id hue and bright black is muted text.
+fn format(id: &ChangeId, shell: Shell) -> String {
+    // shells must be told which bytes take no space or line editing misplaces the cursor
+    let (open, close) = match shell {
+        Shell::Bash => ("\\[", "\\]"),
+        Shell::Zsh => ("%{", "%}"),
+        Shell::Fish => ("", ""),
+    };
+    let style = |code: &str| format!("{open}\x1b[{code}m{close}");
+    let rest: String = id
+        .rest
+        .chars()
+        .take(SHORT_ID.saturating_sub(id.prefix.len()))
+        .collect();
+    format!(
+        "[{}{}{}{}{}] ",
+        style("1;35"),
+        id.prefix,
+        style("0;90"),
+        rest,
+        style("0")
+    )
+}
 
 fn has_readline(shell: &OsStr) -> bool {
     Command::new(shell)
@@ -65,7 +138,7 @@ if ! declare -F _completion_loader >/dev/null && ! declare -F _comp_load >/dev/n
     done
     unset _gg_share _gg_completion_dirs
 fi
-_gg_prompt() { PS1='@ '; PS2='@ '; }
+_gg_prompt() { PS1=$("$GG_EXE" prompt bash 2>/dev/null) || PS1='@ '; PS2='@ '; }
 _gg_hooks=''
 for _gg_hook in "${PROMPT_COMMAND[@]}"; do _gg_hooks+="$_gg_hook"$'\n'; done
 unset PROMPT_COMMAND
@@ -109,7 +182,7 @@ if (( ! $+functions[compdef] )); then
 fi
 bindkey -M emacs '^I' expand-or-complete
 bindkey -M viins '^I' expand-or-complete
-_gg_prompt() { PS1='@ '; PS2='@ '; RPS1=''; RPS2=''; }
+_gg_prompt() { PS1=$("$GG_EXE" prompt zsh 2>/dev/null) || PS1='@ '; PS2='@ '; RPS1=''; RPS2=''; }
 precmd_functions+=(_gg_prompt)
 _gg_prompt
 unset GG_SHELL_ZDOTDIR GG_SHELL_BOOTSTRAP _gg_user_zdotdir
@@ -121,7 +194,9 @@ unset GG_SHELL_ZDOTDIR GG_SHELL_BOOTSTRAP _gg_user_zdotdir
         "fish" => {
             command.arg("--interactive");
             command.arg("--init-command");
-            command.arg("function fish_prompt; printf '@ '; end; function fish_right_prompt; end");
+            command.arg(
+                "function fish_prompt; set -q GG_EXE; and \"$GG_EXE\" prompt fish 2>/dev/null; or printf '@ '; end; function fish_right_prompt; end",
+            );
             Ok(None)
         }
         _ => Ok(None),
@@ -172,12 +247,17 @@ mod tests {
         let executable = bin.join("gg-test-command");
         std::fs::write(&executable, "#!/bin/sh\necho COMMAND_COMPLETED\n")?;
         std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755))?;
+        let gg = bin.join("fake-gg");
+        std::fs::write(&gg, "#!/bin/sh\nprintf '[%s:%s] ' \"$1\" \"$2\"\n")?;
+        std::fs::set_permissions(&gg, std::fs::Permissions::from_mode(0o755))?;
+        let expected = format!("[prompt:{shell}] ");
         let shell = interactive_shell(shell.into());
         let mut command = CommandBuilder::new(&shell);
         command.cwd(home.path().join("first"));
         command.env("HOME", home.path());
         command.env_remove("ZDOTDIR");
         command.env("TERM", "xterm-256color");
+        command.env("GG_EXE", &gg);
         command.env(
             "PATH",
             format!(
@@ -189,11 +269,11 @@ mod tests {
         let startup = configure(&mut command, &shell)?;
         let (mut terminal, mut output) = Terminal::spawn(command, 80, 24)?;
         terminal._startup = startup;
-        let initial = read_until(&mut output, "@ ").await;
+        let initial = read_until(&mut output, &expected).await;
         assert!(!initial.contains("OLD_PROMPT"), "{initial}");
         assert!(!initial.contains("\\["), "{initial}");
         terminal.input(b"cd second\n")?;
-        let changed = read_until(&mut output, "@ ").await;
+        let changed = read_until(&mut output, &expected).await;
         assert!(!changed.contains("OLD_PROMPT"), "{changed}");
         terminal.input(b"gg_marker\n")?;
         read_until(&mut output, "CONFIG_PRESERVED").await;
@@ -210,14 +290,65 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bash_keeps_user_config_and_keeps_the_at_prompt_after_changing_directory() -> Result<()>
-    {
+    async fn bash_keeps_user_config_and_keeps_the_change_prompt_after_changing_directory()
+    -> Result<()> {
         check_prompt("bash", ".bashrc", "PS1=OLD_PROMPT\nPROMPT_COMMAND='PS1=OLD_PROMPT'\nalias gg_marker='echo CONFIG_PRESERVED'\n").await
     }
 
     #[tokio::test]
-    async fn zsh_keeps_user_config_and_keeps_the_at_prompt_after_changing_directory() -> Result<()>
-    {
+    async fn zsh_keeps_user_config_and_keeps_the_change_prompt_after_changing_directory()
+    -> Result<()> {
         check_prompt("zsh", ".zshrc", "PROMPT=OLD_PROMPT\nprecmd() { PROMPT=OLD_PROMPT; }\nalias gg_marker='echo CONFIG_PRESERVED'\n").await
+    }
+
+    fn id(prefix: &str, rest: &str) -> ChangeId {
+        ChangeId {
+            hex: format!("{prefix}{rest}"),
+            prefix: prefix.to_owned(),
+            rest: rest.to_owned(),
+            offset: None,
+            is_divergent: false,
+        }
+    }
+
+    #[test]
+    fn format_highlights_the_unique_prefix_and_marks_escapes_as_zero_width() {
+        let id = id("kv", "ptxrkrzzzzzzzzzz");
+        assert_eq!(
+            format(&id, Shell::Fish),
+            "[\x1b[1;35mkv\x1b[0;90mptxrkr\x1b[0m] "
+        );
+        assert_eq!(
+            format(&id, Shell::Bash),
+            "[\\[\x1b[1;35m\\]kv\\[\x1b[0;90m\\]ptxrkr\\[\x1b[0m\\]] "
+        );
+        assert_eq!(
+            format(&id, Shell::Zsh),
+            "[%{\x1b[1;35m%}kv%{\x1b[0;90m%}ptxrkr%{\x1b[0m%}] "
+        );
+    }
+
+    #[test]
+    fn format_keeps_a_prefix_longer_than_the_short_id() {
+        let id = id("kvptxrkrzz", "zzzz");
+        assert_eq!(
+            format(&id, Shell::Fish),
+            "[\x1b[1;35mkvptxrkrzz\x1b[0;90m\x1b[0m] "
+        );
+    }
+
+    #[test]
+    fn working_copy_change_reads_the_workspace_from_a_subdirectory() -> Result<()> {
+        let repo = tempfile::tempdir()?;
+        let archive =
+            std::fs::File::open(Path::new(env!("CARGO_MANIFEST_DIR")).join("res/test-repo.zip"))?;
+        zip::ZipArchive::new(archive)?.extract(repo.path())?;
+        let nested = repo.path().join("nested");
+        std::fs::create_dir(&nested)?;
+        let id = working_copy_change(&nested)?;
+        assert!(id.hex.starts_with("kvptxrkr"), "{id:?}");
+        assert!(!id.prefix.is_empty());
+        assert!(working_copy_change(&std::env::temp_dir()).is_err());
+        Ok(())
     }
 }

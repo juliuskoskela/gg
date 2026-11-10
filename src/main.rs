@@ -15,7 +15,7 @@ use anyhow::{Result, anyhow};
 use clap::Parser;
 use gg_lib::config::{self, read_config};
 use gg_lib::{RunOptions, askpass};
-use gg_lib::{annotations, web};
+use gg_lib::{annotations, terminal, web};
 use jj_lib::settings::UserSettings;
 
 #[derive(clap::Subcommand, Debug)]
@@ -52,6 +52,9 @@ enum Subcommand {
         #[command(subcommand)]
         action: annotations::cli::Action,
     },
+    /// Print the working copy's change id as a shell prompt.
+    #[command(hide = true)]
+    Prompt { shell: terminal::Shell },
 }
 
 #[derive(Parser, Debug)]
@@ -86,7 +89,7 @@ impl Args {
         match &self.command {
             Some(Subcommand::Gui { .. }) => Some(LaunchMode::Gui),
             Some(Subcommand::Web { .. }) => Some(LaunchMode::Web),
-            Some(Subcommand::Annotations { .. }) | None => None,
+            Some(Subcommand::Annotations { .. } | Subcommand::Prompt { .. }) | None => None,
         }
     }
 
@@ -96,6 +99,7 @@ impl Args {
                 workspace.clone()
             }
             Some(Subcommand::Annotations { repository, .. }) => repository.clone(),
+            Some(Subcommand::Prompt { .. }) => None,
             None => self.workspace.clone(),
         }
     }
@@ -150,6 +154,10 @@ fn main() -> Result<()> {
         let repo_path = config::resolve_repo_path(repository.as_deref());
         let (settings, _, _, _) = read_config(repo_path.as_deref())?;
         return annotations::cli::run(repository.as_deref(), &settings, action);
+    }
+
+    if let Some(Subcommand::Prompt { shell }) = args.command {
+        return terminal::print_prompt(&std::env::current_dir()?, shell);
     }
 
     if !args.foreground && should_spawn() {

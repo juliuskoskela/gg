@@ -139,18 +139,20 @@
             <div class="layout" class:target class:tall class:no-ids={!showChange && !showCommit} class:workspace={header.is_working_copy} class:conflicted={header.has_conflict} style:--history-row-height={`${rowHeight}px`} style:--history-title-height={`${revisionTitleHeight * textScale}px`} style:--history-author-height={`${revisionAuthorHeight * textScale}px`} style:--history-row-gap={`${revisionRowGap * textScale}px`}>
                 {#if showChange || showCommit}<span class="ids">{#if showChange}<IdSpan id={header.id.change} pronoun={context || target || dropHint != null} />{/if}{#if showCommit}<span class="commit-id"><IdSpan id={header.id.commit} /></span>{/if}</span>{/if}
 
-                <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
-                    {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
-                    {#if notes.length}<NoteMarker {notes} />{/if}
-                    <ReviewCount {header} />
-                    {dragHint ??
-                        dropHint ??
-                        (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}
+                <span class="title">
+                    <span class="text desc truncate" class:indescribable={!context && header.description.lines[0] == ""}>
+                        {#if header.has_conflict}<span class="status-icon" title="Unresolved conflict"><Icon name="alert-triangle" /></span>{/if}
+                        {#if notes.length}<NoteMarker {notes} />{/if}
+                        <ReviewCount {header} />
+                        {dragHint ??
+                            dropHint ??
+                            (header.description.lines[0] == "" ? "(no description set)" : header.description.lines[0])}
+                    </span>
+                    {#if showStats}<TimelineStat id={header.id} />{/if}
                 </span>
 
                 {#if tall}<span class="author truncate">{header.author.name || header.author.email || "Unknown author"}</span>{/if}
                 <span class="refs" role="group" aria-label="Bookmarks and workspaces">
-                    {#if showStats}<TimelineStat id={header.id} />{/if}
                     {#each header.refs as ref}
                         {#if ref.type != "Tag"}
                             {#if showBookmarks && (ref.type == "LocalBookmark" || !ref.is_synced || !ref.is_tracked)}
@@ -223,6 +225,17 @@
     .desc {
         grid-area: desc;
     }
+
+    /* the line counts follow the title and stay whole while the title truncates */
+    .title {
+        grid-area: desc;
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2);
+        min-width: 0;
+    }
+
+    .title> .desc { min-width: 0; }
 
     .desc.indescribable {
         font-weight: 400;

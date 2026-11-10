@@ -532,7 +532,7 @@
                             {textScale}
                             tall={$historyDensity === "tall"}
                             header={row.revision}
-                            showStats
+                            showStats={$timelineDisplay.stats}
                             selected={picked.size ? picked.has(row.revision.id.commit.hex) : isInSelectedRange(row, $revisionSelectEvent)}
                             onClick={handleClick}
                             onShiftClick={handleShiftClick}

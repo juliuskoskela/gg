@@ -10,7 +10,8 @@
         { id: "authors", label: "Authors", group: 0, checked: $historyDensity === "tall", onToggle: () => historyDensity.set($historyDensity === "tall" ? "compact" : "tall") },
         { id: "change", label: "Change IDs", group: 1, checked: $timelineDisplay.change, onToggle: () => timelineDisplay.toggle("change") },
         { id: "commit", label: "Commit IDs", group: 1, checked: $timelineDisplay.commit, onToggle: () => timelineDisplay.toggle("commit") },
-        { id: "bookmarks", label: "Bookmarks", group: 2, checked: $timelineDisplay.bookmarks, onToggle: () => timelineDisplay.toggle("bookmarks") },
-        { id: "tags", label: "Tags", group: 2, checked: $timelineDisplay.tags, onToggle: () => timelineDisplay.toggle("tags") },
+        { id: "stats", label: "Line counts", group: 2, checked: $timelineDisplay.stats, onToggle: () => timelineDisplay.toggle("stats") },
+        { id: "bookmarks", label: "Bookmarks", group: 3, checked: $timelineDisplay.bookmarks, onToggle: () => timelineDisplay.toggle("bookmarks") },
+        { id: "tags", label: "Tags", group: 3, checked: $timelineDisplay.tags, onToggle: () => timelineDisplay.toggle("tags") },
     ]} />
 </PanelTools>

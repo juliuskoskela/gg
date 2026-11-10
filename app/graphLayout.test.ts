@@ -141,6 +141,24 @@ describe("history density", () => {
         await rerender({ header, selected: true, rowHeight: 60, tall: true });
         expect(getComputedStyle(container.querySelector(".desc")!).fontWeight).toBe("500");
     });
+    it("trails the description with line counts and keeps them whole when the title truncates", async () => {
+        let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
+        let target = document.createElement("div");
+        target.style.cssText = "width:260px";
+        document.body.append(target);
+        let long = { ...header, description: { ...header.description, lines: ["A description long enough to need truncating in a narrow row"] } };
+        let { container } = render(RevisionObject, { target, props: { header: long, selected: false, rowHeight: 28, showStats: true } });
+        let title = container.querySelector(".title")!;
+        let desc = title.querySelector(".desc")!;
+        // the stat loads after a delay; a stand-in shows where it would sit
+        let stat = document.createElement("span");
+        stat.style.cssText = "flex-shrink:0;width:40px";
+        title.append(stat);
+        expect(desc.scrollWidth).toBeGreaterThan(desc.clientWidth);
+        expect(stat.getBoundingClientRect().width).toBe(40);
+        expect(stat.getBoundingClientRect().left).toBeGreaterThan(desc.getBoundingClientRect().right - 1);
+        target.remove();
+    });
     it("hides bookmarks and tags separately while keeping the working copy marker", async () => {
         let { default: RevisionObject } = await import("./objects/RevisionObject.svelte");
         let bookmark = { type: "LocalBookmark" as const, bookmark_name: "main", has_conflict: false, is_synced: false, tracking_remotes: [], available_remotes: 0, potential_remotes: 0 };
@@ -168,7 +186,7 @@ describe("history density", () => {
         expect(getComputedStyle(container.querySelector(".refs")!).display).toBe("flex");
         expect(getComputedStyle(container.querySelector(".refs .chip > span")!).display).toBe("none");
         expect(getByRole("option", { name: /^very-long-reference-name;/ })).not.toBeNull();
-        expect(container.querySelector(".desc")!.getBoundingClientRect().width).toBeGreaterThan(100);
+        expect(container.querySelector(".title")!.getBoundingClientRect().width).toBeGreaterThan(100);
         expect(getByRole("option", { name: /^Fix parser;/ }).getAttribute("aria-label")).toContain("very-long-reference-name");
         target.remove();
     });
@@ -176,12 +194,12 @@ describe("history density", () => {
         let { createTimelineDisplay } = await import("./timeline/display");
         let saved = new Map([["gg.timeline.ids", JSON.stringify({ change: false, commit: true })]]);
         let display = createTimelineDisplay({ getItem: key => saved.get(key) ?? null, setItem: (key, value) => { saved.set(key, value); } });
-        expect(get(display)).toEqual({ change: false, commit: true, bookmarks: true, tags: true });
+        expect(get(display)).toEqual({ change: false, commit: true, stats: true, bookmarks: true, tags: true });
         display.toggle("bookmarks");
-        expect(JSON.parse(saved.get("gg.timeline.display")!)).toEqual({ change: false, commit: true, bookmarks: false, tags: true });
+        expect(JSON.parse(saved.get("gg.timeline.display")!)).toEqual({ change: false, commit: true, stats: true, bookmarks: false, tags: true });
     });
 
-    it("offers authors, ids, bookmarks and tags in one display menu and saves them", async () => {
+    it("offers authors, ids, line counts, bookmarks and tags in one display menu and saves them", async () => {
         let { default: TimelineDisplayOptions } = await import("./timeline/TimelineDisplayOptions.svelte");
         let { timelineDisplay } = await import("./timeline/display");
         let { getByRole } = render(TimelineDisplayOptions);
@@ -192,15 +210,17 @@ describe("history density", () => {
         expect(authors.getAttribute("aria-checked")).toBe("false");
         expect(getByRole("menuitemcheckbox", { name: "Change IDs" }).getAttribute("aria-checked")).toBe("true");
         expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("false");
+        expect(getByRole("menuitemcheckbox", { name: "Line counts" }).getAttribute("aria-checked")).toBe("true");
         expect(getByRole("menuitemcheckbox", { name: "Bookmarks" }).getAttribute("aria-checked")).toBe("true");
         expect(getByRole("menuitemcheckbox", { name: "Tags" }).getAttribute("aria-checked")).toBe("true");
         await fireEvent.click(authors);
         await fireEvent.click(getByRole("menuitemcheckbox", { name: "Tags" }));
         await fireEvent.click(getByRole("menuitemcheckbox", { name: "Commit IDs" }));
+        await fireEvent.click(getByRole("menuitemcheckbox", { name: "Line counts" }));
         expect(get(historyDensity)).toBe("tall");
         expect(localStorage.getItem(historyDensityKey)).toBe("tall");
-        expect(get(timelineDisplay)).toEqual({ change: true, commit: true, bookmarks: true, tags: false });
-        expect(JSON.parse(localStorage.getItem("gg.timeline.display")!)).toEqual({ change: true, commit: true, bookmarks: true, tags: false });
+        expect(get(timelineDisplay)).toEqual({ change: true, commit: true, stats: false, bookmarks: true, tags: false });
+        expect(JSON.parse(localStorage.getItem("gg.timeline.display")!)).toEqual({ change: true, commit: true, stats: false, bookmarks: true, tags: false });
         expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("true");
     });
 });
