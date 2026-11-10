@@ -181,7 +181,7 @@
 <style>
     .place { position: relative; display: flex; flex: 1 1 160px; align-items: center; min-width: 0; }
     /* workspace@repository is an address in jj's vocabulary, so it shares the code face with change ids */
-    .place-button { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 32px; padding: 4px 6px; border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: var(--text); font: 500 var(--type-code)/20px var(--stack-code); text-align: start; cursor: pointer; }
+    .place-button { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 32px; padding: var(--space-1) var(--control-padding-inline); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: 500 var(--type-code)/20px var(--stack-code); text-align: start; cursor: pointer; }
     .place-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
     .workspace-name { flex-shrink: 1; color: var(--brand); }
     .project-name { flex-shrink: 2; }

@@ -74,6 +74,70 @@ describe("shared panel chrome", () => {
         await expect.poll(() => wrap.getAttribute("aria-pressed")).not.toBe(pressed);
         expect(await ctx.page.locator(".dock-drag-ghost").count()).toBe(0);
     });
+
+    it("separates title bars by lightness and traces the whole focused view", async () => {
+        await ctx.page.setViewportSize({ width: 1440, height: 960 });
+        await ctx.page.goto(`${url}/?inspect=main`);
+        await ctx.page.evaluate(() => {
+            let group = (active: string) => ({ type: "tabs", active, panels: [active] });
+            localStorage.setItem("gg.ui.theme", "dark");
+            localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, root: { type: "split", direction: "row", ratio: .5, first: group("timeline"), second: group("diff") }, compactActive: "diff" }));
+        });
+        await ctx.page.reload();
+        await ctx.page.getByRole("group", { name: "Diff tools", exact: true }).waitFor();
+        let chrome = await ctx.page.locator(".panel-view-top:visible, .view-toolbar:visible, .panel-header:visible").evaluateAll(elements => elements.map(element => {
+            let style = getComputedStyle(element);
+            return { rule: style.borderBlockEndWidth, background: style.backgroundColor };
+        }));
+        expect(chrome.length).toBeGreaterThan(0);
+        for (let bar of chrome) expect(bar.rule).toBe("0px");
+        let surface = await ctx.page.locator("[data-panel-group=diff]").evaluate(element => getComputedStyle(element).backgroundColor);
+        expect(chrome[0].background).not.toBe(surface);
+
+        let edge = (id: string) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate(element => {
+            let ring = getComputedStyle(element, "::after"), view = element.getBoundingClientRect(), title = element.querySelector(".panel-view-top")!.getBoundingClientRect();
+            return { shadow: ring.boxShadow, inset: ring.inset, titleInside: title.top === view.top };
+        });
+        let blank = (shadow: string) => /rgba\(0, 0, 0, 0\)|transparent|^none$/.test(shadow);
+        let point = (id: string, x: number, y: number) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate((element, [x, y]) => { let r = element.getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }, [x, y]);
+        // blank title bar space ignores the pointer, as a real click finds it
+        let title = await point("diff", 300, 4);
+        await ctx.page.mouse.click(title.x, title.y);
+        await expect.poll(async () => blank((await edge("diff")).shadow)).toBe(false);
+        let diff = await edge("diff");
+        expect(blank(diff.shadow)).toBe(false);
+        expect(diff.inset).toBe("0px");
+        expect(diff.titleInside).toBe(true);
+        expect(blank((await edge("timeline")).shadow)).toBe(true);
+        let empty = await point("timeline", 200, 800);
+        await ctx.page.mouse.click(empty.x, empty.y);
+        await expect.poll(async () => blank((await edge("timeline")).shadow)).toBe(false);
+        await expect.poll(async () => blank((await edge("diff")).shadow)).toBe(true);
+        await ctx.page.screenshot({ path: "e2e/results/title-bars/focused-view.png" });
+    });
+
+    it.each([false, true])("keeps the topbar even and in the navigation's column with expanded navigation %s", async expanded => {
+        await ctx.page.setViewportSize({ width: 1440, height: 900 });
+        await ctx.page.goto(url);
+        await ctx.page.evaluate(expanded => { localStorage.removeItem("gg.dock.layout"); localStorage.setItem("gg.navigation.expanded", JSON.stringify(expanded)); }, expanded);
+        await ctx.page.reload();
+        await ctx.page.locator(".workspace-navigation").waitFor();
+        let layout = await ctx.page.evaluate(() => {
+            let topbar = document.querySelector(".workspace-topbar")!, bar = topbar.getBoundingClientRect();
+            let place = document.querySelector(".place-button")!.getBoundingClientRect(), views = document.querySelector(".views-control")!.getBoundingClientRect();
+            let sheet = document.querySelector(".workspace-sheet")!;
+            let item = document.querySelector(".navigation-scroll .history-entry")!;
+            return { topbarRule: getComputedStyle(topbar).borderBlockEndWidth, sheetRule: getComputedStyle(sheet).borderBlockStartWidth,
+                placeAbove: place.top - bar.top, placeBelow: bar.bottom - place.bottom, viewsAbove: views.top - bar.top, viewsBelow: bar.bottom - views.bottom,
+                name: document.querySelector(".workspace-name")!.getBoundingClientRect().left, icon: item.querySelector("svg")!.getBoundingClientRect().left };
+        });
+        // the topbar shares the navigation's ground; only the views' edge carries a rule
+        expect(layout.topbarRule).toBe("0px");
+        expect(layout.sheetRule).toBe("1px");
+        expect(layout.placeAbove).toBe(layout.placeBelow);
+        expect(layout.viewsAbove).toBe(layout.viewsBelow);
+        if (expanded) expect(layout.name).toBe(layout.icon);
+    });
     it.each([768, 390, 320])("scrolls overflowing tabs independently of view tools and reveals keyboard focus at %ipx", async width => {
         await ctx.page.setViewportSize({ width, height: 960 });
         await ctx.page.goto(`${url}/?inspect=main`);

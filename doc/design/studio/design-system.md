@@ -105,7 +105,7 @@ Its code rows are illustrative specimens, not a live repository diff.
 - **Slim tabs.** The shadcn default filled-tab treatment is the reference, adapted to GG's existing
   type and palette. `--panel-tabs-height: 32px`, 24px tab targets on desktop, 6px control radius;
   narrow/touch headers expand to 44px. No new component library is required.
-- **Continuous chrome.** `PanelHeader` owns the full-width surface and bottom rule. Inset its contents
+- **Continuous chrome.** `PanelHeader` owns the full-width header surface; it has no rule. Inset its contents
   by `--panel-inset: 8px`; do not inset the header itself. `--panel-toolbar-height: 36px` sets tool
   row density. Dock splitters use a single 1px divider with a wider invisible pointer hit area.
   Pane bodies have no outer gutter that can interrupt nested headers, dividers or file surfaces.
@@ -200,7 +200,7 @@ no second tools row inside the docked diff body. The close button stays at the t
 edge. Tool content can wrap within narrow title bars; ordinary header icons reserve
 their own space so the scrolling tab strip never overlaps them.
 
-`PanelFooter` provides a full-width surface and top rule, fixed at 49px on desktop or
+`PanelFooter` provides a full-width header surface, without a rule, fixed at 49px on desktop or
 61px for narrow/coarse input. Timeline fields and the diff's previous/next file buttons
 and current path use this same component. Both footers stay outside content scrolling.
 Wide title bars remain 32px tall in both light and dark themes.

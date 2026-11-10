@@ -46,7 +46,6 @@
     .header {
         min-height: var(--panel-toolbar-height);
         background: var(--panel-header-bg);
-        border-bottom: 1px solid var(--rule);
         padding: 4px var(--pane-inset);
         min-width: 0;
     }

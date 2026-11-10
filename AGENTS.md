@@ -81,6 +81,8 @@ jj-lib and jj-cli dependencies are pinned to specific versions (see `Cargo.toml`
 
 Place view toggles at the top trailing corner of the view they affect, inside its header. Keep summary information together before the controls: for example, `Changes 27 files +10 −13`. Group independent toggles separately from exclusive choices, such as `[hide | wrap] [auto | side by side | stacked]`. When space is tight, wrap the controls onto their own trailing-aligned row. Keep the header outside the content's scroll area so the controls stay in place.
 
+Rules (hairlines) mark the edges of views only. Inside a view, title bars, toolbars and footers use the `--panel-header-bg` lightness step instead of a rule. The focused view shows `--view-focus-ring` around its whole edge (`DockFrame`), so don't add focus outlines to view surfaces such as the terminal or editor.
+
 ### Tree Merge Semantics
 
 jj-lib's `MergedTree::merge()` performs 3-way merges:

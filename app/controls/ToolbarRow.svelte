@@ -34,7 +34,7 @@
         display: flex; flex: none; align-items: center; gap: var(--panel-gap); min-width: 0;
         min-height: var(--panel-toolbar-height); padding: var(--panel-bar-padding) var(--panel-inset);
         scrollbar-width: none; overflow-x: auto; overscroll-behavior-inline: contain; scroll-padding-inline: var(--panel-inset);
-        border-block-end: 1px solid var(--panel-header-rule); background: var(--panel-toolbar-bg); color: var(--text);
+        background: var(--panel-toolbar-bg); color: var(--text);
         pointer-events: auto;
         --control-height: var(--panel-control-size);
         --control-padding-block: 3px;

@@ -127,12 +127,15 @@
     .navigation-footer :global(button) { width: 100%; justify-content: flex-start; }
     .with-navigation:not(.expanded-navigation) .navigation-footer :global(button) { justify-content: center; }
     .with-navigation .workspace-sheet { grid-row: 2; grid-column: 2; }
-    .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: 3px var(--pane-inset); background: var(--ground); border-block-end: 1px solid var(--rule); min-width: 0; }
+    .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: var(--space-1) var(--pane-inset); background: var(--ground); min-width: 0; }
     .navigation-trigger { display: grid; place-items: center; width: 32px; min-height: 32px; flex-shrink: 0; padding: 6px; background: transparent; color: var(--text); border: 0; border-radius: var(--radius-control); cursor: pointer; }
     .views-control { margin-inline-start: auto; }
     .workspace-footer { grid-column: 1 / -1; grid-row: 3; min-width: 0; padding: 4px var(--pane-inset) max(4px, env(safe-area-inset-bottom)); background: var(--ground); border-block-start: 1px solid var(--rule); }
     .workspace-footer, .workspace-topbar { padding-left: max(var(--pane-inset), env(safe-area-inset-left)); padding-right: max(var(--pane-inset), env(safe-area-inset-right)); }
-    .workspace-topbar { padding-block-start: max(3px, env(safe-area-inset-top)); }
+    /* the topbar and navigation share the ground, so no rule runs between them; the dock's own edge starts where the views do.
+       the leading inset matches the navigation gutter, so the workspace name sits in the navigation's icon column */
+    .workspace-topbar { padding-block-start: max(var(--space-1), env(safe-area-inset-top)); padding-inline-start: max(var(--space-2), env(safe-area-inset-left)); }
+    .workspace-sheet { border-block-start: 1px solid var(--rule); }
     .with-navigation .workspace-footer { grid-column: 2; }
     .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--surface); }
     .workspace-sheet.has-error { grid-template-rows: auto minmax(0, 1fr); }

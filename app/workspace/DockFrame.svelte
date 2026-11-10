@@ -55,6 +55,23 @@
         menuPanel.set(id);
         lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [] });
     }
+    let frame = $state<HTMLDivElement>();
+    // plain content ignores the pointer, so a click there would leave focus on the page; the view claims it instead
+    $effect(() => {
+        let element = frame;
+        if (!element) return;
+        let pending: ReturnType<typeof setTimeout> | undefined;
+        function claim(event: PointerEvent) {
+            let bounds = element!.getBoundingClientRect();
+            if (event.clientX < bounds.left || event.clientX >= bounds.right || event.clientY < bounds.top || event.clientY >= bounds.bottom) return;
+            clearTimeout(pending);
+            pending = setTimeout(() => {
+                if (!document.activeElement || document.activeElement === document.body) element!.focus({ preventScroll: true });
+            });
+        }
+        window.addEventListener("pointerdown", claim, true);
+        return () => { window.removeEventListener("pointerdown", claim, true); clearTimeout(pending); };
+    });
     let resizing = $state(false);
     let openNotes = $derived($annotations.filter(thread => thread.status === "open").length);
     function moveSplitter(event: PointerEvent) {
@@ -96,7 +113,7 @@
     </div>
 {:else}
     <!-- svelte-ignore a11y_no_static_element_interactions (the same views are in the Views menu) -->
-    <div class="tabs" data-panel-group={node.active} oncontextmenucapture={() => node.type === "tabs" && noteMenuPanel(node.active)} oncontextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
+    <div class="tabs" bind:this={frame} tabindex="-1" data-panel-group={node.active} oncontextmenucapture={() => node.type === "tabs" && noteMenuPanel(node.active)} oncontextmenu={event => node.type === "tabs" && emptyMenu(event, node.active)}>
         <PanelGroup>
             <PanelTabs items={node.panels.map(id => ({ id, label: panelLabelFor(id, $pluginContributions), count: id === "tree" || id === "diff" ? changes.length : id === "annotations" ? openNotes || undefined : undefined }))} active={node.active} draggable
                 onSelect={onFocus} {onClose} {onMove} />
@@ -114,7 +131,12 @@
 <style>
     .split, .tabs { height: 100%; min-width: 0; min-height: 0; }
     .split { display: grid; }
-    .tabs { display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+    .tabs:focus { outline: none; }
+    /* the whole view, title bar included, so no gutter or padding breaks the edge */
+    .tabs::after { content: ""; position: absolute; inset: 0; z-index: 10; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow var(--motion-feedback) ease-out; }
+    .tabs:focus-within::after { box-shadow: inset 0 0 0 1px var(--view-focus-ring); }
+    @media (prefers-reduced-motion: reduce) { .tabs::after { transition: none; } }
     .stack { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
     .panel-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
     .panel-body[hidden] { display: none; }

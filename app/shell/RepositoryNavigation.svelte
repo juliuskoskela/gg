@@ -50,8 +50,8 @@
     .repository-navigation { min-width: 0; }
     .history-entry { margin-block-start: 6px; }
     nav { display: grid; gap: 2px; margin-block-start: 20px; }
-    h2 { margin: 0 10px 4px; color: var(--muted); font: var(--font-label); }
-    button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 7px 10px; border: 0; border-radius: var(--radius-control); color: var(--muted); background: transparent; font: var(--font-body); text-align: start; cursor: pointer; }
+    h2 { margin: 0 var(--control-padding-inline) var(--space-1); color: var(--muted); font: var(--font-label); }
+    button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: var(--space-1) var(--control-padding-inline); border: 0; border-radius: var(--radius-control); color: var(--muted); background: transparent; font: var(--font-body); text-align: start; cursor: pointer; }
     button > :global(svg) { color: var(--faint); }
     button span { overflow-wrap: anywhere; min-width: 0; }
     .selection-item.selection-item[aria-current="page"] { font-weight: var(--weight-medium); color: var(--selection-text); background: var(--selection-bg); }

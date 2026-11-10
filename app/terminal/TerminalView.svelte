@@ -53,7 +53,6 @@
     .terminal-view { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); }
     .terminal-host { flex: 1; min-width: 0; min-height: 0; overflow: hidden; padding: var(--space-2); font: var(--font-id); pointer-events: auto; }
     .terminal-host :global(.terminal-renderer), .terminal-host :global(.terminal-renderer *) { pointer-events: auto; }
-    .terminal-host:focus-within { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
     .terminal-status { margin: 0; padding: var(--space-2) var(--space-3); color: var(--muted); font: var(--font-label); }
     .screen-reader-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }
 </style>

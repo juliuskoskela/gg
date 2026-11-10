@@ -179,7 +179,6 @@
   --surface: var(--palette-surface);
   --panel-header-bg: color-mix(in srgb, var(--surface) 72%, var(--ground));
   --panel-toolbar-bg: var(--panel-header-bg);
-  --panel-header-rule: color-mix(in srgb, var(--text) 8%, var(--panel-header-bg));
   --panel-header-control-border: color-mix(in srgb, var(--text) 10%, var(--panel-header-bg));
   --panel-tab-active: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg));
   --raised: var(--palette-raised);
@@ -188,6 +187,9 @@
   --active-hover: color-mix(in srgb, var(--text) 16%, var(--surface));
   --border: color-mix(in srgb, var(--text) 16%, var(--surface));
   --rule: color-mix(in srgb, var(--text) 7%, var(--surface));
+  /* rules mark the edges of views only; inside a view, surfaces step in lightness instead.
+     the view holding focus traces its whole edge a few steps above the rule. */
+  --view-focus-ring: color-mix(in srgb, var(--text) 20%, var(--surface));
   --control: var(--muted);
   --control-border: color-mix(in srgb, var(--text) 25%, var(--input-surface));
   --input-border: var(--control-border);
@@ -375,6 +377,7 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 1px solid Highlight; outline-offset: 1px; }
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .selection-item:focus-visible { outline-color: Highlight; }
   .selection-item[aria-selected="true"]:not(:focus-visible), button[aria-pressed="true"]:not(:focus-visible) { outline: 1px solid Highlight; outline-offset: -1px; }
+  :root { --view-focus-ring: Highlight; }
 }
 
 /* reading on a phone needs more generous type than the desktop workbench. */

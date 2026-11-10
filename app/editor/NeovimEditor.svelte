@@ -172,7 +172,6 @@
     canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; }
     .screen-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }
     textarea { position: absolute; left: 0; top: 0; width: 1px; height: 1px; min-height: 0; opacity: 0; padding: 0; border: 0; resize: none; }
-    .editor-surface:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
     .message { position: absolute; inset: 0; padding: 24px; background: var(--surface); color: var(--muted); }
     @media (max-width: 600px) { .editor-note { flex-wrap: wrap; } .editor-help { line-height: 1.5; } }
 </style>
