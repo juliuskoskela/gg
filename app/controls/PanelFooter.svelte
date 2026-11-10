@@ -20,6 +20,7 @@
         min-height: 49px;
         padding: 8px var(--pane-inset);
         background: var(--panel-header-bg);
+        border-block-start: 1px solid var(--view-inner-rule);
     }
 
     .panel-footer > :global(*) {

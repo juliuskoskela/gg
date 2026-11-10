@@ -115,7 +115,7 @@
     .workspace-frame { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; overflow: hidden; --repository-footer-height: 40px; }
     .workspace-frame.with-navigation { grid-template-columns: 56px minmax(0, 1fr); }
     .workspace-frame.with-navigation.expanded-navigation { grid-template-columns: 224px minmax(0, 1fr); }
-    .workspace-navigation { grid-row: 2 / 4; grid-column: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ground); border-inline-end: 1px solid var(--rule); }
+    .workspace-navigation { grid-row: 2 / 4; grid-column: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ground); }
     .navigation-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px; pointer-events: auto; }
     .navigation-footer { display: grid; gap: var(--space-1); padding: 8px; }
     .settings-trigger { display: flex; align-items: center; gap: var(--control-gap); min-height: var(--control-height); padding: 5px var(--control-padding-inline); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: var(--type-ui); text-align: start; cursor: pointer; }
@@ -130,14 +130,14 @@
     .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: var(--space-1) var(--pane-inset); background: var(--ground); min-width: 0; }
     .navigation-trigger { display: grid; place-items: center; width: 32px; min-height: 32px; flex-shrink: 0; padding: 6px; background: transparent; color: var(--text); border: 0; border-radius: var(--radius-control); cursor: pointer; }
     .views-control { margin-inline-start: auto; }
-    .workspace-footer { grid-column: 1 / -1; grid-row: 3; min-width: 0; padding: 4px var(--pane-inset) max(4px, env(safe-area-inset-bottom)); background: var(--ground); border-block-start: 1px solid var(--rule); }
+    .workspace-footer { grid-column: 1 / -1; grid-row: 3; min-width: 0; padding: 4px var(--pane-inset) max(4px, env(safe-area-inset-bottom)); background: var(--ground); }
     .workspace-footer, .workspace-topbar { padding-left: max(var(--pane-inset), env(safe-area-inset-left)); padding-right: max(var(--pane-inset), env(safe-area-inset-right)); }
-    /* the topbar and navigation share the ground, so no rule runs between them; the dock's own edge starts where the views do.
+    /* app chrome shares one ground without rules; views are tiles on it and carry their own edges.
        the leading inset matches the navigation gutter, so the workspace name sits in the navigation's icon column */
     .workspace-topbar { padding-block-start: max(var(--space-1), env(safe-area-inset-top)); padding-inline-start: max(var(--space-2), env(safe-area-inset-left)); }
-    .workspace-sheet { border-block-start: 1px solid var(--rule); }
+    .workspace-frame:not(.with-navigation) .workspace-sheet :global(.workspace-dock:not(.compact)) { padding-inline-start: var(--dock-gutter); }
     .with-navigation .workspace-footer { grid-column: 2; }
-    .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--surface); }
+    .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--ground); }
     .workspace-sheet.has-error { grid-template-rows: auto minmax(0, 1fr); }
     .refresh-error { margin: 0; padding: 8px 16px; color: var(--negative); font-size: 13px; }
     @media (hover: hover) { .navigation-trigger:hover { background: var(--hover); color: var(--text); } }

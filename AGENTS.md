@@ -81,7 +81,7 @@ jj-lib and jj-cli dependencies are pinned to specific versions (see `Cargo.toml`
 
 Place view toggles at the top trailing corner of the view they affect, inside its header. Keep summary information together before the controls: for example, `Changes 27 files +10 −13`. Group independent toggles separately from exclusive choices, such as `[hide | wrap] [auto | side by side | stacked]`. When space is tight, wrap the controls onto their own trailing-aligned row. Keep the header outside the content's scroll area so the controls stay in place.
 
-Rules (hairlines) mark the edges of views only. Inside a view, title bars, toolbars and footers use the `--panel-header-bg` lightness step instead of a rule. The focused view shows `--view-focus-ring` around its whole edge (`DockFrame`), so don't add focus outlines to view surfaces such as the terminal or editor.
+Desktop views are rounded tiles on the ground with their own `--view-edge`, separated by `--dock-gutter`; app chrome (topbar, navigation, footer) has no rules. Inside a view, title bars, toolbars and footers use the `--panel-header-bg` lightness step plus a much fainter `--view-inner-rule` where they meet content. Never use the view edge strength inside a view. The focused view brightens its edge to `--view-focus-ring` (`DockFrame`), so don't add focus outlines to view surfaces such as the terminal or editor.
 
 ### Tree Merge Semantics
 
@@ -132,7 +132,7 @@ Use the type roles in `app/global.css` (`--font-title`, `--font-heading`, `--fon
 
 ### Colour
 
-Hues come from `--palette-*` tokens in `app/display/palettes.css`; components use the semantic roles in `app/global.css` and never hex values. Each colour vision block (protan, deutan, tritan, achromat) must define every hue token, and `app/display/vision/palettes.test.ts` checks them against colour vision simulations in every family and light level. See `doc/specs/color-vision.md`.
+Hues come from `--palette-*` tokens in `app/display/palettes.css`; components use the semantic roles in `app/global.css` and never hex values. Neutral backgrounds and text follow one OKLCH lightness ladder (ground, view bar, tile, raised; strong, body, secondary, tertiary text); see `doc/specs/surfaces.md` before adding a new level. Each colour vision block (protan, deutan, tritan, achromat) must define every hue token, and `app/display/vision/palettes.test.ts` checks them against colour vision simulations in every family and light level. See `doc/specs/color-vision.md`.
 
 ### Annotations
 

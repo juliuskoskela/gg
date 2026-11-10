@@ -29,24 +29,24 @@
   --palette-lane-6: light-dark(var(--palette-lane-6-light), var(--palette-lane-6-dark));
   --palette-lane-7: light-dark(var(--palette-lane-7-light), var(--palette-lane-7-dark));
 
-  --palette-ground-light: #eee9e1;
-  --palette-ground-dark: #1f1e1d;
-  --palette-surface-light: #f5f2ec;
-  --palette-surface-dark: #262624;
-  --palette-raised-light: #f6f3ed;
-  --palette-raised-dark: #30302e;
-  --palette-input-light: #f0ece5;
-  --palette-input-dark: #2b2b28;
-  --palette-popover-light: #faf7f2;
-  --palette-popover-dark: #30302e;
-  --palette-text-light: #292720;
-  --palette-text-dark: #dedcd1;
-  --palette-strong-light: #171611;
-  --palette-strong-dark: #f2f0e5;
-  --palette-muted-light: #545149;
-  --palette-muted-dark: #c4c0b5;
-  --palette-faint-light: #68645c;
-  --palette-faint-dark: #aaa599;
+  --palette-ground-light: #f1f0ee;
+  --palette-ground-dark: #1d1c19;
+  --palette-surface-light: #fefdfa;
+  --palette-surface-dark: #272522;
+  --palette-raised-light: #fffefc;
+  --palette-raised-dark: #2f2e2a;
+  --palette-input-light: #fefdfa;
+  --palette-input-dark: #2a2926;
+  --palette-popover-light: #fffefc;
+  --palette-popover-dark: #32302d;
+  --palette-text-light: #272624;
+  --palette-text-dark: #e8e4dd;
+  --palette-strong-light: #13110f;
+  --palette-strong-dark: #f8f5ee;
+  --palette-muted-light: #585654;
+  --palette-muted-dark: #afaca5;
+  --palette-faint-light: #6d6c69;
+  --palette-faint-dark: #a09c96;
   --palette-accent-light: #7c3900;
   --palette-accent-dark: #f7ae7b;
   --palette-solid-light: #995137;
@@ -88,24 +88,24 @@
   --palette-lane-7-dark: #e0c888;
 }
 :is(:root, #shell, [data-theme-preview])[data-theme-family="neutral"] {
-  --palette-ground-light: #eeece8;
-  --palette-ground-dark: #242424;
-  --palette-surface-light: #f5f3ef;
-  --palette-surface-dark: #2b2b2b;
-  --palette-raised-light: #faf8f4;
-  --palette-raised-dark: #333333;
-  --palette-input-light: #efede9;
-  --palette-input-dark: #2e2e2e;
-  --palette-popover-light: #fcfaf6;
-  --palette-popover-dark: #363636;
-  --palette-text-light: #292929;
-  --palette-text-dark: #cccccc;
-  --palette-strong-light: #151515;
-  --palette-strong-dark: #eeeeee;
-  --palette-muted-light: #525252;
-  --palette-muted-dark: #c1c1c1;
-  --palette-faint-light: #656565;
-  --palette-faint-dark: #a0a0a0;
+  --palette-ground-light: #f0f0f0;
+  --palette-ground-dark: #1c1c1c;
+  --palette-surface-light: #fdfdfd;
+  --palette-surface-dark: #252525;
+  --palette-raised-light: #fefefe;
+  --palette-raised-dark: #2e2e2e;
+  --palette-input-light: #fdfdfd;
+  --palette-input-dark: #292929;
+  --palette-popover-light: #fefefe;
+  --palette-popover-dark: #303030;
+  --palette-text-light: #262626;
+  --palette-text-dark: #e4e4e4;
+  --palette-strong-light: #121212;
+  --palette-strong-dark: #f5f5f5;
+  --palette-muted-light: #575757;
+  --palette-muted-dark: #acacac;
+  --palette-faint-light: #6c6c6c;
+  --palette-faint-dark: #9d9d9d;
   --palette-accent-light: #0a558a;
   --palette-accent-dark: #82c8ff;
   --palette-solid-light: #22639a;
@@ -134,24 +134,24 @@
   --palette-lane-7-dark: #e1c185;
 }
 :is(:root, #shell, [data-theme-preview])[data-theme-family="cold"] {
-  --palette-ground-light: #e9e9e5;
-  --palette-ground-dark: #22272e;
-  --palette-surface-light: #f2f2ed;
-  --palette-surface-dark: #282f38;
-  --palette-raised-light: #f7f7f2;
-  --palette-raised-dark: #303944;
-  --palette-input-light: #ebede9;
-  --palette-input-dark: #2c343e;
-  --palette-popover-light: #fafaf5;
-  --palette-popover-dark: #333d48;
-  --palette-text-light: #1d2127;
-  --palette-text-dark: #d5dbe3;
-  --palette-strong-light: #101419;
-  --palette-strong-dark: #edf0f5;
-  --palette-muted-light: #48505b;
-  --palette-muted-dark: #c2cad4;
-  --palette-faint-light: #5f636a;
-  --palette-faint-dark: #9ca7b7;
+  --palette-ground-light: #edf0f4;
+  --palette-ground-dark: #171c22;
+  --palette-surface-light: #fafdff;
+  --palette-surface-dark: #21262b;
+  --palette-raised-light: #fbffff;
+  --palette-raised-dark: #292e34;
+  --palette-input-light: #fafdff;
+  --palette-input-dark: #24292f;
+  --palette-popover-light: #fbffff;
+  --palette-popover-dark: #2b3137;
+  --palette-text-light: #202223;
+  --palette-text-dark: #e1e5ea;
+  --palette-strong-light: #101213;
+  --palette-strong-dark: #f1f6fa;
+  --palette-muted-light: #555759;
+  --palette-muted-dark: #a9adb1;
+  --palette-faint-light: #6a6c6e;
+  --palette-faint-dark: #999da2;
   --palette-accent-light: #305083;
   --palette-accent-dark: #a3cdff;
   --palette-solid-light: #385d91;
@@ -182,25 +182,37 @@
 }
 
 :is(:root, #shell, [data-theme-preview])[data-dark-depth="midnight"] {
-  --palette-ground-dark: #181715;
-  --palette-surface-dark: #1f1e1c;
-  --palette-raised-dark: #272623;
-  --palette-input-dark: #24231f;
-  --palette-popover-dark: #2b2925;
+  --palette-ground-dark: #110f0c;
+  --palette-surface-dark: #181714;
+  --palette-raised-dark: #211f1c;
+  --palette-input-dark: #1c1a17;
+  --palette-popover-dark: #23211e;
+  --palette-text-dark: #e8e4dd;
+  --palette-strong-dark: #f8f5ee;
+  --palette-muted-dark: #aca9a2;
+  --palette-faint-dark: #9b9891;
 }
 :is(:root, #shell, [data-theme-preview])[data-theme-family="neutral"][data-dark-depth="midnight"] {
-  --palette-ground-dark: #181818;
-  --palette-surface-dark: #1f1f1f;
-  --palette-raised-dark: #262626;
-  --palette-input-dark: #252525;
-  --palette-popover-dark: #292929;
+  --palette-ground-dark: #0f0f0f;
+  --palette-surface-dark: #171717;
+  --palette-raised-dark: #1f1f1f;
+  --palette-input-dark: #1b1b1b;
+  --palette-popover-dark: #222222;
+  --palette-text-dark: #e4e4e4;
+  --palette-strong-dark: #f5f5f5;
+  --palette-muted-dark: #a9a9a9;
+  --palette-faint-dark: #989898;
 }
 :is(:root, #shell, [data-theme-preview])[data-theme-family="cold"][data-dark-depth="midnight"] {
-  --palette-ground-dark: #11161d;
-  --palette-surface-dark: #181e27;
-  --palette-raised-dark: #1c232d;
-  --palette-input-dark: #1c232d;
-  --palette-popover-dark: #222a35;
+  --palette-ground-dark: #0b1015;
+  --palette-surface-dark: #13181d;
+  --palette-raised-dark: #1b2025;
+  --palette-input-dark: #161b21;
+  --palette-popover-dark: #1d2228;
+  --palette-text-dark: #e1e5ea;
+  --palette-strong-dark: #f1f6fa;
+  --palette-muted-dark: #a6aaae;
+  --palette-faint-dark: #95999d;
 }
 
 /* colour vision palettes replace every hue; backgrounds and text stay with the family.

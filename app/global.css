@@ -174,10 +174,11 @@
 }
 #shell {
   color-scheme: light dark;
-  /* chrome and content share a quiet ground; interaction supplies the stronger steps. */
+  /* planes, darkest to lightest in dark themes: the ground holds app chrome, views are tiles on it,
+     and a view's own bars sit between the two. floating layers (raised, popover) step above the tiles. */
   --ground: var(--palette-ground);
   --surface: var(--palette-surface);
-  --panel-header-bg: color-mix(in srgb, var(--surface) 72%, var(--ground));
+  --panel-header-bg: color-mix(in srgb, var(--surface) 60%, var(--ground));
   --panel-toolbar-bg: var(--panel-header-bg);
   --panel-header-control-border: color-mix(in srgb, var(--text) 10%, var(--panel-header-bg));
   --panel-tab-active: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg));
@@ -188,8 +189,15 @@
   --border: color-mix(in srgb, var(--text) 16%, var(--surface));
   --rule: color-mix(in srgb, var(--text) 7%, var(--surface));
   /* rules mark the edges of views only; inside a view, surfaces step in lightness instead.
-     the view holding focus traces its whole edge a few steps above the rule. */
+     the view holding focus traces its whole edge a few steps above the others. */
+  --view-edge: color-mix(in srgb, var(--text) 7%, var(--surface));
+  /* inside a view, bars meet content on a hairline well below the view's own edge */
+  --view-inner-rule: color-mix(in srgb, var(--text) 4%, var(--surface));
   --view-focus-ring: color-mix(in srgb, var(--text) 20%, var(--surface));
+  /* a view's first pill and last tool sit this far from its sides and top; the corner nests around them */
+  --view-bar-inset: 6px;
+  --view-radius: calc(var(--radius-control) + var(--view-bar-inset));
+  --dock-gutter: var(--space-2);
   --control: var(--muted);
   --control-border: color-mix(in srgb, var(--text) 25%, var(--input-surface));
   --input-border: var(--control-border);
@@ -207,8 +215,8 @@
   /* jj-inspired identity blue is independent of the selected color family. */
   --brand: var(--palette-brand);
   --brand-on-pressed: var(--palette-brand-pressed);
-  --selection-bg: color-mix(in srgb, var(--text) 12%, var(--surface));
-  --selection-hover: color-mix(in srgb, var(--text) 18%, var(--surface));
+  --selection-bg: color-mix(in srgb, var(--text) 10%, var(--surface));
+  --selection-hover: color-mix(in srgb, var(--text) 14%, var(--surface));
   --selection-text: var(--text-strong);
   /* ink overlays keep feedback relative to the surface beneath each control. */
   --interaction-hover: color-mix(in srgb, var(--text) 10%, transparent);
@@ -246,7 +254,8 @@
   --graph-immutable: color-mix(in srgb, var(--positive) 65%, var(--muted));
   --graph-context: var(--text-strong);
   --ref-bookmark: var(--palette-type);
-  --ref-remote: var(--muted);
+  /* remote refs are quiet; in dark themes muted text sits near the bookmark hue for some colour vision, so they lift a little above it */
+  --ref-remote: light-dark(var(--muted), color-mix(in srgb, var(--text) 40%, var(--muted)));
   --ref-workspace: var(--brand);
   --ref-tag: var(--palette-warning);
   --focus-ring: color-mix(in srgb, var(--text) 65%, var(--surface));
@@ -261,9 +270,9 @@
   --shadow-float: 0 1px 2px light-dark(#0f121714, #00000059), 0 4px 12px light-dark(#0f121712, #00000040);
   --shadow-overlay: 0 4px 12px light-dark(#0f12170d, #00000024), 0 16px 40px -12px light-dark(#0f12171f, #00000066);
 
-  --diff-addition: color-mix(in srgb, var(--positive) 8%, var(--surface));
+  --diff-addition: color-mix(in srgb, var(--positive) 9%, var(--surface));
   --diff-addition-emphasis: color-mix(in srgb, var(--positive) 14%, var(--surface));
-  --diff-deletion: color-mix(in srgb, var(--negative) 8%, var(--surface));
+  --diff-deletion: color-mix(in srgb, var(--negative) 9%, var(--surface));
   --diff-deletion-emphasis: color-mix(in srgb, var(--negative) 14%, var(--surface));
   --diffs-foreground: var(--text);
   --diffs-background: var(--surface);

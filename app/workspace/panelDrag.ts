@@ -47,26 +47,29 @@ function landingAt(x: number, y: number, id: PanelId): Landing | null {
     let rtl = getComputedStyle(surface).direction === "rtl";
     let placement = append ? "tab-end" : rtl && edge === "left" ? "right" : rtl && edge === "right" ? "left" : edge;
     let next = movePanel(root, id, target, placement);
-    let rect = surface.getBoundingClientRect();
-    let bounds = panelBounds(next, id, { x: rect.left, y: rect.top, width: rect.width, height: rect.height }, rtl);
+    let rect = surface.getBoundingClientRect(), style = getComputedStyle(surface);
+    // views are tiles inside the dock's padding, split by a gutter rather than a hairline
+    let start = parseFloat(style.paddingLeft) || 0, end = parseFloat(style.paddingRight) || 0;
+    let gutter = parseFloat(style.getPropertyValue("--dock-gutter")) || 1;
+    let bounds = panelBounds(next, id, { x: rect.left + start, y: rect.top, width: rect.width - start - end, height: rect.height }, rtl, gutter);
     return bounds ? { target, edge, ...bounds, placement } : null;
 }
 
 type Bounds = { x: number; y: number; width: number; height: number };
-function panelBounds(node: DockNode, id: PanelId, bounds: Bounds, rtl: boolean): Bounds | null {
+function panelBounds(node: DockNode, id: PanelId, bounds: Bounds, rtl: boolean, gutter: number): Bounds | null {
     if (node.type === "tabs") return node.panels.includes(id) ? bounds : null;
     let first = { ...bounds }, second = { ...bounds };
     if (node.direction === "row") {
-        first.width = (bounds.width - 1) * node.ratio;
-        second.width = bounds.width - first.width - 1;
-        if (rtl) first.x += second.width + 1;
-        else second.x += first.width + 1;
+        first.width = (bounds.width - gutter) * node.ratio;
+        second.width = bounds.width - first.width - gutter;
+        if (rtl) first.x += second.width + gutter;
+        else second.x += first.width + gutter;
     } else {
-        first.height = (bounds.height - 1) * node.ratio;
-        second.height = bounds.height - first.height - 1;
-        second.y += first.height + 1;
+        first.height = (bounds.height - gutter) * node.ratio;
+        second.height = bounds.height - first.height - gutter;
+        second.y += first.height + gutter;
     }
-    return panelBounds(node.first, id, first, rtl) ?? panelBounds(node.second, id, second, rtl);
+    return panelBounds(node.first, id, first, rtl, gutter) ?? panelBounds(node.second, id, second, rtl, gutter);
 }
 
 export function panelDraggable(node: HTMLElement, options: { id: PanelId; enabled: boolean; move: (id: PanelId, target: PanelId, edge: Edge) => void }) {

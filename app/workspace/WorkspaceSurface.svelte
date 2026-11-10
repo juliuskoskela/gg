@@ -137,6 +137,8 @@
 
 <style>
     .workspace-dock { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
+    /* desktop views are tiles on the ground; a phone shows one view edge to edge */
+    .workspace-dock:not(.compact) { padding-inline-end: var(--dock-gutter); background: var(--ground); }
     .workspace-dock > :global(.split), .workspace-dock > :global(.tabs) { flex: 1; }
     .empty-dock { display: grid; align-content: center; justify-items: start; gap: 12px; height: 100%; padding: 24px; }
     .empty-dock p { margin: 0; color: var(--muted); font-size: 13px; }

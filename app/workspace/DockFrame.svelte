@@ -103,7 +103,7 @@
 </script>
 
 {#if node.type === "split"}
-    <div class="split" class:row={node.direction === "row"} style={node.direction === "row" ? `grid-template-columns: ${node.ratio}fr 1px ${1 - node.ratio}fr` : `grid-template-rows: ${node.ratio}fr 1px ${1 - node.ratio}fr`}>
+    <div class="split" class:row={node.direction === "row"} style={node.direction === "row" ? `grid-template-columns: ${node.ratio}fr var(--dock-gutter) ${1 - node.ratio}fr` : `grid-template-rows: ${node.ratio}fr var(--dock-gutter) ${1 - node.ratio}fr`}>
         <DockFrame node={node.first} path={[...path, 0]} {workspace} {selection} {detail} {changes} {selectedPath} {reviewKey} {onClose} {onMove} {onResize} {onFocus} {onSelectFile} />
         <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role (the focusable separator follows the window splitter pattern) -->
         <button type="button" class="separator" class:dragging={resizing} role="separator" aria-label="Resize panels" aria-orientation={node.direction === "row" ? "vertical" : "horizontal"} aria-valuemin={16} aria-valuemax={84} aria-valuenow={Math.round(node.ratio * 100)}
@@ -131,10 +131,10 @@
 <style>
     .split, .tabs { height: 100%; min-width: 0; min-height: 0; }
     .split { display: grid; }
-    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--view-radius); background: var(--surface); }
     .tabs:focus { outline: none; }
     /* the whole view, title bar included, so no gutter or padding breaks the edge */
-    .tabs::after { content: ""; position: absolute; inset: 0; z-index: 10; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow var(--motion-feedback) ease-out; }
+    .tabs::after { content: ""; position: absolute; inset: 0; z-index: 10; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--view-edge); transition: box-shadow var(--motion-feedback) ease-out; }
     .tabs:focus-within::after { box-shadow: inset 0 0 0 1px var(--view-focus-ring); }
     @media (prefers-reduced-motion: reduce) { .tabs::after { transition: none; } }
     .stack { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
@@ -147,15 +147,12 @@
     .separator::before { content: ""; position: absolute; }
     .row > .separator::before { inset-block: 0; inset-inline: -5px; }
     .split:not(.row) > .separator::before { inset-inline: 0; inset-block: -5px; }
-    .separator::after { content: ""; position: absolute; background: var(--rule); pointer-events: none; }
-    .row > .separator::after { inset-block: 0; inset-inline-start: 0; width: 1px; }
-    .split:not(.row) > .separator::after { inset-inline: 0; inset-block-start: 0; height: 1px; }
+    /* the gutter between tiles is the handle; a centred line appears only while it is in use */
+    .separator::after { content: ""; position: absolute; border-radius: var(--radius-sm); background: transparent; pointer-events: none; transition: background var(--motion-feedback) ease-out; }
+    .row > .separator::after { inset-block: var(--view-radius); inset-inline-start: calc(50% - 1px); width: 2px; }
+    .split:not(.row) > .separator::after { inset-inline: var(--view-radius); inset-block-start: calc(50% - 1px); height: 2px; }
     .separator:focus-visible { outline: none; }
-    .separator.dragging, .separator:focus-visible { background: var(--accent-subtle); }
     .separator.dragging::after, .separator:focus-visible::after { background: var(--accent); }
-    @media (hover: hover) {
-        .separator:hover { background: var(--hover); }
-        .separator:hover::after { background: var(--control-hover); }
-    }
+    @media (hover: hover) { .separator:hover::after { background: var(--control-hover); } }
     @media (pointer: coarse) { .row > .separator::before { inset-inline: -10px; } .split:not(.row) > .separator::before { inset-block: -10px; } }
 </style>

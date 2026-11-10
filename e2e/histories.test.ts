@@ -181,12 +181,12 @@ describe("native history inspection", () => {
         let before = (await tab.boundingBox())!;
         let collapsed = (await pill.boundingBox())!;
         expect(await close.evaluate(node => node.getBoundingClientRect().width)).toBe(0);
-        expect(collapsed.width - before.width).toBe(8);
+        expect(collapsed.width - before.width).toBe(6);
         await ctx.page.screenshot({ path: `e2e/results/histories/tab-pill-${theme}-rest.png` });
         await tab.hover();
         await expect.poll(() => close.evaluate(node => getComputedStyle(node).opacity)).toBe("1");
         await expect.poll(async () => (await close.boundingBox())!.width).toBe(24);
-        await expect.poll(async () => Math.round((await pill.boundingBox())!.width - collapsed.width)).toBe(18);
+        await expect.poll(async () => Math.round((await pill.boundingBox())!.width - collapsed.width)).toBe(20);
         expect((await tab.boundingBox())!.x).toBe(before.x);
         expect((await tab.boundingBox())!.width).toBe(before.width);
         await close.hover();

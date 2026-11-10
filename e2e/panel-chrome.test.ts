@@ -57,9 +57,10 @@ describe("shared panel chrome", () => {
                 if (control.close && width > 600) expect([0, 24]).toContain(Math.round(control.width));
                 else expect(control.width).toBeGreaterThanOrEqual(width > 600 ? 28 : 44);
                 expect(control.height).toBe(width > 600 ? 28 : 44);
+                // controls keep the view bar inset from the tile's sides, matching their inset from its top
                 if (!top.toolsScrollable) {
-                    expect(control.left).toBeGreaterThanOrEqual(top.rect.left + 12);
-                    expect(control.right).toBeLessThanOrEqual(top.rect.right - 12);
+                    expect(control.left).toBeGreaterThanOrEqual(top.rect.left + 6);
+                    expect(control.right).toBeLessThanOrEqual(top.rect.right - 6);
                 }
                 expect(control.top - top.rect.top).toBeGreaterThanOrEqual(5);
                 expect(top.rect.bottom - control.bottom).toBeGreaterThanOrEqual(5);
@@ -75,7 +76,7 @@ describe("shared panel chrome", () => {
         expect(await ctx.page.locator(".dock-drag-ghost").count()).toBe(0);
     });
 
-    it("separates title bars by lightness and traces the whole focused view", async () => {
+    it("separates title bars by lightness and a faint inner rule, and traces the whole focused view", async () => {
         await ctx.page.setViewportSize({ width: 1440, height: 960 });
         await ctx.page.goto(`${url}/?inspect=main`);
         await ctx.page.evaluate(() => {
@@ -85,12 +86,19 @@ describe("shared panel chrome", () => {
         });
         await ctx.page.reload();
         await ctx.page.getByRole("group", { name: "Diff tools", exact: true }).waitFor();
-        let chrome = await ctx.page.locator(".panel-view-top:visible, .view-toolbar:visible, .panel-header:visible").evaluateAll(elements => elements.map(element => {
-            let style = getComputedStyle(element);
-            return { rule: style.borderBlockEndWidth, background: style.backgroundColor };
+        let chrome = await ctx.page.locator(".panel-view-top:visible").evaluateAll(elements => elements.map(element => {
+            let style = getComputedStyle(element), toolbar = element.querySelector(".view-toolbar");
+            return { rule: style.borderBlockEndWidth, ruleColor: style.borderBlockEndColor, background: style.backgroundColor, toolbarRule: toolbar ? getComputedStyle(toolbar).borderBlockEndWidth : "0px" };
         }));
         expect(chrome.length).toBeGreaterThan(0);
-        for (let bar of chrome) expect(bar.rule).toBe("0px");
+        // one faint inner rule closes the whole header block, well below the view's own edge
+        let luminance = (color: string) => { let [r, g, b] = color.match(/[\d.]+/g)!.map(Number); return .2126 * r + .7152 * g + .0722 * b; };
+        let edgeColor = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-edge)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
+        for (let bar of chrome) {
+            expect(bar.rule).toBe("1px");
+            expect(bar.toolbarRule).toBe("0px");
+            expect(luminance(bar.ruleColor)).toBeLessThan(luminance(edgeColor));
+        }
         let surface = await ctx.page.locator("[data-panel-group=diff]").evaluate(element => getComputedStyle(element).backgroundColor);
         expect(chrome[0].background).not.toBe(surface);
 
@@ -98,7 +106,9 @@ describe("shared panel chrome", () => {
             let ring = getComputedStyle(element, "::after"), view = element.getBoundingClientRect(), title = element.querySelector(".panel-view-top")!.getBoundingClientRect();
             return { shadow: ring.boxShadow, inset: ring.inset, titleInside: title.top === view.top };
         });
-        let blank = (shadow: string) => /rgba\(0, 0, 0, 0\)|transparent|^none$/.test(shadow);
+        // every view is a tile with its own edge; the focused one traces it more strongly
+        let resting = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-edge)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
+        let blank = (shadow: string) => shadow.includes(resting);
         let point = (id: string, x: number, y: number) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate((element, [x, y]) => { let r = element.getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }, [x, y]);
         // blank title bar space ignores the pointer, as a real click finds it
         let title = await point("diff", 300, 4);
@@ -131,9 +141,9 @@ describe("shared panel chrome", () => {
                 placeAbove: place.top - bar.top, placeBelow: bar.bottom - place.bottom, viewsAbove: views.top - bar.top, viewsBelow: bar.bottom - views.bottom,
                 name: document.querySelector(".workspace-name")!.getBoundingClientRect().left, icon: item.querySelector("svg")!.getBoundingClientRect().left };
         });
-        // the topbar shares the navigation's ground; only the views' edge carries a rule
+        // app chrome shares one ground without rules; views carry their own edges as tiles
         expect(layout.topbarRule).toBe("0px");
-        expect(layout.sheetRule).toBe("1px");
+        expect(layout.sheetRule).toBe("0px");
         expect(layout.placeAbove).toBe(layout.placeBelow);
         expect(layout.viewsAbove).toBe(layout.viewsBelow);
         if (expanded) expect(layout.name).toBe(layout.icon);

@@ -144,16 +144,17 @@
 </div>
 
 <style>
-    /* title and toolbar are one header block; its lighter surface, not a rule, sets it apart from content */
-    .panel-view-top { flex: none; min-width: 0; margin-block-end: var(--panel-content-gap); container: panel-titlebar / inline-size; background: var(--panel-header-bg); }
-    /* labels align with the toolbar and content inset; their hover pills overhang into the gutter */
-    .panel-tabs-bar, .panel-titlebar { min-width: 0; padding: var(--panel-bar-padding) var(--panel-inset) var(--panel-bar-padding) calc(var(--panel-inset) - 8px); }
-    .panel-view-top :global(.view-toolbar) { padding-block-start: 0; min-height: 0; }
+    /* title and toolbar are one header block; its surface and a faint inner rule set it apart from content */
+    .panel-view-top { flex: none; min-width: 0; margin-block-end: var(--panel-content-gap); container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--view-inner-rule); }
+    /* the first pill and the last tool sit the same distance from the tile's sides as from its top, so their corners
+       nest in the tile's; labels and icon glyphs still land on the content inset through the pills' own padding */
+    .panel-tabs-bar, .panel-titlebar { min-width: 0; padding: var(--panel-bar-padding) var(--view-bar-inset); }
+    .panel-view-top :global(.view-toolbar) { border-block-end: 0; padding-block-start: 0; padding-inline-end: var(--view-bar-inset); min-height: 0; }
     .panel-tabs-bar, .panel-titlebar { min-height: var(--panel-tabs-height); }
     .panel-tabs-bar, .panel-titlebar { display: flex; align-items: center; gap: var(--panel-gap); }
-    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: 8px; border-radius: var(--radius-control); pointer-events: auto; }
+    .panel-title-item { display: flex; flex: 0 1 auto; align-items: center; min-width: 0; padding-inline-end: calc(var(--panel-inset) - var(--view-bar-inset)); border-radius: var(--radius-control); pointer-events: auto; }
     .panel-title-item.closable { padding-inline-end: 2px; }
-    .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: 4px 0 4px 8px; border: 0; border-radius: var(--radius-control); color: var(--text); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
+    .panel-title { display: flex; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-control-size); margin: 0; padding: var(--space-1) 0 var(--space-1) calc(var(--panel-inset) - var(--view-bar-inset)); border: 0; border-radius: var(--radius-control); color: var(--text); background: transparent; text-align: start; font: 500 var(--type-ui)/20px var(--stack-ui); }
     .panel-title > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     button.panel-title { cursor: grab; }
     .toolbar-toggle { display: grid; place-items: center; flex: none; margin-inline-start: auto; width: var(--panel-control-size); height: var(--panel-control-size); padding: 6px; border: 0; border-radius: var(--radius-control); color: var(--muted); background: transparent; cursor: pointer; pointer-events: auto; }
@@ -166,10 +167,10 @@
     .panel-tabs:dir(rtl) { mask-image: linear-gradient(to left, black calc(100% - 12px), transparent); }
     .panel-tabs { scrollbar-width: none; }
     .panel-tabs::-webkit-scrollbar { display: none; }
-    .panel-tab-item { padding-inline-end: 8px; display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
+    .panel-tab-item { padding-inline-end: calc(var(--panel-inset) - var(--view-bar-inset)); display: inline-flex; flex: none; align-items: center; border-radius: var(--radius-control); color: var(--muted); pointer-events: auto; }
     .panel-tab-item.closable { padding-inline-end: 2px; }
     .panel-tab-item.active { color: var(--text); background: var(--panel-tab-active); }
-    .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: 4px 0 4px 8px; border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 400; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
+    .panel-tab { display: inline-flex; align-items: center; gap: var(--panel-gap); flex-shrink: 0; min-height: var(--panel-control-size); padding: var(--space-1) 0 var(--space-1) calc(var(--panel-inset) - var(--view-bar-inset)); border-radius: var(--radius-control); color: inherit; font-size: var(--type-ui); font-weight: 400; line-height: 20px; white-space: nowrap; cursor: pointer; pointer-events: auto; }
     .panel-tab-item.active > .panel-tab { font-weight: 500; }
     [data-panel-handle]:global(.neodrag-dragging) { opacity: .45; cursor: grabbing; }
     .count { color: var(--muted); font-size: var(--type-caption); font-weight: 400; font-variant-numeric: tabular-nums; }
@@ -180,7 +181,7 @@
     .panel-tab-item > .panel-tab:focus-visible { outline: none; }
     .panel-tab-item:has(> .panel-tab:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
     @media (hover: hover) and (pointer: fine) and (min-width: 601px) {
-        .panel-tab-item.closable, .panel-title-item.closable { padding-inline-end: 8px; transition: padding-inline-end var(--motion-feedback) ease-out; }
+        .panel-tab-item.closable, .panel-title-item.closable { padding-inline-end: calc(var(--panel-inset) - var(--view-bar-inset)); transition: padding-inline-end var(--motion-feedback) ease-out; }
         .panel-tab-item .panel-close, .panel-title-item .panel-close { width: 0; padding-inline-start: 0; opacity: 0; transition: width var(--motion-feedback) ease-out, padding-inline-start var(--motion-feedback) ease-out, opacity var(--motion-feedback) ease-out; }
         .panel-tab-item.closable:hover, .panel-tab-item.closable:has(:focus-visible), .panel-title-item.closable:hover, .panel-title-item.closable:has(:focus-visible) { padding-inline-end: 2px; }
         .panel-tab-item:hover .panel-close, .panel-tab-item:has(:focus-visible) .panel-close, .panel-title-item:hover .panel-close, .panel-title-item:has(:focus-visible) .panel-close { width: 24px; padding-inline-start: 4px; opacity: 1; }
