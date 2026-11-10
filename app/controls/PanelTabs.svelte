@@ -145,7 +145,7 @@
 
 <style>
     /* title and toolbar are one header block; its surface and a faint inner rule set it apart from content */
-    .panel-view-top { flex: none; min-width: 0; margin-block-end: var(--panel-content-gap); container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--view-inner-rule); }
+    .panel-view-top { flex: none; min-width: 0; container: panel-titlebar / inline-size; background: var(--panel-header-bg); border-block-end: 1px solid var(--view-inner-rule); }
     /* the first pill and the last tool sit the same distance from the tile's sides as from its top, so their corners
        nest in the tile's; labels and icon glyphs still land on the content inset through the pills' own padding */
     .panel-tabs-bar, .panel-titlebar { min-width: 0; padding: var(--panel-bar-padding) var(--view-bar-inset); }

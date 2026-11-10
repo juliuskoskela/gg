@@ -25,6 +25,7 @@ pub fn router() -> Router<AppState> {
         .route("/query_revisions", post(query_revisions))
         .route("/query_evolution", post(query_evolution))
         .route("/query_revision_tree", post(query_revision_tree))
+        .route("/query_file", post(query_file))
         .route("/query_review_delta", post(query_review_delta))
         .route("/query_split_receipts", post(query_split_receipts))
         .route(
@@ -282,6 +283,23 @@ async fn query_revision_tree(
     state
         .worker_tx
         .send(SessionEvent::QueryRevisionTree { tx, id: req.id })?;
+    Ok(Json(rx.recv()??))
+}
+#[derive(Deserialize)]
+struct QueryFile {
+    id: crate::messages::RevId,
+    path: String,
+}
+async fn query_file(
+    State(state): State<AppState>,
+    Json(req): Json<QueryFile>,
+) -> Result<Json<crate::messages::queries::FileContent>, ApiError> {
+    let (tx, rx) = channel();
+    state.worker_tx.send(SessionEvent::QueryFile {
+        tx,
+        id: req.id,
+        path: req.path,
+    })?;
     Ok(Json(rx.recv()??))
 }
 #[derive(Deserialize)]

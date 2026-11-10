@@ -18,6 +18,7 @@ mod annotation_ownership;
 pub(crate) mod annotation_targets;
 mod annotations;
 mod categories;
+mod files;
 mod git_util;
 mod gui_util;
 mod history;

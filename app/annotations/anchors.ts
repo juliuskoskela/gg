@@ -1,5 +1,6 @@
 import type { AnnotationTarget } from "../messages/AnnotationTarget";
 import type { AnnotationAnchor } from "../messages/AnnotationAnchor";
+import type { ColumnRange } from "../messages/ColumnRange";
 import type { ChangeHunk } from "../messages/ChangeHunk";
 import type { Operand } from "../messages/Operand";
 import type { RevHeader } from "../messages/RevHeader";
@@ -70,8 +71,36 @@ export function anchorLabel(anchor: AnnotationAnchor): string {
         case "revision": return anchor.change_id.slice(0, 8);
         case "bookmark": return `${anchor.name}${anchor.remote ? `@${anchor.remote}` : ""}`;
         case "file": return fileName(anchor.path);
-        case "lines": return `${fileName(anchor.path)}:${anchor.start}${anchor.end > anchor.start ? `–${anchor.end}` : ""}`;
+        case "lines": {
+            let name = fileName(anchor.path);
+            // columns are shown 1-based, like an editor cursor position
+            if (anchor.columns) return anchor.start === anchor.end
+                ? `${name}:${anchor.start}:${anchor.columns.start + 1}–${anchor.columns.end + 1}`
+                : `${name}:${anchor.start}:${anchor.columns.start + 1}–${anchor.end}:${anchor.columns.end + 1}`;
+            return `${name}:${anchor.start}${anchor.end > anchor.start ? `–${anchor.end}` : ""}`;
+        }
     }
+}
+
+/** the quote split around the selected part; offsets count Unicode scalar values */
+export function splitQuote(quote: string, columns: ColumnRange | undefined): { before: string; selected: string; after: string } | null {
+    if (!columns) return null;
+    let lines = quote.split("\n");
+    let first = Array.from(lines[0]).length;
+    let last = Array.from(lines[lines.length - 1]).length;
+    if (columns.start > first || columns.end > last) return null;
+    let chars = Array.from(quote);
+    let lastStart = lines.length > 1 ? chars.length - last : 0;
+    let from = columns.start;
+    let to = lastStart + columns.end;
+    if (to < from) return null;
+    return { before: chars.slice(0, from).join(""), selected: chars.slice(from, to).join(""), after: chars.slice(to).join("") };
+}
+
+function linesWhere(anchor: Extract<AnnotationAnchor, { kind: "lines" }>): string {
+    let c = anchor.columns;
+    if (anchor.start === anchor.end) return `line ${anchor.start}${c ? `, columns ${c.start + 1}–${c.end + 1}` : ""}`;
+    return `lines ${anchor.start}–${anchor.end}${c ? `, selection from ${anchor.start}:${c.start + 1} to ${anchor.end}:${c.end + 1}` : ""}`;
 }
 
 /** everything about a target in one sentence, for tooltips and screen readers */
@@ -79,7 +108,7 @@ export function anchorDescription(anchor: AnnotationAnchor, subject = ""): strin
     let where = anchor.kind === "revision" ? `Change ${anchor.change_id.slice(0, 12)}`
         : anchor.kind === "bookmark" ? `Bookmark ${anchorLabel(anchor)} at change ${anchor.change_id.slice(0, 12)}`
         : anchor.kind === "file" ? `${anchor.path} in change ${anchor.change_id.slice(0, 12)}`
-        : `${anchor.path}, ${anchor.start === anchor.end ? `line ${anchor.start}` : `lines ${anchor.start}–${anchor.end}`}${anchor.side === "old" ? " before the change" : ""}, in change ${anchor.change_id.slice(0, 12)}`;
+        : `${anchor.path}, ${linesWhere(anchor)}${anchor.side === "old" ? " before the change" : ""}, in change ${anchor.change_id.slice(0, 12)}`;
     return `${where}, commit ${anchor.commit_id.slice(0, 12)}${subject ? `: ${subject}` : ""}`;
 }
 

@@ -36,8 +36,8 @@ use crate::messages::annotation_exchange::{
 };
 use crate::messages::annotations::{
     ANNOTATION_FORMAT, ANNOTATION_VERSION, AnchorState, AnnotationAnchor, AnnotationAuthor,
-    AnnotationPost, AnnotationStatus, AnnotationTarget, AnnotationThread, AuthorKind, LineSide,
-    TargetInput,
+    AnnotationPost, AnnotationStatus, AnnotationTarget, AnnotationThread, AuthorKind, ColumnRange,
+    LineSide, TargetInput,
 };
 
 const MAX_BODY: usize = 100_000;
@@ -580,7 +580,11 @@ fn validate_anchor(anchor: &AnnotationAnchor) -> Result<()> {
         bail!("Annotation paths must be relative to the repository.");
     }
     if let AnnotationAnchor::Lines {
-        start, end, quote, ..
+        start,
+        end,
+        quote,
+        columns,
+        ..
     } = anchor
     {
         if *start == 0 || end < start {
@@ -589,8 +593,51 @@ fn validate_anchor(anchor: &AnnotationAnchor) -> Result<()> {
         if quote.len() > MAX_QUOTE {
             bail!("Annotate at most {} characters of code.", MAX_QUOTE);
         }
+        if let Some(columns) = columns {
+            validate_columns(quote, start == end, columns)?;
+        }
     }
     Ok(())
+}
+
+/// Checks a selection against the quoted lines, in Unicode scalar values.
+pub fn validate_columns(quote: &str, single_line: bool, columns: &ColumnRange) -> Result<()> {
+    let mut lines = quote.split('\n');
+    let first = lines.next().unwrap_or_default();
+    let last = lines.next_back().unwrap_or(first);
+    if columns.start as usize > first.chars().count() {
+        bail!("The selection starts after the end of its first line.");
+    }
+    if columns.end as usize > last.chars().count() {
+        bail!("The selection ends after the end of its last line.");
+    }
+    if single_line && columns.start >= columns.end {
+        bail!("Select at least one character on a single line.");
+    }
+    Ok(())
+}
+
+/// The selected text, sliced from the whole-line quote by scalar offsets.
+pub fn selected_text(quote: &str, columns: &ColumnRange) -> Option<String> {
+    let lines: Vec<&str> = quote.split('\n').collect();
+    let last = lines.len() - 1;
+    let (start, end) = (columns.start as usize, columns.end as usize);
+    let slice = |line: &str, from: usize, to: Option<usize>| -> String {
+        line.chars()
+            .skip(from)
+            .take(to.map_or(usize::MAX, |to| to.saturating_sub(from)))
+            .collect()
+    };
+    if start > lines[0].chars().count() || end > lines[last].chars().count() {
+        return None;
+    }
+    if last == 0 {
+        return (start <= end).then(|| slice(lines[0], start, Some(end)));
+    }
+    let mut parts = vec![slice(lines[0], start, None)];
+    parts.extend(lines[1..last].iter().map(|line| line.to_string()));
+    parts.push(slice(lines[last], 0, Some(end)));
+    Some(parts.join("\n"))
 }
 
 pub fn short_id(id: &str) -> &str {
@@ -640,15 +687,26 @@ pub fn describe_anchor(anchor: &AnnotationAnchor) -> String {
             side,
             start,
             end,
+            columns,
             ..
         } => format!(
-            "`{}` {} {} in change `{}` (commit `{}`){}",
+            "`{}` {} {}{} in change `{}` (commit `{}`){}",
             path,
             if start == end { "line" } else { "lines" },
             if start == end {
                 start.to_string()
             } else {
                 format!("{start}–{end}")
+            },
+            match columns {
+                // columns are shown 1-based, like an editor cursor position
+                Some(c) if start == end => format!(", columns {}–{}", c.start + 1, c.end + 1),
+                Some(c) => format!(
+                    ", selection from {start}:{} to {end}:{}",
+                    c.start + 1,
+                    c.end + 1
+                ),
+                None => String::new(),
             },
             short_hash(change_id),
             short_hash(commit_id),
@@ -739,9 +797,23 @@ pub fn export_markdown(threads: &[AnnotationThread]) -> String {
                 )),
                 _ => {}
             }
-            if let AnnotationAnchor::Lines { quote, path, .. } = &target.anchor {
+            if let AnnotationAnchor::Lines {
+                quote,
+                path,
+                columns,
+                ..
+            } = &target.anchor
+            {
                 let fence = fence(quote);
                 let language = path.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
+                let selected = columns.as_ref().and_then(|c| selected_text(quote, c));
+                if let Some(selected) = &selected {
+                    out.push_str("\nSelected text:\n\n");
+                    for line in selected.split('\n') {
+                        out.push_str(&format!("> {line}\n").replace("> \n", ">\n"));
+                    }
+                    out.push_str("\nFull lines containing the selection:\n");
+                }
                 out.push_str(&format!("\n{fence}{language}\n{quote}\n{fence}\n"));
                 if several {
                     out.push('\n');
@@ -814,6 +886,7 @@ mod tests {
             start: 3,
             end: 4,
             quote: "fn main() {\n    let x = ```;".into(),
+            columns: None,
         }
     }
 
@@ -962,6 +1035,151 @@ mod tests {
         let key = repo_key(other.path());
         assert!(key.starts_with("path-"));
         assert_eq!(key, repo_key(other.path()));
+        Ok(())
+    }
+
+    fn selection(columns: Option<ColumnRange>) -> AnnotationAnchor {
+        AnnotationAnchor::Lines {
+            change_id: "wnpusytqkxyzwnpusytqkxyzwnpusytq".into(),
+            commit_id: "02584342aabbccddeeff00112233445566778899".into(),
+            path: "src/a.rs".into(),
+            side: LineSide::New,
+            start: 12,
+            end: 13,
+            quote: "😀 let a = 1;\nlet b = 2;".into(),
+            columns,
+        }
+    }
+
+    fn cols(start: u32, end: u32) -> Option<ColumnRange> {
+        Some(ColumnRange { start, end })
+    }
+
+    #[test]
+    fn rejects_selections_outside_their_lines() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let store = AnnotationStore::at(dir.path().to_path_buf());
+        // first line has 12 scalar values (the emoji counts once), last has 10
+        for (columns, ok) in [
+            (cols(0, 0), true),
+            (cols(12, 10), true),
+            (cols(13, 3), false),
+            (cols(2, 11), false),
+        ] {
+            let result = store.create(target(selection(columns), ""), "default", human(), "x");
+            assert_eq!(result.is_ok(), ok, "{result:?}");
+        }
+        let mut single = selection(cols(3, 3));
+        if let AnnotationAnchor::Lines { end, quote, .. } = &mut single {
+            *end = 12;
+            *quote = "let b = 2;".into();
+        }
+        let error = store
+            .create(target(single.clone(), ""), "default", human(), "x")
+            .unwrap_err();
+        assert!(error.to_string().contains("at least one character"));
+        if let AnnotationAnchor::Lines { columns, .. } = &mut single {
+            *columns = cols(4, 3);
+        }
+        assert!(
+            store
+                .create(target(single.clone(), ""), "default", human(), "x")
+                .is_err()
+        );
+        if let AnnotationAnchor::Lines { columns, .. } = &mut single {
+            *columns = cols(4, 9);
+        }
+        assert!(
+            store
+                .create(target(single, ""), "default", human(), "x")
+                .is_ok()
+        );
+        let error = store
+            .create(target(selection(cols(13, 3)), ""), "default", human(), "x")
+            .unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "The selection starts after the end of its first line."
+        );
+        let error = store
+            .create(target(selection(cols(2, 11)), ""), "default", human(), "x")
+            .unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "The selection ends after the end of its last line."
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn selections_round_trip_and_old_events_read_without_columns() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let store = AnnotationStore::at(dir.path().to_path_buf());
+        let thread = store.create(target(selection(cols(2, 5)), ""), "default", human(), "x")?;
+        let read = store.get(&thread.id)?;
+        assert_eq!(read.targets[0].anchor, selection(cols(2, 5)));
+        let plain = store.create(target(selection(None), ""), "default", human(), "x")?;
+        let file = fs::read_dir(store.annotations_dir().join(&plain.id))?
+            .filter_map(|e| e.ok())
+            .find(|e| e.file_name() == "annotation.json")
+            .context("annotation.json")?;
+        assert!(!fs::read_to_string(file.path())?.contains("columns"));
+
+        let note = store.annotations_dir().join("0022bb");
+        fs::create_dir_all(note.join("events"))?;
+        fs::write(
+            note.join("annotation.json"),
+            r#"{"format":"gg.annotation","version":2,"id":"0022bb","created_at":"2026-11-06T10:00:00Z",
+                "author":{"name":"Ada","kind":"human"},"workspace":"default",
+                "targets":[{"anchor":{"kind":"lines","change_id":"kkkk","commit_id":"0123","path":"a.rs","side":"new","start":1,"end":1,"quote":"abc"},"subject":""}]}"#,
+        )?;
+        fs::write(
+            note.join("events/1.json"),
+            r#"{"id":"e1","at":"2026-11-06T10:00:00Z","author":{"name":"Ada","kind":"human"},"type":"post","body":"Old"}"#,
+        )?;
+        let thread = store.get("0022bb")?;
+        assert!(matches!(
+            &thread.targets[0].anchor,
+            AnnotationAnchor::Lines { columns: None, .. }
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn selections_are_exported_with_their_excerpt() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let store = AnnotationStore::at(dir.path().to_path_buf());
+        let thread = store.create(
+            target(selection(cols(2, 5)), ""),
+            "default",
+            human(),
+            "Why?",
+        )?;
+        let markdown = export_markdown(&[thread]);
+        assert!(markdown.contains(
+            "On `src/a.rs` lines 12–13, selection from 12:3 to 13:6 in change `wnpusytqkxyz`"
+        ));
+        assert!(markdown.contains(
+            "\nSelected text:\n\n> let a = 1;\n> let b\n\nFull lines containing the selection:\n\n```rs\n😀 let a = 1;\nlet b = 2;\n```\n"
+        ));
+        let single = AnnotationAnchor::Lines {
+            change_id: "c".into(),
+            commit_id: "d".into(),
+            path: "a.rs".into(),
+            side: LineSide::New,
+            start: 1,
+            end: 1,
+            quote: "😀 let".into(),
+            columns: cols(2, 5),
+        };
+        assert!(describe_anchor(&single).contains("`a.rs` line 1, columns 3–6 in change"));
+        assert_eq!(
+            selected_text("😀 let", &ColumnRange { start: 2, end: 5 }).as_deref(),
+            Some("let")
+        );
+        // without columns the export has no selection block
+        let plain = store.create(target(selection(None), ""), "default", human(), "Why?")?;
+        assert!(!export_markdown(&[plain]).contains("Selected text"));
         Ok(())
     }
 

@@ -260,6 +260,7 @@ mod tests {
             start: 1,
             end: 1,
             quote: quote.into(),
+            columns: None,
         }
     }
 

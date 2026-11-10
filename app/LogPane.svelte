@@ -553,6 +553,8 @@
 
 <style>
     :global(.graph-body .listbox) { overflow-anchor: none; }
+    /* the view's title block has no bottom margin; the list keeps its own inset below it, outside the virtualised scroll */
+    :global(.graph-body .listbox) { margin-block-start: var(--space-1); }
     .history-measure { position: absolute; visibility: hidden; pointer-events: none; width: 1px; font-size: var(--type-ui); height: max(calc(var(--history-base-row) * 1px), calc(var(--history-base-row) * 1em / 13)); }
     @media (max-width: 600px) { .history-measure { height: max(calc(var(--history-base-row) * 1px), calc(var(--history-base-row) * 1em / 14)); } }
     h2 { font-size: 13px; font-weight: 500; margin: 0; }

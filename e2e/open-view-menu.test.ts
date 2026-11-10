@@ -33,7 +33,7 @@ describe("opening views from right-click", () => {
         await page.locator(".graph .selection-item").nth(1).click({ button: "right" });
         let items = await page.getByRole("menu").getByRole("menuitem").allTextContents();
         // views follow the actions; destructive actions stay last
-        expect(items.indexOf("Open Files")).toBeGreaterThan(items.indexOf("New child"));
+        expect(items.indexOf("Open Editor")).toBeGreaterThan(items.indexOf("New child"));
         expect(items.at(-1)).toBe("Abandon");
     });
 });

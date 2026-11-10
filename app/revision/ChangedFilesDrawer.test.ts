@@ -35,6 +35,20 @@ describe("changed files drawer", () => {
         expect(queryByRole("listbox")).toBeNull();
     });
 
+    it("keeps a dragged height through a remount without animating, and animates only the toggle", async () => {
+        filesDrawer.set({ open: true, height: 520 });
+        // a remounting diff view has not measured itself yet
+        let { container, rerender, getByRole } = mount({ viewHeight: 0 });
+        let body = () => container.querySelector<HTMLElement>(".drawer-body")!;
+        expect(body().style.height).toBe("520px");
+        expect(body().classList.contains("animating")).toBe(false);
+        await rerender({ viewHeight: 1000 });
+        expect(body().style.height).toBe("520px");
+        expect(body().classList.contains("animating")).toBe(false);
+        await fireEvent.click(getByRole("button", { name: "Hide changed files" }));
+        expect(body().classList.contains("animating")).toBe(true);
+    });
+
     it("resizes with the keyboard and keeps the height across remounts", async () => {
         let first = mount();
         let separator = first.getByRole("separator");

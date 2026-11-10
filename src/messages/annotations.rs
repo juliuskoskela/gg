@@ -46,7 +46,22 @@ pub enum AnnotationAnchor {
         end: u32,
         /// the annotated text, so the spot can be found again after edits
         quote: String,
+        /// a selection inside the lines; absent when the whole lines are annotated
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        columns: Option<ColumnRange>,
     },
+}
+
+/// Character offsets of a selection within an annotated line range, counted in
+/// Unicode scalar values from the start of the line: `start` on the first line,
+/// `end` (exclusive) on the last. The anchor's `quote` still holds the whole
+/// lines, so moved-line detection is unchanged.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct ColumnRange {
+    pub start: u32,
+    pub end: u32,
 }
 
 impl AnnotationAnchor {

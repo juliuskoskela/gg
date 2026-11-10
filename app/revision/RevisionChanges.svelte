@@ -29,7 +29,8 @@
     import { navigateOptions } from "../controls/optionNavigation";
 
     let width = $state(1200);
-    let height = $state(600);
+    // 0 until measured, so the drawer never clamps against a guessed height while the view remounts
+    let height = $state(0);
     interface Props {
         comparison?: ReviewComparison | null;
         onCompare?: CompareReview;
@@ -209,7 +210,7 @@
     .file-review { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
     .diff-scroll > :global(.review-delta) { padding-inline: var(--panel-inset); }
     .diff-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; pointer-events: auto; scroll-padding-block: 12px; }
-    .hunk-actions { margin: 0 12px 4px; pointer-events: auto; }
+    .hunk-actions { margin: var(--space-1) var(--panel-inset); pointer-events: auto; }
     .hunk-actions summary { display: flex; align-items: center; justify-content: space-between; gap: var(--panel-gap); width: 100%; padding-inline: var(--control-padding-inline); border-radius: var(--radius-control); font: var(--font-body); color: var(--text); cursor: pointer; min-height: var(--control-height); list-style: none; }
     .hunk-actions summary::-webkit-details-marker { display: none; }
     .hunk-actions[open] summary :global(svg) { transform: rotate(90deg); }

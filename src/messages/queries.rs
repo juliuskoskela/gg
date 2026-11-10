@@ -268,6 +268,37 @@ pub struct RevisionTree {
     pub truncated: bool,
 }
 
+/// One file of a revision, as the editor shows it.
+#[derive(Serialize, Debug)]
+#[serde(tag = "type")]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub enum FileContent {
+    /// UTF-8 text. `version` identifies these exact bytes so a save can tell whether
+    /// the file changed underneath the editor.
+    Text {
+        path: String,
+        text: String,
+        version: String,
+        /// only the current workspace's working copy, and only for a file without conflicts
+        editable: bool,
+        has_conflict: bool,
+    },
+    Binary {
+        path: String,
+        #[cfg_attr(feature = "ts-rs", ts(type = "number"))]
+        size: u64,
+    },
+    TooLarge {
+        path: String,
+        #[cfg_attr(feature = "ts-rs", ts(type = "number"))]
+        size: u64,
+        #[cfg_attr(feature = "ts-rs", ts(type = "number"))]
+        limit: u64,
+    },
+    /// the path is not a file in this revision
+    Missing { path: String },
+}
+
 #[derive(Serialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct EvolutionEntry {

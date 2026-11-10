@@ -30,7 +30,8 @@ pub enum Action {
         /// File path relative to the workspace root.
         #[arg(long)]
         file: Option<String>,
-        /// One line or inclusive START-END range in the retained file.
+        /// One line, an inclusive START-END range, or a selection LINE:COLUMN-LINE:COLUMN
+        /// (1-based columns; the end column is where the cursor stops, so it is not selected).
         #[arg(long, requires = "file")]
         lines: Option<String>,
         /// Side of the revision diff to read the file from.
@@ -446,6 +447,12 @@ mod tests {
             Arguments::try_parse_from(["gg", "create", "--bookmark", "main", "A note"]).is_ok()
         );
         assert!(Arguments::try_parse_from(["gg", "create", "--lines", "1-2", "A note"]).is_err());
+        assert!(
+            Arguments::try_parse_from([
+                "gg", "create", "--file", "a", "--lines", "1:2-3:4", "A note"
+            ])
+            .is_ok()
+        );
         assert!(
             Arguments::try_parse_from([
                 "gg",

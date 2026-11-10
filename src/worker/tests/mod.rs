@@ -1,5 +1,6 @@
 mod annotations;
 mod colocated;
+mod files;
 mod history;
 mod queries;
 mod review;

@@ -69,7 +69,8 @@ describe("shared panel chrome", () => {
         if (arrangement === "stacked") await ctx.page.screenshot({ path: `e2e/results/title-bars/${theme}-${width}.png` });
         if (arrangement === "single") expect(await ctx.page.locator(".workspace-dock [role=tablist]").count()).toBe(0);
         expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-        let wrap = ctx.page.getByRole("button", { name: "Wrap lines", exact: true });
+        // the editor has its own wrap toggle; this checks the diff's
+        let wrap = ctx.page.getByRole("group", { name: "Diff tools", exact: true }).getByRole("button", { name: "Wrap lines", exact: true });
         let pressed = await wrap.getAttribute("aria-pressed");
         await wrap.click();
         await expect.poll(() => wrap.getAttribute("aria-pressed")).not.toBe(pressed);
@@ -216,13 +217,15 @@ describe("shared panel chrome", () => {
         await show.press("Enter");
         await ctx.page.getByRole("button", { name: "Wrap lines", exact: true }).waitFor();
         expect(await ctx.page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Hide Diff toolbar");
-        await ctx.page.getByRole("tab", { name: "Files", exact: true }).click();
-        let search = ctx.page.getByRole("searchbox", { name: "Filter files" });
-        await search.fill("c.txt");
-        await ctx.page.getByRole("button", { name: "Hide Files toolbar" }).click();
-        expect(await search.count()).toBe(0);
-        await ctx.page.getByRole("button", { name: "Show Files toolbar" }).click();
-        expect(await search.inputValue()).toBe("c.txt");
+        // the tree filter lives in the tree pane's own bar, so the toolbar's state is shown by a toggle that is in the toolbar
+        await ctx.page.getByRole("tab", { name: "Editor", exact: true }).click();
+        let changed = ctx.page.getByRole("button", { name: "Show changed files only", exact: true });
+        await changed.click();
+        expect(await changed.getAttribute("aria-pressed")).toBe("true");
+        await ctx.page.getByRole("button", { name: "Hide Editor toolbar" }).click();
+        expect(await changed.count()).toBe(0);
+        await ctx.page.getByRole("button", { name: "Show Editor toolbar" }).click();
+        expect(await changed.getAttribute("aria-pressed")).toBe("true");
     });
     it("closes inactive and active tabs without starting a drag or changing the wrong selection", async () => {
         await ctx.page.setViewportSize({ width: 1440, height: 960 });
@@ -260,7 +263,7 @@ describe("shared panel chrome", () => {
         await ctx.page.reload();
         await ctx.page.locator("#panel-tab-tree").waitFor();
         expect(await ctx.page.locator(".workspace-dock [role=tab]").count()).toBe(0);
-        expect(await ctx.page.getByRole("button", { name: "Files", exact: true }).count()).toBe(1);
+        expect(await ctx.page.getByRole("button", { name: "Editor", exact: true }).count()).toBe(1);
     });
 
 });

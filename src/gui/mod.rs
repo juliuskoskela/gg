@@ -39,7 +39,7 @@ use gg_lib::messages::{
         ExternalResolve, ForgetWorkspace, GitFetch, GitPush, InitRepository, InsertRevisions,
         MoveChanges, MoveHunk, MoveRef, MoveRevisions, MutationOptions, MutationResult,
         OpenWorkspace, RebaseSelectedRevisions, RedoOperation, RenameBookmark, RenameWorkspace,
-        TrackBookmark, UndoOperation, UntrackBookmark,
+        TrackBookmark, UndoOperation, UntrackBookmark, WriteFile,
     },
 };
 use gg_lib::worker::{Mutation, Session, SessionEvent, WorkerSession};
@@ -344,6 +344,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             query_operation_preflight,
             query_evolution,
             query_revision_tree,
+            query_file,
             query_review_delta,
             query_split_receipts,
             query_split_receipt_states,
@@ -364,6 +365,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             rebase_selected_revisions,
             backout_revisions,
             checkout_revision,
+            write_file,
             create_revision,
             create_revision_between,
             describe_revision,
@@ -715,6 +717,23 @@ fn query_revision_tree(
 }
 
 #[tauri::command(async)]
+fn query_file(
+    window: Window,
+    app_state: State<AppState>,
+    id: messages::RevId,
+    path: String,
+) -> Result<messages::queries::FileContent, InvokeError> {
+    let (tx, rx) = channel();
+    app_state
+        .get_session(window.label())
+        .send(SessionEvent::QueryFile { tx, id, path })
+        .map_err(InvokeError::from_error)?;
+    rx.recv()
+        .map_err(InvokeError::from_error)?
+        .map_err(InvokeError::from_anyhow)
+}
+
+#[tauri::command(async)]
 fn annotations(
     window: Window,
     app_state: State<AppState>,
@@ -1011,6 +1030,16 @@ fn checkout_revision(
     window: Window,
     app_state: State<AppState>,
     mutation: CheckoutRevision,
+    options: MutationOptions,
+) -> Result<MutationResult, InvokeError> {
+    try_mutate(window, app_state, mutation, options)
+}
+
+#[tauri::command(async)]
+fn write_file(
+    window: Window,
+    app_state: State<AppState>,
+    mutation: WriteFile,
     options: MutationOptions,
 ) -> Result<MutationResult, InvokeError> {
     try_mutate(window, app_state, mutation, options)

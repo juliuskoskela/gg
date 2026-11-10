@@ -17,7 +17,8 @@ export default defineConfig(async () => ({
   //
   // 1. prevent vite from obscuring rust errors
   clearScreen: false,
-  optimizeDeps: { include: ["@tauri-apps/api/webview"] },
+  // the editor loads lazily, so vite would discover it mid-run and re-bundle, breaking modules already in flight
+  optimizeDeps: { include: ["@tauri-apps/api/webview", "@codemirror/state", "@codemirror/view", "@codemirror/commands", "@codemirror/language", "@codemirror/search", "@codemirror/language-data", "@lezer/highlight"] },
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 6973,

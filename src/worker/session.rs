@@ -108,6 +108,11 @@ pub enum SessionEvent {
         tx: Sender<Result<messages::queries::RevisionTree>>,
         id: messages::RevId,
     },
+    QueryFile {
+        tx: Sender<Result<messages::queries::FileContent>>,
+        id: messages::RevId,
+        path: String,
+    },
     ReviewProgress {
         tx: Sender<Result<messages::review::ReviewProgress>>,
         request: messages::review::ReviewRequest,
@@ -386,6 +391,9 @@ impl Session for WorkspaceSession<'_> {
                 SessionEvent::QueryRevisionTree { tx, id } => {
                     tx.send(super::history::revision_tree(&self, id))?
                 }
+                SessionEvent::QueryFile { tx, id, path } => {
+                    tx.send(super::files::query_file(&self, id, path).await)?
+                }
                 SessionEvent::ReviewProgress { tx, request } => {
                     tx.send(super::review::handle(&self, request).await)?
                 }
@@ -647,6 +655,9 @@ impl Session for QuerySession<'_, '_> {
                 }
                 Ok(SessionEvent::QueryRevisionTree { tx, id }) => {
                     tx.send(super::history::revision_tree(self.ws, id))?
+                }
+                Ok(SessionEvent::QueryFile { tx, id, path }) => {
+                    tx.send(super::files::query_file(self.ws, id, path).await)?
                 }
                 Ok(SessionEvent::ReviewProgress { tx, request }) => {
                     tx.send(super::review::handle(self.ws, request).await)?

@@ -82,6 +82,18 @@ pub struct CheckoutRevision {
     pub id: RevId,
 }
 
+/// Writes one file of the working copy, then snapshots it into the working-copy revision
+#[derive(Deserialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct WriteFile {
+    /// must be the current workspace's working-copy revision
+    pub id: RevId,
+    pub path: String,
+    pub text: String,
+    /// the `version` the editor loaded; the write is refused if the file has changed since
+    pub base_version: String,
+}
+
 /// Creates a new revision and makes it the working copy
 #[derive(Deserialize, Debug)]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]

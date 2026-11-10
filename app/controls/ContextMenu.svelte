@@ -75,7 +75,7 @@
     {#each grouped as section, index}
         {#if index > 0}<hr />{/if}
         {#each section as command (command.id)}
-            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" onclick={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span></button>
+            <button role="menuitem" class:destructive={command.destructive} tabindex="-1" onclick={() => { command.execute(); onClose(); }}><Icon name={command.icon} /><span>{command.label}</span>{#if command.shortcut}<kbd class="shortcut" aria-hidden="true">{command.shortcut}</kbd>{/if}</button>
         {/each}
     {/each}
     {#if unavailable}<p class="menu-empty" role="presentation">{unavailable}</p>{/if}
@@ -107,6 +107,8 @@
         cursor: pointer; outline: none;
     }
     button > :global(svg) { --icon-size: 15px; color: var(--muted); }
+    .shortcut { flex: none; margin-inline-start: auto; padding-inline-start: var(--space-4); color: var(--muted); font: var(--font-label); }
+    @media (pointer: coarse), (max-width: 600px) { .shortcut { display: none; } }
     button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* pointer moves focus so keyboard and pointer share one highlight. */
     button:focus { background: var(--interaction-hover); color: var(--text-strong); }

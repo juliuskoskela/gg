@@ -12,6 +12,7 @@
     import PanelBody from "./PanelBody.svelte";
     import { annotations, lineMenu } from "../annotations/store";
     import { menuPanel } from "./viewCommands";
+    import { isTextField, textFieldCommands } from "../commands/textCommands";
 
     interface Props {
         node: DockNode;
@@ -45,12 +46,20 @@
         onSelectFile
     }: Props = $props();
 
-    // right-clicking anywhere in a view offers to open another; text fields and selected text keep the native menu
+    // right-clicking anywhere in a view offers to open another; text fields get the edit commands in the app's own menu,
+    // and selected text or an editable surface no component claimed keeps the native one
     function noteMenuPanel(id: PanelId) { menuPanel.set(id); }
     function emptyMenu(event: MouseEvent, id: PanelId) {
         if (event.defaultPrevented) return;
         let target = event.target as HTMLElement;
-        if (target.closest("input, textarea, select, [contenteditable='true']") || (getSelection()?.toString() ?? "").trim()) return;
+        let field = target.closest("input, textarea");
+        if (isTextField(field)) {
+            event.preventDefault();
+            let { clientX: x, clientY: y } = event;
+            void textFieldCommands(field).then(commands => lineMenu.set({ x, y, heading: null, commands }));
+            return;
+        }
+        if (field || target.closest("select, [contenteditable]:not([contenteditable='false'])") || (getSelection()?.toString() ?? "").trim()) return;
         event.preventDefault();
         menuPanel.set(id);
         lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [] });

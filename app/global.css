@@ -126,6 +126,8 @@
   --control-height: 32px;
   --file-row-height: max(24px, calc(var(--type-ui) * 1.5 + 4px));
   --control-padding-inline: 8px;
+  /* fields in 28px bars: the text line plus this padding and the border make the control height */
+  --control-padding-compact: 3px;
   --control-gap: 6px;
   --pane-inset: 12px;
   --panel-inset: 12px;
@@ -166,6 +168,9 @@
   --font-label: var(--weight-regular) var(--type-caption)/var(--leading-label) var(--stack-ui);
   /* change and commit ids, hashes and paths */
   --font-id: var(--weight-regular) var(--type-code)/var(--leading-label) var(--stack-code);
+  /* source text in the editor: the diff viewer's code size and line height */
+  --font-code: var(--weight-regular) var(--type-code)/calc(var(--type-code) * var(--code-leading)) var(--stack-code);
+  --font-code-strong: var(--weight-strong) var(--type-code)/calc(var(--type-code) * var(--code-leading)) var(--stack-code);
   /* rhythm: rows of one list, related groups, and sections (which also get a rule) */
   --gap-row: 4px;
   --gap-group: 12px;

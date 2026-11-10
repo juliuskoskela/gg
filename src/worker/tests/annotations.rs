@@ -28,6 +28,7 @@ async fn anchors_report_rewrites_and_moved_lines() -> Result<()> {
         start,
         end: start + 1,
         quote: quote.into(),
+        columns: None,
     };
     for (start, quote) in [(1, "1\n2"), (1, "something else")] {
         annotations::handle(

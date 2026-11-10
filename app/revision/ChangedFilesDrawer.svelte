@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { tick, type Snippet } from "svelte";
+    import { onDestroy, tick, type Snippet } from "svelte";
     import PanelFooter from "../controls/PanelFooter.svelte";
     import Icon from "../controls/Icon.svelte";
     import type { RevChange } from "../messages/RevChange";
@@ -30,10 +30,22 @@
     let dragHeight = $state(0);
     let origin = { y: 0, height: 0 };
     let limit = $derived(maxHeight(viewHeight));
+    // an unmeasured view (0) keeps the remembered height rather than clamping it to a guess
+    let fit = (height: number) => viewHeight > 0 ? clampHeight(height, viewHeight) : height;
+    // only opening and closing animate; reloads, resizes and drags change the height at once
+    let animating = $state(false);
+    let animationTimer: ReturnType<typeof setTimeout> | undefined;
+    function animate() {
+        animating = true;
+        clearTimeout(animationTimer);
+        animationTimer = setTimeout(() => animating = false, 400);
+    }
+    onDestroy(() => clearTimeout(animationTimer));
     let open = $derived($filesDrawer.open);
-    let shownHeight = $derived(dragging ? dragHeight : open ? clampHeight($filesDrawer.height, viewHeight) : 0);
+    let shownHeight = $derived(dragging ? dragHeight : open ? fit($filesDrawer.height) : 0);
 
     function toggle() {
+        animate();
         filesDrawer.toggle();
     }
     function start(event: PointerEvent) {
@@ -60,7 +72,7 @@
         let current = open ? clampHeight($filesDrawer.height, viewHeight) : 0;
         if (event.key === "ArrowUp") filesDrawer.set({ open: true, height: open ? clampHeight(current + KEY_STEP, viewHeight) : $filesDrawer.height });
         else if (event.key === "ArrowDown") { if (open) filesDrawer.setHeight(clampHeight(current - KEY_STEP, viewHeight)); }
-        else if (event.key === "Home") filesDrawer.setOpen(false);
+        else if (event.key === "Home") { animate(); filesDrawer.setOpen(false); }
         else if (event.key === "End") filesDrawer.set({ open: true, height: limit });
         else if (event.key === "Enter" || event.key === " ") toggle();
         else return;
@@ -92,7 +104,7 @@
         </div></PanelFooter>
     </div>
     {#if drawer}
-        <div class="drawer-body" id={bodyId} class:dragging style:height="{shownHeight}px" bind:this={body}>
+        <div class="drawer-body" id={bodyId} class:animating style:height="{shownHeight}px" bind:this={body}>
             {#if open || dragging}
                 <RevisionFiles {changes} {headers} {selectedPath} {reviewKey} visible overlay={false} showHeading={false} inline id="changed-files-list" {onSelect} />
             {/if}
@@ -110,8 +122,8 @@
     .drag-strip.dragging::after, .drag-strip:focus-visible::after { background: var(--accent); }
     @media (hover: hover) { .drag-strip:hover::after { background: var(--control-hover); } .drag-strip.dragging:hover::after { background: var(--accent); } }
     @media (pointer: coarse) { .drag-strip::before { inset-block: calc(-2 * var(--space-1)); } }
-    .drawer-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--surface); transition: height var(--motion-feedback) ease-out; }
-    .drawer-body.dragging { transition: none; }
+    .drawer-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--surface); }
+    .drawer-body.animating { transition: height var(--motion-feedback) ease-out; }
     .drawer-body > :global(aside) { flex: 1; }
     .diff-toolbar { display: flex; align-items: center; gap: var(--space-1); width: 100%; min-width: 0; min-height: var(--control-height); }
     .diff-toolbar > :global(.file-path) { flex: 1; min-width: 0; }

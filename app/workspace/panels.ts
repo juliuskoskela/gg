@@ -11,7 +11,7 @@ export const panelLabel: Record<CorePanelId, string> = {
     annotations: "Annotations",
     description: "Description",
     diff: "Diff",
-    tree: "Files",
+    tree: "Editor",
     edit: "Edit",
     operation: "Operation",
     "revision-tools": "Revision tools",

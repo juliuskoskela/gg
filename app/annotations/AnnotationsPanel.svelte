@@ -18,7 +18,7 @@
     import NoteCheck from "./NoteCheck.svelte";
     import NoteEditor from "./NoteEditor.svelte";
     import TargetList from "./TargetList.svelte";
-    import { anchorDescription, anchorIcon, anchorLabel, effectiveAnchor } from "./anchors";
+    import { anchorDescription, anchorIcon, anchorLabel, effectiveAnchor, splitQuote } from "./anchors";
     import { annotationError, annotationList, copyAnnotations, discardDraft, draft, draftFocus, DRAFT, justAdded, loadAnnotations, noteTitle, openAnnotation, plainLine, removeTarget, saveDraft, sendAnnotations } from "./store";
 
     interface Props {
@@ -91,7 +91,7 @@
     }
 
     function quotes(targets: Target[]) {
-        return targets.flatMap(target => target.anchor.kind === "lines" && target.anchor.quote ? [{ anchor: target.anchor, quote: target.anchor.quote }] : []);
+        return targets.flatMap(target => target.anchor.kind === "lines" && target.anchor.quote ? [{ anchor: target.anchor, quote: target.anchor.quote, parts: splitQuote(target.anchor.quote, target.anchor.columns) }] : []);
     }
 
     function toggleOpen(id: string) {
@@ -199,10 +199,10 @@
 {#snippet context(targets: Target[], note: string)}
     <TargetList {targets} {highlight} removable={targets.length > 1} onRemove={anchor => removeTarget(note, anchor)} />
     {#if targets.length === 1 && targets[0].subject}<p class="subject">{targets[0].subject}</p>{/if}
-    {#each quotes(targets) as { anchor, quote } (JSON.stringify(anchor))}
+    {#each quotes(targets) as { anchor, quote, parts } (JSON.stringify(anchor))}
         <figure class="quote">
             {#if targets.length > 1}<figcaption><Icon name="code" />{anchorLabel(anchor)}</figcaption>{/if}
-            <pre aria-label="Annotated code, {anchorDescription(anchor)}">{quote}</pre>
+            <pre aria-label="Annotated code, {anchorDescription(anchor)}">{#if parts}{parts.before}<mark>{parts.selected}</mark>{parts.after}{:else}{quote}{/if}</pre>
         </figure>
     {/each}
 {/snippet}
@@ -393,6 +393,7 @@
     .subject { margin: 0; overflow: hidden; color: var(--muted); font: var(--font-body); text-overflow: ellipsis; white-space: nowrap; }
     .quote { display: grid; gap: 4px; margin: 0; }
     .quote figcaption { display: flex; align-items: center; gap: 5px; color: var(--muted); font: var(--font-id); --icon-size: 11px; }
+    .quote mark { background: var(--accent-subtle); color: var(--text-strong); }
     .quote pre { max-height: 200px; margin: 0; padding: 8px 10px; overflow: auto; border-radius: var(--radius-control); background: var(--diff-buffer); font: var(--type-code)/var(--code-leading) var(--stack-code); white-space: pre; }
     .close { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin: -2px -6px 0 0; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
     @media (hover: hover) { .close:hover { background: var(--interaction-hover); color: var(--text); } }

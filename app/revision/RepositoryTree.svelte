@@ -18,32 +18,41 @@
     import { onDestroy, tick, untrack } from "svelte";
     import FileIcon from "../controls/FileIcon.svelte";
     import Icon from "../controls/Icon.svelte";
-    import TextField from "../controls/TextField.svelte";
-    import ToggleItem from "../controls/ToggleItem.svelte";
-    import ToggleTray from "../controls/ToggleTray.svelte";
     import ViewToolbar from "../controls/ViewToolbar.svelte";
+    import TreeTools from "./TreeTools.svelte";
     import { navigationIndex, revealRow, virtualRange } from "../controls/listNavigation";
     import { query } from "../ipc";
+    import type { Command } from "../commands/registry";
     import type { RevChange } from "../messages/RevChange";
     import type { RevHeader } from "../messages/RevHeader";
     import { repoConfigEvent } from "../stores";
-    import { defaultExpanded, treeSummary, visibleRows, type TreeRow } from "./repositoryTree";
+    import { ancestors, defaultExpanded, treeSummary, visibleRows, type TreeRow } from "./repositoryTree";
 
     interface Props {
         headers: RevHeader[];
         changes: RevChange[];
         selectedPath: string;
         onSelect: (change: RevChange) => void;
+        // a host that shows the files next to something else can take over the toolbar and the filter state
+        toolbar?: boolean;
+        filter?: string;
+        changedOnly?: boolean;
+        summary?: ReturnType<typeof treeSummary> | null;
+        // every file click, including unchanged files
+        onOpen?: (path: string, change?: RevChange) => void;
+        openPath?: string;
+        dirty?: ReadonlySet<string>;
+        // a right-click or the menu key on a row; folder commands are the ones only the tree can run
+        onMenu?: (row: TreeRow, at: { x: number; y: number }, folder: Command[]) => void;
     }
 
-    let { headers, changes, selectedPath, onSelect }: Props = $props();
+    let { headers, changes, selectedPath, onSelect, toolbar = true, filter = $bindable(""), changedOnly = $bindable(false), summary = $bindable(null), onOpen, openPath, dirty, onMenu }: Props = $props();
 
     let tree = $state.raw<RevisionTree | null>(null);
     let loading = $state(false);
+    let shownRepo = "";
     let error = $state("");
     let expanded = $state.raw<Set<string>>(new Set());
-    let filter = $state("");
-    let changedOnly = $state(false);
     let picked = $state("");
     let active = $state(0);
     let viewport = $state<HTMLElement>();
@@ -76,15 +85,17 @@
         error = "";
         if (!id) { tree = null; loading = false; return; }
         let hit = cache.get(key);
-        if (hit) { remember(key, hit); tree = hit; loading = false; seed(key); return; }
-        tree = null;
-        loading = true;
+        if (hit) { remember(key, hit); tree = hit; loading = false; seed(key); shownRepo = repo; return; }
+        // a new commit of the same repository (a snapshot, a save) keeps the old listing up until the new one arrives
+        if (shownRepo !== repo) tree = null;
+        loading = !tree;
         let result = await query<RevisionTree>("query_revision_tree", { id });
         if (generation !== request) return;
         loading = false;
         if (result.type === "error") { error = `Couldn’t load files: ${result.message}`; return; }
         remember(key, result.value);
         tree = result.value;
+        shownRepo = repo;
         seed(key);
     }
 
@@ -92,7 +103,7 @@
         let key = treeKey;
         untrack(() => { void load(key); });
     });
-    $effect.pre(() => { picked = selectedPath; });
+    $effect.pre(() => { picked = openPath ?? selectedPath; });
     // a new revision starts at the top
     $effect.pre(() => {
         void treeKey;
@@ -100,7 +111,7 @@
     });
 
     let rows = $derived(tree ? visibleRows({ files: tree.files, changes, expanded, filter, changedOnly }) : []);
-    let summary = $derived(tree ? treeSummary(tree.files, changes) : null);
+    $effect.pre(() => { let next = tree ? treeSummary(tree.files, changes) : null; untrack(() => { if (next?.files !== summary?.files || next?.changed !== summary?.changed) summary = next; }); });
     let range = $derived(virtualRange(top, height, rowHeight, 4, 4));
     let start = $derived(range.start);
     let end = $derived(Math.min(rows.length, range.end));
@@ -118,6 +129,7 @@
         if (row.kind === "folder") { toggle(row); return; }
         picked = row.path;
         if (row.change) onSelect(row.change);
+        onOpen?.(row.path, row.change);
     }
 
     async function focusRow(index: number) {
@@ -134,12 +146,45 @@
         return -1;
     }
 
+    function folderCommands(row: TreeRow): Command[] {
+        let prefix = `${row.path}/`;
+        let commands: Command[] = [];
+        if (expanded.has(row.path)) commands.push({ id: "tree.collapse", label: "Collapse", icon: "chevrons-up", scope: "File", group: 10, reason: null, execute: () => persist(new Set([...expanded].filter(path => path !== row.path && !path.startsWith(prefix)))) });
+        commands.push({ id: "tree.expand-all", label: "Expand all", icon: "chevrons-down", scope: "File", group: 10, reason: null, execute: () => {
+            let next = new Set(expanded);
+            next.add(row.path);
+            for (let file of tree?.files ?? []) if (file.startsWith(prefix)) for (let folder of ancestors(file)) if (folder.startsWith(prefix) || folder === row.path) next.add(folder);
+            persist(next);
+        } });
+        return commands;
+    }
+
+    function openMenu(row: TreeRow, index: number, at: { x: number; y: number }) {
+        active = index;
+        onMenu?.(row, at, row.kind === "folder" ? folderCommands(row) : []);
+    }
+
+    // the menu key fires contextmenu without a pointer, so the menu opens at the row
+    function rowMenu(event: MouseEvent, row: TreeRow, index: number) {
+        if (!onMenu) return;
+        event.preventDefault();
+        let keyboard = event.button !== 2 && !event.ctrlKey;
+        let bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        openMenu(row, index, keyboard ? { x: bounds.left, y: bounds.bottom } : { x: event.clientX, y: event.clientY });
+    }
+
     function keydown(event: KeyboardEvent) {
         let item = (event.target as HTMLElement).closest<HTMLElement>("[data-index]");
         if (!item || event.altKey || event.ctrlKey || event.metaKey) return;
         let index = Number(item.dataset.index);
         let row = rows[index];
         if (!row) return;
+        if (onMenu && (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))) {
+            event.preventDefault();
+            let bounds = item.getBoundingClientRect();
+            openMenu(row, index, { x: bounds.left, y: bounds.bottom });
+            return;
+        }
         if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
             let next = navigationIndex(event.key, index, rows.length);
             if (next === null) return;
@@ -169,13 +214,9 @@
 </script>
 
 <div class="repository-tree">
-    <ViewToolbar label="Files tools">
-        <div class="tree-filter toolbar-lead"><TextField className="tree-search" type="search" label="Filter files" placeholder="Find a file…" bind:value={filter} /></div>
-        {#if summary}
-            <div class="tree-summary toolbar-lead"><span>{formatter.format(summary.files)} {summary.files === 1 ? "file" : "files"}</span><span>{formatter.format(summary.changed)} changed</span></div>
-        {/if}
-        <ToggleTray label="File filter"><ToggleItem on={changedOnly} label="Changed only" text="Changed only" onClick={() => changedOnly = !changedOnly} /></ToggleTray>
-    </ViewToolbar>
+    {#if toolbar}
+        <ViewToolbar label="Files tools"><TreeTools bind:filter bind:changedOnly {summary} /></ViewToolbar>
+    {/if}
     {#if !source}
         <p class="tree-status" role="status">Select a revision to browse its files.</p>
     {:else if error}
@@ -211,6 +252,7 @@
                         style:height={`${rowHeight}px`}
                         onclick={() => activate(row, index)}
                         onfocus={() => active = index}
+                        oncontextmenu={event => rowMenu(event, row, index)}
                     >
                         {#if row.kind === "folder"}
                             <span class="chevron" class:open={row.expanded}><Icon name="chevron-right" /></span>
@@ -219,6 +261,7 @@
                         {:else}
                             <FileIcon path={row.path} />
                             <span class="name" dir="auto">{row.name}</span>
+                            {#if dirty?.has(row.path)}<span class="unsaved" role="img" aria-label="Unsaved changes" title="Unsaved changes"></span>{/if}
                             {#if change}
                                 {#if change.has_conflict}
                                     <span class="kind" role="img" aria-label="Unresolved conflict" title="Unresolved conflict"><Icon name="alert-triangle" state="remove" /></span>
@@ -243,10 +286,6 @@
 
 <style>
     .repository-tree { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; background: var(--surface); }
-    .tree-filter { flex: 1; min-width: 120px; max-width: 360px; }
-    .tree-filter :global(.tree-search) { width: 100%; }
-    .tree-summary { display: flex; gap: var(--space-2); white-space: nowrap; }
-    .tree-summary span { color: var(--muted); font: var(--font-label); }
     .tree-status, .tree-note { margin: var(--space-2) var(--panel-inset); color: var(--muted); font: var(--font-body); }
     .tree-scroll { position: relative; flex: 1; min-height: 0; margin-inline: var(--panel-inset); overflow: auto; overscroll-behavior: contain; pointer-events: auto; }
     .tree-scroll .tree-note { margin-inline: 0; }
@@ -265,9 +304,9 @@
     :global([dir="rtl"]) .chevron.open :global(svg) { transform: rotate(90deg); }
     .count { flex: 0 0 auto; color: var(--muted); font: var(--font-label); font-variant-numeric: tabular-nums; }
     .kind { display: flex; flex: 0 0 auto; --icon-size: var(--space-3); }
+    .unsaved { flex: 0 0 auto; inline-size: var(--space-2); block-size: var(--space-2); border-radius: 50%; background: var(--warning); }
     .kind.modified { inline-size: var(--space-1); block-size: var(--space-1); border-radius: 50%; background: var(--faint); }
     .stat { display: flex; flex: 0 0 auto; gap: var(--space-1); font: var(--font-label); font-variant-numeric: tabular-nums; }
     .ins { color: var(--positive); }
     .del { color: var(--negative); }
-    @media (pointer: coarse), (max-width: 600px) { .repository-tree :global(.tree-search) { min-height: 44px; } }
 </style>

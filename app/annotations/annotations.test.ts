@@ -5,7 +5,9 @@ import type { RevHeader } from "../messages/RevHeader";
 import type { RevChange } from "../messages/RevChange";
 import type { AnnotationList } from "../messages/AnnotationList";
 import type { AnnotationThread } from "../messages/AnnotationThread";
-import { anchorLabel, linesAnchor, targetsFor } from "./anchors";
+import type { AnnotationAnchor } from "../messages/AnnotationAnchor";
+import { anchorDescription, anchorLabel, linesAnchor, splitQuote, targetsFor } from "./anchors";
+import { mountShell } from "../controls/test/shell";
 import "../global.css";
 
 let id = { change: { type: "ChangeId" as const, hex: "wnpusytqzosxwnpusytqzosxwnpusytq", prefix: "w", rest: "", offset: null, is_divergent: false }, commit: { type: "CommitId" as const, hex: "025843422c8f5374a4160fe79195b92d6ec3c6ee", prefix: "0", rest: "" } };
@@ -46,6 +48,28 @@ describe("annotation anchors", () => {
         let outside = await linesAnchor(header, change, "additions", 2, 3, full);
         expect(full).toHaveBeenCalled();
         expect(outside.kind === "lines" && outside.quote).toBe("line 2\nline 3");
+    });
+});
+
+describe("selection anchors", () => {
+    let lines = (start: number, end: number, quote: string, columns?: { start: number; end: number }): AnnotationAnchor => ({ kind: "lines", change_id: id.change.hex, commit_id: id.commit.hex, path: "src/a.ts", side: "new", start, end, quote, ...(columns ? { columns } : {}) });
+
+    it("labels and describes selections with 1-based columns, and leaves whole lines alone", () => {
+        let one = lines(12, 12, "let value", { start: 4, end: 9 });
+        expect(anchorLabel(one)).toBe("a.ts:12:5–10");
+        expect(anchorDescription(one)).toContain("src/a.ts, line 12, columns 5–10, in change");
+        let many = lines(12, 14, "a\nb\nc", { start: 0, end: 1 });
+        expect(anchorLabel(many)).toBe("a.ts:12:1–14:2");
+        expect(anchorDescription(many)).toContain("lines 12–14, selection from 12:1 to 14:2");
+        expect(anchorLabel(lines(12, 14, "a\nb\nc"))).toBe("a.ts:12–14");
+        expect(anchorDescription(lines(12, 12, "a"))).toContain("src/a.ts, line 12, in change");
+    });
+
+    it("splits quotes by scalar values, so an emoji counts once", () => {
+        expect(splitQuote("😀 let x", { start: 2, end: 5 })).toEqual({ before: "😀 ", selected: "let", after: " x" });
+        expect(splitQuote("ab😀\n😀cd\nef", { start: 1, end: 1 })).toEqual({ before: "a", selected: "b😀\n😀cd\ne", after: "f" });
+        expect(splitQuote("abc", undefined)).toBeNull();
+        expect(splitQuote("abc", { start: 4, end: 5 })).toBeNull();
     });
 });
 
@@ -175,6 +199,26 @@ describe("annotations view", () => {
         expect(view.getByRole("img", { name: "This change no longer exists" })).toBeTruthy();
         await fireEvent.click(view.getByRole("button", { name: "Stop pointing at kkkkkkkk" }));
         await waitFor(() => expect(calls.some(call => call.args?.request?.type === "RemoveTarget" && call.args.request.anchor.change_id === "kkkkkkkk")).toBe(true));
+    });
+
+    it("highlights the selected part of a quote and leaves whole-line quotes plain", async () => {
+        let anchor = (columns?: { start: number; end: number }): AnnotationAnchor => ({ kind: "lines", change_id: id.change.hex, commit_id: id.commit.hex, path: "src/a.ts", side: "new", start: 12, end: 12, quote: "😀 let x", ...(columns ? { columns } : {}) });
+        list = { ...list, threads: [thread({ id: "aaaa1111bbbb", posts: [{ id: "p1", author: { name: "Ada", kind: "human" }, created_at: new Date().toISOString(), body: "Selected" }], targets: [{ anchor: anchor({ start: 2, end: 5 }), subject: "", state: { type: "current" } }] }), thread({ id: "cccc2222dddd", targets: [{ anchor: anchor(), subject: "", state: { type: "current" } }] })] };
+        let { default: Panel } = await import("./AnnotationsPanel.svelte");
+        let shell = mountShell(600);
+        let view = render(Panel, { props: { active: true }, target: shell });
+        await waitFor(() => expect(view.getByText("Selected")).toBeTruthy());
+        let rows = view.getByRole("list", { name: "Notes" }).querySelectorAll<HTMLButtonElement>("li button");
+        await fireEvent.click(rows[0]);
+        let code = await waitFor(() => view.getByLabelText(/^Annotated code, src\/a\.ts, line 12, columns 3–6/));
+        expect(code.textContent).toBe("😀 let x");
+        let mark = code.querySelector("mark")!;
+        expect(mark.textContent).toBe("let");
+        expect(getComputedStyle(mark).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+        await fireEvent.click(rows[1]);
+        let plain = await waitFor(() => view.getByLabelText(/^Annotated code, src\/a\.ts, line 12, in change/));
+        expect(plain.querySelector("mark")).toBeNull();
+        expect(plain.textContent).toBe("😀 let x");
     });
 
     it("explains how to start when there are no notes", async () => {

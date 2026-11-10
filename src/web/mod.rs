@@ -50,7 +50,7 @@ use crate::messages::mutations::{
     DescribeRevision, DuplicateRevisions, ExternalDiff, ExternalResolve, ForgetWorkspace, GitFetch,
     GitPush, InsertRevisions, MoveChanges, MoveHunk, MoveRef, MoveRevisions, MutationOptions,
     MutationResult, OpenWorkspace, RebaseSelectedRevisions, RedoOperation, RenameBookmark,
-    RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark,
+    RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark, WriteFile,
 };
 use crate::worker::{Mutation, Session, SessionEvent, WorkerSession};
 use sink::{SseEvent, SseSink};
@@ -294,6 +294,7 @@ async fn handle_mutate(
         "abandon_revisions" => execute_mutation::<AbandonRevisions>(&state, body),
         "backout_revisions" => execute_mutation::<BackoutRevisions>(&state, body),
         "checkout_revision" => execute_mutation::<CheckoutRevision>(&state, body),
+        "write_file" => execute_mutation::<WriteFile>(&state, body),
         "create_revision" => execute_mutation::<CreateRevision>(&state, body),
         "create_revision_between" => execute_mutation::<CreateRevisionBetween>(&state, body),
         "insert_revisions" => execute_mutation::<InsertRevisions>(&state, body),

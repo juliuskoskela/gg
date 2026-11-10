@@ -7,7 +7,7 @@ Every annotation is the root of a thread. Its first post is the note; later post
 ## Using them
 
 - **Point at several places.** Select a range of revisions in the timeline (Shift+click or Shift+arrow) and choose *Annotate 2 changes…* to note them together. While a note or draft is open in the Annotations view, every annotate menu also offers *Add to …*, which points that note at the right-clicked place too. Each place shows as a chip on the note; hover a chip to remove it, as long as one remains.
-- **Annotate.** Right-click a change or bookmark in the timeline, a file in the file tree, a hunk's actions, a line in the diff, or the change and commit ids in Description, and choose *Annotate…*. Select several lines first to annotate the range. The command palette offers *Annotate change…* for the selected revision. Annotating never touches history, so it works on immutable revisions too.
+- **Annotate.** Right-click a change or bookmark in the timeline, a file in the file tree, a hunk's actions, a line in the diff, a selection in the Editor view, or the change and commit ids in Description, and choose *Annotate…*. Select several lines first to annotate the range. In the Editor view, select text and choose *Annotate…* to annotate exactly that selection; the Annotations view highlights it within the quoted lines. The command palette offers *Annotate change…* for the selected revision. Annotating never touches history, so it works on immutable revisions too.
 - **Write.** A new note opens as a draft in the Annotations view, not in a dialog, so you can keep browsing revisions, files and diffs while writing. The draft stays at the top of the list until it is saved or discarded, including across reloads. Starting another note while a draft has text asks first. Notes are markdown with a preview; Ctrl/⌘+Enter saves.
 - **Review.** *Views → Annotations* lists notes, newest activity first. Clicking a note opens the places it points at, the annotated code for line notes and the thread beside the list; clicking it again, the close button or Escape closes it. Your own posts can be edited; notes can be replied to, resolved, reopened and deleted.
 - **Copy.** Tick notes, or the check beside the count to select every listed note, and choose *Copy selected* to put markdown on the clipboard: each note's location (change and commit ids, path, lines, revision subject), the quoted code and the thread, plus one line explaining how to reply.
@@ -18,7 +18,7 @@ Every annotation is the root of a thread. Its first post is the note; later post
 `gg annotations` (alias `gg notes`) reads and writes notes without opening the app. It finds the repository from the current directory, or from `-R <path>`.
 
 ```sh
-gg annotations create [<text> | -] [--revision <revset> | --bookmark <name>] [--file <path>] [--lines <start-end>] [--side old|new] [--agent <name>] [--json]
+gg annotations create [<text> | -] [--revision <revset> | --bookmark <name>] [--file <path>] [--lines <start-end | line:col-line:col>] [--side old|new] [--agent <name>] [--json]
 gg annotations edit <note> [<text> | -] [--post <id>] [--agent <name>] [--json]
 gg annotations list [--all] [--json]
 gg annotations show <note> [--json]
@@ -32,7 +32,7 @@ A note id may be shortened to any unambiguous prefix. Create, edit and reply rea
 
 Creation defaults to `@`; a revision expression must resolve to exactly one commit.
 `--change` is an alias for `--revision`. Bookmark targets use an exact local name;
-file paths are relative to the workspace root. A line range is inclusive and its
+file paths are relative to the workspace root. A line range is inclusive; `--lines 12:5-14:9` selects from line 12, column 5 up to line 14, column 9, where columns are 1-based cursor positions (the end column is where the selection stops, so that character is not included), counted in Unicode characters. Its
 quote is read from the retained commit (`--side old` uses its merged parent tree).
 Invalid paths, binary/conflicted line content and out-of-bounds ranges fail before
 creating a thread. These commands do not snapshot or rewrite repository history;
@@ -52,7 +52,9 @@ A note has one or more targets. Each target is an anchor plus the revision's sum
 | `revision` | `change_id`, `commit_id` |
 | `bookmark` | `name`, optional `remote`, `change_id`, `commit_id` |
 | `file` | `change_id`, `commit_id`, `path` |
-| `lines` | `change_id`, `commit_id`, `path`, `side` (`old` or `new`), `start`, `end`, `quote` |
+| `lines` | `change_id`, `commit_id`, `path`, `side` (`old` or `new`), `start`, `end`, `quote`, optional `columns` (`start`, `end`) |
+
+`columns` marks a selection inside the lines. Offsets are 0-based and counted in Unicode scalar values from the start of a line: `start` on the first line, `end` (exclusive) on the last. `quote` always keeps the whole lines, so finding moved lines after a rewrite works the same with or without a selection; the selected excerpt is sliced from it. Exports show the excerpt as a quoted block before the full lines. Anchors saved before selections existed have no `columns` and read as whole lines.
 
 Notes are written against an exact commit and are never moved silently. When the app lists notes it compares each anchor with the repository:
 

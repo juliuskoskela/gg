@@ -141,10 +141,10 @@ describe("GG+ workspace", () => {
         let search = ctx.page.getByRole("searchbox", { name: "Filter changed files" });
         await search.fill("no-such-file");
         expect(await files.textContent()).toContain("No matching files");
-        await closeView(ctx.page, "Files");
+        await closeView(ctx.page, "Editor");
         expect(await files.count()).toBe(0);
         await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
-        await ctx.page.getByRole("menuitemcheckbox", { name: "Files", exact: true }).click();
+        await ctx.page.getByRole("menuitemcheckbox", { name: "Editor", exact: true }).click();
         await files.waitFor();
         expect(await search.inputValue()).toBe("no-such-file");
         expect(await files.textContent()).toContain("No matching files");
@@ -159,9 +159,9 @@ describe("GG+ workspace", () => {
         await ctx.page.locator(".description-panel .revision-heading").waitFor();
         let views = ctx.page.getByRole("button", { name: "Views", exact: true });
         let viewsPosition = (await views.boundingBox())!;
-        await closeView(ctx.page, "Files");
+        await closeView(ctx.page, "Editor");
         await views.click();
-        await ctx.page.getByRole("menuitemcheckbox", { name: "Files", exact: true }).click();
+        await ctx.page.getByRole("menuitemcheckbox", { name: "Editor", exact: true }).click();
         let viewsBounds = (await views.boundingBox())!;
         expect(viewsBounds.x).toBe(viewsPosition.x);
         expect(viewsBounds.y).toBe(viewsPosition.y);
@@ -215,7 +215,7 @@ describe("GG+ workspace", () => {
         let diffBounds = (await ctx.page.locator(".file-review").boundingBox())!;
         expect(treeBounds.x + treeBounds.width).toBeLessThanOrEqual(diffBounds.x + 1);
 
-        await closeView(ctx.page, "Files");
+        await closeView(ctx.page, "Editor");
         await ctx.page.getByRole("button", { name: "Expand repository navigation" }).click();
         expect(await files.count()).toBe(0);
         await ctx.page.locator(".file-path button").first().click();

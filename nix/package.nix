@@ -41,7 +41,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   cargoHash = "sha256-LuFU7sZQ2FFlqTP2DTOPM59/l7v1ZBPgWhSrmJvX6i4=";
   npmDeps = fetchNpmDeps {
     inherit (finalAttrs) src;
-    hash = "sha256-Jni1XaA+mVyLon48TWEFvEXwCZ7MRuViW24+Xi/kQbI=";
+    hash = "sha256-KP+932BV70TePuZ9ZPwxkj2Jx8S41GKFFnHnZegRRCs=";
   };
   nativeBuildInputs =
     [cargo-tauri.hook nodejs_24 npmHooks.npmConfigHook pkg-config]

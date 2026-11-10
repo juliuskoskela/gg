@@ -4,7 +4,8 @@ use jj_lib::{
 };
 
 use super::{WorkspaceSession, mutations::read_file_content};
-use crate::messages::annotations::{AnnotationAnchor, LineSide, TargetInput};
+use crate::annotations::validate_columns;
+use crate::messages::annotations::{AnnotationAnchor, ColumnRange, LineSide, TargetInput};
 
 pub(crate) struct TargetQuery<'a> {
     pub revision: &'a str,
@@ -12,6 +13,48 @@ pub(crate) struct TargetQuery<'a> {
     pub file: Option<&'a str>,
     pub lines: Option<&'a str>,
     pub side: LineSide,
+}
+
+/// `N`, `START-END` or `LINE:COL-LINE:COL`; columns are 1-based cursor
+/// positions, stored as 0-based offsets in scalar values.
+fn parse_lines(range: &str) -> Result<(u32, u32, Option<ColumnRange>)> {
+    let number = |text: &str| -> Result<u32> {
+        text.parse()
+            .context("Line numbers and columns must be positive integers")
+    };
+    let (from, to) = range.split_once('-').unwrap_or((range, range));
+    if !range.contains(':') {
+        let (start, end) = (number(from)?, number(to)?);
+        if start == 0 || end < start {
+            bail!("Line range must start at 1 or later and end after its start");
+        }
+        return Ok((start, end, None));
+    }
+    if !range.contains('-') {
+        bail!("A selection needs both ends, like 12:5-14:9");
+    }
+    let position = |text: &str| -> Result<(u32, u32)> {
+        let (line, column) = text
+            .split_once(':')
+            .context("A selection needs both ends as LINE:COLUMN, like 12:5-14:9")?;
+        let (line, column) = (number(line)?, number(column)?);
+        if line == 0 || column == 0 {
+            bail!("Lines and columns start at 1");
+        }
+        Ok((line, column - 1))
+    };
+    let ((start, from), (end, to)) = (position(from)?, position(to)?);
+    if end < start {
+        bail!("The selection must end after its start");
+    }
+    Ok((
+        start,
+        end,
+        Some(ColumnRange {
+            start: from,
+            end: to,
+        }),
+    ))
 }
 
 pub(crate) async fn resolve(
@@ -62,16 +105,7 @@ pub(crate) async fn resolve(
             if !matches!(entry, Ok(Some(TreeValue::File { .. }))) {
                 bail!("Line targets require a regular, conflict-free text file");
             }
-            let (start, end) = range.split_once('-').unwrap_or((range, range));
-            let start: u32 = start
-                .parse()
-                .context("Line numbers must be positive integers")?;
-            let end: u32 = end
-                .parse()
-                .context("Line numbers must be positive integers")?;
-            if start == 0 || end < start {
-                bail!("Line range must start at 1 or later and end after its start");
-            }
+            let (start, end, columns) = parse_lines(range)?;
             let content = read_file_content(ws.repo().store(), &tree, path).await?;
             let text = String::from_utf8(content).context("Line targets require UTF-8 text")?;
             if text.contains('\0') {
@@ -81,6 +115,10 @@ pub(crate) async fn resolve(
             if end as usize > lines.len() {
                 bail!("Line range exceeds the file's {} lines", lines.len());
             }
+            let quote = lines[start as usize - 1..end as usize].join("\n");
+            if let Some(columns) = &columns {
+                validate_columns(&quote, start == end, columns)?;
+            }
             AnnotationAnchor::Lines {
                 change_id,
                 commit_id,
@@ -88,7 +126,8 @@ pub(crate) async fn resolve(
                 side: query.side,
                 start,
                 end,
-                quote: lines[start as usize - 1..end as usize].join("\n"),
+                quote,
+                columns,
             }
         } else {
             AnnotationAnchor::File {
@@ -146,7 +185,10 @@ mod tests {
             target.anchor.commit_id(),
             ws.format_id(&ws.get_commit(ws.wc_id())?).commit.hex
         );
-        for range in ["0", "2-1", "1-3", "one", "1-2-3"] {
+        for range in [
+            "0", "2-1", "1-3", "one", "1-2-3", "1:1-2", "1-2:1", "1:0-1:2", "1:3-1:3", "1:5-1:5",
+            "1:1-1:7", "2:1-1:1", "1:2",
+        ] {
             assert!(
                 resolve(
                     &ws,
@@ -162,6 +204,22 @@ mod tests {
                 .is_err()
             );
         }
+        let selection = resolve(
+            &ws,
+            TargetQuery {
+                revision: "@",
+                bookmark: None,
+                file: Some("note.txt"),
+                lines: Some("1:2-2:4"),
+                side: LineSide::New,
+            },
+        )
+        .await?;
+        assert!(matches!(
+            &selection.anchor,
+            AnnotationAnchor::Lines { start: 1, end: 2, quote, columns: Some(ColumnRange { start: 1, end: 3 }), .. }
+                if quote == "first\nsecond"
+        ));
         assert!(
             resolve(
                 &ws,

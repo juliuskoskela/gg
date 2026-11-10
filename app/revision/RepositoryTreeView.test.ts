@@ -69,7 +69,7 @@ describe("repository tree", () => {
         await fireEvent.input(getByLabelText("Filter files"), { target: { value: "B.RS" } });
         await waitFor(() => expect(names(container)).toEqual(["src", "src/b.rs"]));
         await fireEvent.input(getByLabelText("Filter files"), { target: { value: "" } });
-        await fireEvent.click(getByRole("button", { name: "Changed only" }));
+        await fireEvent.click(getByRole("button", { name: "Show changed files only" }));
         await waitFor(() => expect(names(container)).toEqual(["app", "app/lib", "app/lib/util.ts", "src", "src/a.rs", "gone.txt"]));
     });
 

@@ -14,6 +14,7 @@ export function operationLabel(command: string): string {
         abandon_selected_revisions: "Abandon selected changes", rebase_selected_revisions: "Rebase each selected change",
         abandon_revisions: "Abandon revisions", duplicate_revisions: "Duplicate revisions",
         git_fetch: "Fetch bookmarks", git_push: "Push bookmarks",
+        write_file: "Save file",
     };
     let label = labels[command] ?? command.replaceAll("_", " ");
     return label.charAt(0).toUpperCase() + label.slice(1);

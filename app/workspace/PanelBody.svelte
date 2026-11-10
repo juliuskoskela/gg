@@ -15,11 +15,12 @@
     import RevisionTools from "../revision/RevisionTools.svelte";
     import SelectionReview from "../revision/SelectionReview.svelte";
     import RevisionChanges from "../revision/RevisionChanges.svelte";
-    import RepositoryTree from "../revision/RepositoryTree.svelte";
+    import FilesView from "../files/FilesView.svelte";
     import RevisionOverviewPanel from "../revision/RevisionOverviewPanel.svelte";
     import SelectionRecovery from "../revision/SelectionRecovery.svelte";
-    import { repoConfigEvent, repoStatusEvent, pickedRevisions } from "../stores";
-    import type { PanelId } from "./dock";
+    import { repoConfigEvent, repoStatusEvent, pickedRevisions, selectWorkingCopy } from "../stores";
+    import { workspaceController } from "./state";
+    import { dock, type PanelId } from "./dock";
     import EvolutionPanel from "../history/EvolutionPanel.svelte";
     import OperationHistory from "../history/OperationHistory.svelte";
     import AnnotationsPanel from "../annotations/AnnotationsPanel.svelte";
@@ -62,6 +63,14 @@
     });
     let headers = $derived(detail?.headers ?? []);
     let separate = $derived($pickedRevisions.length > 1 ? $pickedRevisions : detail?.range_unavailable ? detail.headers : []);
+    // the files view follows the working copy, so showing its diff means selecting the working copy.
+    // the path goes first and again after, because the selection change restores a path it remembers
+    function openDiff(change: RevChange) {
+        onSelectFile(change);
+        selectWorkingCopy();
+        workspaceController.setFile(change.path.repo_path);
+        dock.focus("diff");
+    }
     let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
@@ -115,12 +124,7 @@
         <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : selection.type === "error" ? selection.message : "This revset matches nothing."}</p>
     {/if}
 {:else if id === "tree"}
-    {#if separate.length}<p class="panel-status">Each selected change has its own files in the Diff view.</p>
-    {:else if detail}
-        <RepositoryTree {changes} {headers} {selectedPath} onSelect={onSelectFile} />
-    {:else}
-        <p class="panel-status" role="status">{selection.type === "wait" ? "Loading revision…" : "This revset matches nothing."}</p>
-    {/if}
+    <FilesView onOpenDiff={openDiff} />
 {:else if id === "edit"}
     {#if !neovimEnabled}
         <p class="panel-status" role="status">Edit is unavailable in this build.</p>
