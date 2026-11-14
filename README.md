@@ -1,37 +1,61 @@
-# ![icon](res/icons/24x24.png) GG - Gui for JJ
+# ![icon](res/icons/24x24.png) GG+
 
-This hard fork is developing a modern desktop interface on GG's Tauri 2 and
-Svelte 5 foundation. Start iterating with `nix develop`, `just setup`, then
-`just dev`. See [Development](doc/DEVELOPMENT.md) for hot reload, browser preview,
-Nix builds and colocated Jujutsu setup. The installation details below describe
-upstream GG.
+*A hard fork of [GG](https://github.com/gulbanana/gg) by Thomas Castiglione, branched from v0.46.0 in October 2026. It keeps GG's idea, a direct-manipulation GUI for [Jujutsu](https://github.com/jj-vcs/jj), and rebuilds the interface around a dockable workspace, review and notes.*
 
-![screenshot](res/screenshot.png)
+![The timeline beside a revision's description and diff](res/screenshots/overview.png)
 
-GG is a GUI for the version control system [Jujutsu](https://github.com/jj-vcs/jj). It takes advantage of Jujutsu's composable primitives to present an interactive view of your repository. The big idea: what if you were always in the middle of an interactive rebase, but this was actually a good thing?
+GG+ shows your repository as a timeline you can work in directly. Drag a revision to rebase it, drag a file to squash or restore it, drag a bookmark to move it, and undo anything from the operation log. Everything around the timeline is a view you can dock where you want it.
 
-## Installation
-GG is a desktop or web application with a keyboard & mouse interface. It may be available in your favourite package manager, including...
+## What's in it
+
+- **Dockable views.** Timeline, Description, Diff, Editor, History, Evolution, Annotations, Terminal and Settings split, stack and tab like editor panes, and the layout is remembered.
+- **Timeline.** Revisions with their bookmarks, tags and line counts. Click to select, shift-click for a range, double-click to edit. Revset presets live under the timeline.
+- **Diff and review.** Unified or side-by-side diffs with syntax highlighting, foldable context and hunk actions. A changed-files browser docks on any side. Mark files and changes reviewed and see what changed since your last look.
+- **Editor.** A file tree and a code editor on the working copy, with change markers and notes in the gutter. Saving writes to disk and jj snapshots it.
+- **Annotations.** Notes on revisions, bookmarks, files, line ranges and selections. They stay outside the repository, follow code as it moves, and copy out as markdown for a coding agent. `gg annotations` reads and replies from the command line.
+- **Menus.** Repository, Revision, Bookmarks and Tools in a menu bar, the app's own context menus everywhere, and a bottom toolbar you configure in Settings.
+- **Appearance.** Cold, neutral and warm themes, each with a light level and two dark depths, palettes checked against protanopia, deuteranopia, tritanopia and achromatopsia, and app zoom.
+- **Opening folders.** A start page lists recent workspaces. A folder without a repository can be initialized on the spot, colocated with Git by default.
+
+![The Editor beside the timeline](res/screenshots/editor.png)
+
+## Installing
+
+GG+ is a Nix flake, built on your own machine. It provides `packages.default` for `x86_64-linux`, `aarch64-linux` and `aarch64-darwin`. Add it to your system's flake:
+
+```nix
+# flake.nix
+inputs.gg.url = "github:juliuskoskela/gg";
 ```
-# MacOS
-brew install --cask gg
-# Windows
-winget install --id gulbanana.gg
-# Any platform supported by [Tauri](https://tauri.app/)
-cargo install --locked gg-cli
+
+Then, in a NixOS or Home Manager module that receives `inputs` (for example through `specialArgs`):
+
+```nix
+environment.systemPackages = [ inputs.gg.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+# or, with Home Manager
+home.packages = [ inputs.gg.packages.${pkgs.stdenv.hostPlatform.system}.default ];
 ```
 
-Binaries are published for several platforms on the [releases page](https://github.com/gulbanana/gg/releases). Use the `.dmg` or `.app.tar.gz` on MacOS, and the `.msi` or `.exe` on Windows. We have `.appimage`, `.deb` and `.rpm` for some Linux platforms, but they aren't as well-tested.
+Or install it into your profile, or try it without installing:
 
-### Setup 
-Run `gg` in a Jujutsu workspace, pass the workspace directory as an argument or launch it from a GUI and use the Repository->Open menu item. Tips:
-- `gg` or `gg gui` will launch a native application, `gg web` will open a web browser.
-- If you downloaded a release yourself, `gg` won't be on your PATH - try adding `/Applications/gg.app/Contents/MacOS/` or `C:\Program Files\gg\`.
-- When using a POSIX shell on Windows, `start gg` can be used to run in the background.
+```sh
+nix profile install github:juliuskoskela/gg
+nix run github:juliuskoskela/gg -- gui ~/path/to/repository
+```
+
+You don't need the jj CLI installed: GG+ embeds Jujutsu. You'll still want it for anything GG+ doesn't cover.
+
+### Running
+
+- `gg` or `gg gui <dir>` opens the desktop app; `gg web <dir>` serves the same interface to your browser.
+- Opening a folder that isn't a repository offers to initialize one.
+- `gg annotations` lists, shows, exports and replies to notes from the terminal; see `gg annotations --help`.
 
 ### Configuration
-GG uses `jj config`; `revset-aliases.immutable_heads()` is particularly important, as it determines how much history you can edit. GG has some additional settings of its own, with defaults and documentation [here](src/config/gg.toml). They can be set in your JJ `config.toml` like this:
-```
+
+GG+ reads `jj config`. `revset-aliases.immutable_heads()` matters most: it decides how much history you can edit. GG+'s own settings, with defaults and documentation, are in [`src/config/gg.toml`](src/config/gg.toml), and go in your jj `config.toml`:
+
+```toml
 [gg]
 default-mode = "gui"
 
@@ -39,24 +63,10 @@ default-mode = "gui"
 default-port = 0
 ```
 
-## Features
-GG doesn't require [JJ](https://jj-vcs.github.io/jj/latest/install-and-setup/) installed, but you'll want it for tasks GG doesn't cover. What it *does* cover:
-- Use the left pane to query and browse the log. Click to select revisions, shift-click for multiple selection, double-click to edit (if mutable) or create a new child (if immutable).
-- Use the right pane to inspect and edit revisions - set descriptions, issue commands, view their parents and changes.
-- Drag revisions around to rebase them; move them into or out of a revision's parents to add merges and move entire subtrees. Or just abandon them entirely.
-- Drag files around to squash them into new revisions or throw away changes (restoring from parents).
-- Drag bookmarks around to set or delete them. 
-- Right click on any of the above for more contextual actions.
-- Push and fetch git changes using the bottom bar.
-- View diffs or resolve conflicts in an external tool (if you have one configured). 
-- Undo anything with ⟲ in the bottom right corner.
+## Development
 
-More detail is available in [the changelog](CHANGELOG.md).
+Clone the repository, then `nix develop`, `just setup` and `just dev` for the desktop app with hot reload; `just build` makes a release binary in `target/release/gg`. [Development](doc/DEVELOPMENT.md) covers browser iteration, tests and builds; [`AGENTS.md`](AGENTS.md) covers architecture and conventions; [`doc/specs/`](doc/specs) has the specs for surfaces, lines, colour vision and annotations.
 
-### Future Features
-There's no roadmap as such, but items on [the to-do list](doc/TODO.md) may or may not be implemented in future.
+## License
 
-### Known Issues
-GG is lightly maintained and may have bugs. In theory it can't corrupt a repository thanks to the operation log, but it never hurts to make backups. 
-
-If your repo is "too large" some features will be disabled for performance. See [the default config](src/config/gg.toml) for details.
+Apache 2.0, like upstream. See [LICENSE](LICENSE).
