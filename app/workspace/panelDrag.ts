@@ -48,10 +48,11 @@ function landingAt(x: number, y: number, id: PanelId): Landing | null {
     let placement = append ? "tab-end" : rtl && edge === "left" ? "right" : rtl && edge === "right" ? "left" : edge;
     let next = movePanel(root, id, target, placement);
     let rect = surface.getBoundingClientRect(), style = getComputedStyle(surface);
-    // views are tiles inside the dock's padding, split by a gutter rather than a hairline
-    let start = parseFloat(style.paddingLeft) || 0, end = parseFloat(style.paddingRight) || 0;
+    // views fill the dock inside its edge seams, split by a hairline gutter
+    let start = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.borderLeftWidth) || 0), end = (parseFloat(style.paddingRight) || 0) + (parseFloat(style.borderRightWidth) || 0);
+    let top = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.borderTopWidth) || 0), bottom = (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0);
     let gutter = parseFloat(style.getPropertyValue("--dock-gutter")) || 1;
-    let bounds = panelBounds(next, id, { x: rect.left + start, y: rect.top, width: rect.width - start - end, height: rect.height }, rtl, gutter);
+    let bounds = panelBounds(next, id, { x: rect.left + start, y: rect.top + top, width: rect.width - start - end, height: rect.height - top - bottom }, rtl, gutter);
     return bounds ? { target, edge, ...bounds, placement } : null;
 }
 

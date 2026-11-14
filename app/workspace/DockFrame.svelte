@@ -140,26 +140,29 @@
 <style>
     .split, .tabs { height: 100%; min-width: 0; min-height: 0; }
     .split { display: grid; }
-    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--view-radius); background: var(--surface); }
+    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; border-radius: var(--view-radius); background: var(--surface); }
+    /* the focused view lifts above its neighbours so its trace can cover the seams around it */
+    .tabs:focus-within { z-index: 3; }
     .tabs:focus { outline: none; }
-    /* the whole view, title bar included, so no gutter or padding breaks the edge */
-    .tabs::after { content: ""; position: absolute; inset: 0; z-index: 10; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--view-edge); transition: box-shadow var(--motion-feedback) ease-out; }
+    /* seams draw the idle edges; the focused view traces its edge on top of them rather than beside them,
+       so it reads as one line. inset -1px reaches the seam pixel on every side */
+    .tabs::after { content: ""; position: absolute; inset: -1px; z-index: 10; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow var(--motion-feedback) ease-out; }
     .tabs:focus-within::after { box-shadow: inset 0 0 0 1px var(--view-focus-ring); }
     @media (prefers-reduced-motion: reduce) { .tabs::after { transition: none; } }
     .stack { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
     .panel-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
     .panel-body[hidden] { display: none; }
     .panel-body > :global(*) { flex: 1; min-height: 0; min-width: 0; }
-    .separator { position: relative; z-index: 2; margin: 0; padding: 0; border: 0; background: transparent; touch-action: none; user-select: none; }
+    .separator { position: relative; z-index: 4; margin: 0; padding: 0; border: 0; background: transparent; touch-action: none; user-select: none; }
     .row > .separator { cursor: col-resize; }
     .split:not(.row) > .separator { cursor: row-resize; }
     .separator::before { content: ""; position: absolute; }
     .row > .separator::before { inset-block: 0; inset-inline: -5px; }
     .split:not(.row) > .separator::before { inset-inline: 0; inset-block: -5px; }
-    /* the gutter between tiles is the handle; a centred line appears only while it is in use */
+    /* the seam is the dock showing through this gap, and the handle above it; a 2px line marks it in use */
     .separator::after { content: ""; position: absolute; border-radius: var(--radius-sm); background: transparent; pointer-events: none; transition: background var(--motion-feedback) ease-out; }
-    .row > .separator::after { inset-block: var(--view-radius); inset-inline-start: calc(50% - 1px); width: 2px; }
-    .split:not(.row) > .separator::after { inset-inline: var(--view-radius); inset-block-start: calc(50% - 1px); height: 2px; }
+    .row > .separator::after { inset-block: 0; inset-inline-start: calc(50% - 1px); width: 2px; }
+    .split:not(.row) > .separator::after { inset-inline: 0; inset-block-start: calc(50% - 1px); height: 2px; }
     .separator:focus-visible { outline: none; }
     .separator.dragging::after, .separator:focus-visible::after { background: var(--accent); }
     @media (hover: hover) { .separator:hover::after { background: var(--control-hover); } }

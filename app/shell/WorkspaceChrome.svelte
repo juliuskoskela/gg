@@ -135,7 +135,6 @@
     /* app chrome shares one ground without rules; views are tiles on it and carry their own edges.
        the leading inset matches the navigation gutter, so the workspace name sits in the navigation's icon column */
     .workspace-topbar { padding-block-start: max(var(--space-1), env(safe-area-inset-top)); padding-inline-start: max(var(--space-2), env(safe-area-inset-left)); }
-    .workspace-frame:not(.with-navigation) .workspace-sheet :global(.workspace-dock:not(.compact)) { padding-inline-start: var(--dock-gutter); }
     .with-navigation .workspace-footer { grid-column: 2; }
     .workspace-sheet, .workspace-content { display: grid; grid-template-rows: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; background: var(--ground); }
     .workspace-sheet.has-error { grid-template-rows: auto minmax(0, 1fr); }

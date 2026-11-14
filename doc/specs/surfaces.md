@@ -10,10 +10,10 @@ The interface is built from a few planes, each a fixed lightness step from the n
 | --- | --- | --- |
 | Ground | `--ground` | app chrome: topbar, navigation, repository footer |
 | View bar | `--panel-header-bg` (60% surface, 40% ground) | a view's title bar, toolbars and footer |
-| Tile | `--surface` | a view's content |
+| View | `--surface` | a view's content |
 | Raised | `--raised`, `--popover-surface` | dialogs, menus, sheets, palettes |
 
-Each desktop view is a tile on the ground, with rounded corners and a quiet 1px edge (`--view-edge`, 7% text over the surface). The first tab pill and the last tool sit `--view-bar-inset` (6px) from the tile's sides and top, and the tile radius is that inset plus the pill radius, so their corners nest; labels and icon glyphs still land on the 12px content inset through the pills' padding. Tiles sit `--dock-gutter` apart, and the gutter is the resize handle. The focused tile brightens its edge (`--view-focus-ring`). Inside a view, bars and content differ by plane, and where they meet a hairline (`--view-inner-rule`, 4% text) marks the seam well below the tile's edge. A view's header block (title bar plus toolbar) has one such rule, beneath the toolbar. On a phone the single view fills the screen without a tile.
+Desktop views share one square-cornered sheet. Neighbouring views meet on a 1px seam (`--dock-gutter`) in `--view-edge` (12% text over the surface), and the seam is the resize handle. The same hairline edges the sheet where it meets the app chrome: the topbar, the navigation rail and the footer; the sheet runs to the window's trailing edge. Views draw no edge of their own at rest. The focused view traces its whole edge over the seams in `--view-focus-ring` (32% text). The first tab pill and the last tool sit `--view-bar-inset` (6px) from the view's sides and top; labels and icon glyphs still land on the 12px content inset through the pills' padding. Title bars share one height, so across a row of views they read as one band broken by seams. Inside a view, bars and content differ by plane, and where they meet a hairline (`--view-inner-rule`, 4% text) marks the edge well below the seam. A view's header block (title bar plus toolbar) has one such rule, beneath the toolbar. On a phone the single view fills the screen without a seam.
 
 | L (OKLCH) | Ground | Tile | Raised | Input | Popover |
 | --- | --- | --- | --- | --- | --- |

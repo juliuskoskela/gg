@@ -77,7 +77,7 @@ describe("shared panel chrome", () => {
         expect(await ctx.page.locator(".dock-drag-ghost").count()).toBe(0);
     });
 
-    it("separates title bars by lightness and a faint inner rule, and traces the whole focused view", async () => {
+    it("separates title bars by lightness and a faint inner rule, splits views on a seam, and traces the whole focused view", async () => {
         await ctx.page.setViewportSize({ width: 1440, height: 960 });
         await ctx.page.goto(`${url}/?inspect=main`);
         await ctx.page.evaluate(() => {
@@ -107,9 +107,11 @@ describe("shared panel chrome", () => {
             let ring = getComputedStyle(element, "::after"), view = element.getBoundingClientRect(), title = element.querySelector(".panel-view-top")!.getBoundingClientRect();
             return { shadow: ring.boxShadow, inset: ring.inset, titleInside: title.top === view.top };
         });
-        // every view is a tile with its own edge; the focused one traces it more strongly
-        let resting = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-edge)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
-        let blank = (shadow: string) => shadow.includes(resting);
+        // views meet on one seam in the edge colour; only the focused view traces its own edge, over the seams
+        let seam = await ctx.page.getByRole("separator", { name: "Resize panels", exact: true }).first().evaluate(element => { let dock = element.closest(".workspace-dock")!; return { width: element.getBoundingClientRect().width, color: getComputedStyle(dock).backgroundColor }; });
+        expect(seam).toEqual({ width: 1, color: edgeColor });
+        let focusColor = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-focus-ring)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
+        let blank = (shadow: string) => !shadow.includes(focusColor);
         let point = (id: string, x: number, y: number) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate((element, [x, y]) => { let r = element.getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }, [x, y]);
         // blank title bar space ignores the pointer, as a real click finds it
         let title = await point("diff", 300, 4);
@@ -117,7 +119,8 @@ describe("shared panel chrome", () => {
         await expect.poll(async () => blank((await edge("diff")).shadow)).toBe(false);
         let diff = await edge("diff");
         expect(blank(diff.shadow)).toBe(false);
-        expect(diff.inset).toBe("0px");
+        // the trace lies on the seams around the view rather than beside them
+        expect(diff.inset).toBe("-1px");
         expect(diff.titleInside).toBe(true);
         expect(blank((await edge("timeline")).shadow)).toBe(true);
         let empty = await point("timeline", 200, 800);

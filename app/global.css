@@ -119,10 +119,10 @@
   --sheet-half: 50%;
   --sheet-handle-width: 32px;
   --sheet-handle-height: 4px;
-  --radius-sm: 4px;
-  --radius-control: 6px;
-  --radius-surface: 8px;
-  --radius-popover: 8px;
+  --radius-sm: 3px;
+  --radius-control: 4px;
+  --radius-surface: 6px;
+  --radius-popover: 6px;
   --control-height: 32px;
   --file-row-height: max(24px, calc(var(--type-ui) * 1.5 + 4px));
   --control-padding-inline: 8px;
@@ -193,16 +193,18 @@
   --active-hover: color-mix(in srgb, var(--text) 16%, var(--surface));
   --border: color-mix(in srgb, var(--text) 16%, var(--surface));
   --rule: color-mix(in srgb, var(--text) 7%, var(--surface));
-  /* rules mark the edges of views only; inside a view, surfaces step in lightness instead.
-     the view holding focus traces its whole edge a few steps above the others. */
-  --view-edge: color-mix(in srgb, var(--text) 7%, var(--surface));
+  /* views share one sheet split by hairline seams; inside a view, surfaces step in lightness instead.
+     the view holding focus traces its whole edge a few steps above the seams. */
+  /* the seam carries all structure between views, so it needs to read on its own */
+  --view-edge: color-mix(in srgb, var(--text) 12%, var(--surface));
   /* inside a view, bars meet content on a hairline well below the view's own edge */
   --view-inner-rule: color-mix(in srgb, var(--text) 4%, var(--surface));
-  --view-focus-ring: color-mix(in srgb, var(--text) 20%, var(--surface));
-  /* a view's first pill and last tool sit this far from its sides and top; the corner nests around them */
+  --view-focus-ring: color-mix(in srgb, var(--text) 32%, var(--surface));
+  /* a view's first pill and last tool sit this far from its sides and top */
   --view-bar-inset: 6px;
-  --view-radius: calc(var(--radius-control) + var(--view-bar-inset));
-  --dock-gutter: var(--space-2);
+  /* views meet square on a seam, so the gutter is the hairline itself */
+  --view-radius: 0px;
+  --dock-gutter: 1px;
   --control: var(--muted);
   --control-border: color-mix(in srgb, var(--text) 25%, var(--input-surface));
   --input-border: var(--control-border);
