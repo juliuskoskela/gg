@@ -156,7 +156,7 @@
     .remote-select :global(.select-trigger) { min-height: 0; height: 100%; padding-block: 0; }
     .repository-toolbar :global(button:not(.select-trigger)) { font: var(--font-body); }
     .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button) { height: var(--control-height); }
-    .drag-bar { position: fixed; inset-block-end: calc(var(--repository-footer-height, 40px) + env(safe-area-inset-bottom) + 16px); inset-inline: 16px; margin-inline: auto; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-surface); box-shadow: var(--shadow-float); z-index: 60; font: var(--font-body); pointer-events: none; }
+    .drag-bar { position: fixed; inset-block-end: calc(var(--repository-footer-height, 40px) + env(safe-area-inset-bottom) + 16px); inset-inline: 16px; margin-inline: auto; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border: var(--line-width) solid var(--line-popover); background: var(--surface); border-radius: var(--radius-surface); box-shadow: var(--shadow-float); z-index: 60; font: var(--font-body); pointer-events: none; }
     .drag-bar.target { color: var(--text); }
     .drag-bar.maybe { color: var(--warning); }
     @media (max-width: 1100px) { .action-label { display: none; } }

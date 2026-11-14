@@ -34,7 +34,7 @@
         display: flex; flex: none; align-items: center; gap: var(--panel-gap); min-width: 0;
         min-height: var(--panel-toolbar-height); padding: var(--panel-bar-padding) var(--panel-inset);
         scrollbar-width: none; overflow-x: auto; overscroll-behavior-inline: contain; scroll-padding-inline: var(--panel-inset);
-        background: var(--panel-toolbar-bg); border-block-end: 1px solid var(--view-inner-rule); color: var(--text);
+        background: var(--panel-toolbar-bg); border-block-end: var(--line-width) solid var(--line-rule); color: var(--text);
         pointer-events: auto;
         --control-height: var(--panel-control-size);
         --control-padding-block: 3px;
@@ -42,7 +42,6 @@
         --active: color-mix(in srgb, var(--text) 15%, var(--panel-toolbar-bg));
         --active-hover: color-mix(in srgb, var(--text) 19%, var(--panel-toolbar-bg));
         --control-pressed: color-mix(in srgb, var(--text) 23%, var(--panel-toolbar-bg));
-        --border: color-mix(in srgb, var(--text) 14%, var(--panel-toolbar-bg));
         --input-surface: var(--panel-toolbar-bg);
         --panel-tools-wrap: nowrap;
         --panel-tools-justify: flex-end;

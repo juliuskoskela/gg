@@ -172,7 +172,7 @@
     }
 
     .tree-drop { inline-size: 100%; }
-    .tree-drop.target { outline: 2px solid var(--text); outline-offset: -2px; border-radius: var(--radius-control); color: var(--text); }
+    .tree-drop.target { outline: var(--indicator-width) solid var(--accent); outline-offset: calc(-1 * var(--indicator-width)); border-radius: var(--radius-control); color: var(--text); }
     .tree-drop .tool :global(button) { min-height: var(--file-row-height); min-width: var(--file-row-height); padding-block: 0; }
 
     .name {
@@ -197,8 +197,8 @@
     .layout.wrap .name { white-space: normal; overflow-wrap: anywhere; }
 
     .layout.target {
-        outline: 2px solid var(--text);
-        outline-offset: -2px;
+        outline: var(--indicator-width) solid var(--accent);
+        outline-offset: calc(-1 * var(--indicator-width));
         border-radius: var(--radius-control);
         color: var(--text);
     }

@@ -1,7 +1,7 @@
 /* one rhythm for the detail pane: siblings sit a group apart, sections a section apart behind a faint hairline */
 .history-browser .history-detail > * + * { margin-block-start: var(--gap-group); }
 .history-browser .history-detail > * + .history-section { margin-block-start: var(--gap-section); }
-.history-browser .history-section { min-width: 0; padding-block-start: var(--gap-section); border-block-start: 1px solid var(--view-inner-rule); }
+.history-browser .history-section { min-width: 0; padding-block-start: var(--gap-section); border-block-start: var(--line-width) solid var(--line-rule); }
 .history-browser .history-section > * + * { margin-block-start: var(--gap-group); }
 .history-browser .history-section > .section-heading + * { margin-block-start: 0; }
 .history-browser .history-copy { max-width: var(--prose-measure); margin: 0; color: var(--muted); font: var(--font-body); overflow-wrap: anywhere; }

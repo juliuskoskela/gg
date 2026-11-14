@@ -120,7 +120,7 @@
     .description-list { display: grid; gap: var(--gap-row); }
     .description-list p { font: var(--font-body); }
     .description-list .undescribed { color: var(--muted); }
-    .overview-content > :global(.revision-metadata) { margin-block-start: calc(var(--gap-section) - var(--gap-group)); padding-block-start: var(--gap-section); border-block-start: 1px solid var(--rule); }
+    .overview-content > :global(.revision-metadata) { margin-block-start: calc(var(--gap-section) - var(--gap-group)); padding-block-start: var(--gap-section); border-block-start: var(--line-width) solid var(--line-rule); }
     .description-editor { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .description-editor :global(.description-field) { min-height: 144px; }
     .description-commands { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }

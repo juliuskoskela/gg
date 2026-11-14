@@ -210,8 +210,8 @@
     .ids { grid-area: id; display: inline-flex; align-items: baseline; gap: 8px; }
     .commit-id :global(.id) { color: var(--muted); }
     .layout.target {
-        outline: 2px solid var(--text);
-        outline-offset: -2px;
+        outline: var(--indicator-width) solid var(--accent);
+        outline-offset: calc(-1 * var(--indicator-width));
         border-radius: var(--radius-control);
         color: var(--text);
     }

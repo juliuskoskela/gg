@@ -46,27 +46,27 @@
 
 <style>
     .targets { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
-    .target { position: relative; display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 24px; padding: 0 8px 0 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font-size: var(--type-caption); --icon-size: 12px; }
+    .target { position: relative; display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 24px; padding: 0 8px 0 6px; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); font-size: var(--type-caption); --icon-size: 12px; }
     .target > :global(svg) { flex: none; color: var(--muted); }
     .label { min-width: 0; overflow: hidden; font: var(--font-id); text-overflow: ellipsis; white-space: nowrap; }
     .change, .side { flex: none; color: var(--muted); font: 11px/1 var(--stack-code); }
     .relocated { font: var(--font-label); color: var(--muted); }
     .warning { display: inline-flex; color: var(--warning); --icon-size: 12px; }
-    .target.warned { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+    .target.warned { border-color: var(--warning); }
     /* revealed on hover, but always reachable by keyboard and screen readers */
-    .remove { display: grid; place-items: center; width: 18px; height: 18px; margin: 0 -4px 0 0; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; --icon-size: 12px; }
+    .remove { display: grid; place-items: center; width: 18px; height: 18px; margin: 0 -4px 0 0; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 12px; }
     @media (hover: hover) and (pointer: fine) {
         .remove { width: 0; margin-inline-end: -5px; opacity: 0; overflow: hidden; }
         .target:hover .remove, .target:focus-within .remove { width: 18px; margin-inline-end: -4px; opacity: 1; }
     }
-    @media (hover: none), (pointer: coarse) { .remove { width: 32px; height: 32px; margin-inline-end: -8px; } .target { height: 32px; border-radius: 16px; } }
+    @media (hover: none), (pointer: coarse) { .remove { width: 32px; height: 32px; margin-inline-end: -8px; } .target { height: 32px; } }
     @media (hover: hover) { .remove:hover { background: var(--interaction-hover); color: var(--text); } }
     .remove:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -1px; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     /* answers Add to: the new place lights up once, so you can see where it went */
     @media (prefers-reduced-motion: no-preference) {
         .target.added { animation: added 1.4s ease-out; }
-        @keyframes added { 0%, 30% { border-color: var(--text); background: var(--interaction-selected); } }
+        @keyframes added { 0%, 30% { border-color: var(--focus-ring); background: var(--interaction-selected); } }
     }
-    .target.added { border-color: color-mix(in srgb, var(--text) 50%, var(--border)); }
+    .target.added { border-color: var(--field-focus-border); }
 </style>

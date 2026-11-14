@@ -144,8 +144,8 @@
 
     path.target { stroke: var(--text-strong); stroke-width: 2; }
     .backdrop.target {
-        outline: 2px solid var(--text);
-        outline-offset: -2px;
+        outline: var(--indicator-width) solid var(--accent);
+        outline-offset: calc(-1 * var(--indicator-width));
     }
 
     @media (forced-colors: active) { path { stroke: GrayText; } }

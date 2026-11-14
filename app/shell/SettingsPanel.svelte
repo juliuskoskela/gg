@@ -123,7 +123,7 @@
     .settings-panel { min-width: 0; min-height: 0; height: 100%; overflow: auto; overscroll-behavior: contain; scroll-padding-block: 20px; pointer-events: auto; color: var(--text); background: var(--surface); }
     .settings-content { max-width: 720px; padding: 8px 20px 24px; }
     section { padding-block: 20px; }
-    section + section { border-block-start: 1px solid var(--rule); }
+    section + section { border-block-start: var(--line-width) solid var(--line-rule); }
     h2 { margin: 0 0 var(--gap-group); color: var(--text-strong); font: var(--font-heading); }
     h3 { margin: 0; color: var(--text); font: var(--font-emphasis); }
     p { max-width: var(--prose-measure); margin: 2px 0 0; color: var(--muted); font: var(--font-label); overflow-wrap: anywhere; }
@@ -135,7 +135,7 @@
     .appearance-default button { border-color: transparent; padding-inline: 0; color: var(--muted); font-size: var(--type-caption); text-align: start; white-space: normal; }
     .setting-copy { flex: 1 1 200px; }
     .theme-choices, .zoom-controls { display: flex; align-items: center; gap: 4px; }
-    button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); min-width: var(--control-height); padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); background: transparent; font-size: var(--type-ui); cursor: pointer; }
+    button { display: inline-flex; align-items: center; justify-content: center; gap: var(--control-gap); min-height: var(--control-height); min-width: var(--control-height); padding: 5px 10px; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-control); color: var(--text); background: transparent; font-size: var(--type-ui); cursor: pointer; }
     button[aria-pressed="true"] { background: var(--interaction-selected, var(--selection-bg)); color: var(--text); }
     @media (hover: hover) { button:not(:disabled):hover { background: var(--interaction-hover, var(--hover)); } button[aria-pressed="true"]:hover { background: var(--interaction-selected-hover, var(--selection-hover)); } }
     button:not(:disabled):active { background: var(--interaction-pressed, var(--control-pressed)); }
@@ -148,7 +148,7 @@
     .toolbar-sides { display: grid; gap: var(--gap-group); margin-block-start: var(--gap-group); }
     .toolbar-side { display: grid; gap: var(--gap-row); min-width: 0; }
     .toolbar-list { display: grid; gap: var(--gap-row); margin: 0; padding: 0; list-style: none; min-width: 0; }
-    .toolbar-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2); border: 1px solid var(--rule); border-radius: var(--radius-control); min-width: 0; }
+    .toolbar-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2); border: var(--line-width) solid var(--line-control); border-radius: var(--radius-control); min-width: 0; }
     .toolbar-item-name { display: inline-flex; align-items: center; gap: var(--control-gap); min-width: 0; font: var(--font-body); }
     .toolbar-item-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .toolbar-item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-row); }

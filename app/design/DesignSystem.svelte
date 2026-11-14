@@ -135,8 +135,8 @@
     .spacing-rules > div { display: grid; gap: 2px; }
     .spacing-rules dt { color: var(--muted); }
     .spacing-rules dd { margin: 0; color: var(--text); font-variant-numeric: tabular-nums; }
-    .workspace-example { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 300px; border: 1px solid var(--rule); background: var(--surface); }
-    .navigation-example { border-inline-end: 1px solid var(--rule); background: var(--ground); }
+    .workspace-example { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 300px; border: var(--line-width) solid var(--line-rule); background: var(--surface); }
+    .navigation-example { border-inline-end: var(--line-width) solid var(--line-rule); background: var(--ground); }
     .navigation-content { padding: 8px; }
     .reader-example { min-width: 0; }
     [role="tabpanel"][hidden] { display: none; }
@@ -145,15 +145,15 @@
     .operation-example { padding: 16px; }
     .description-specimen { margin-block-start: 32px; }
     .description-specimen > p { margin-block: 6px 16px; color: var(--muted); }
-    .description-sample { container: overview / inline-size; border: 1px solid var(--rule); background: var(--surface); }
+    .description-sample { container: overview / inline-size; border: var(--line-width) solid var(--line-rule); background: var(--surface); }
     .specimens { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; margin-block: 32px; }
     .specimens section > p { margin-block: 6px 16px; max-width: 54ch; }
-    .sample { border: 1px solid var(--rule); background: var(--surface); }
+    .sample { border: var(--line-width) solid var(--line-rule); background: var(--surface); }
     .timeline-example { display: grid; height: 220px; }
     .timeline-example-rows { display: grid; align-content: start; gap: 8px; padding-block: 8px; }
     .example-file-navigation { display: flex; align-items: center; gap: var(--panel-gap); min-height: var(--control-height); }
     .timeline-example-fields { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: var(--panel-gap); }
-    .tools-specimen { max-height: 440px; overflow: auto; border: 1px solid var(--rule); pointer-events: auto; }
+    .tools-specimen { max-height: 440px; overflow: auto; border: var(--line-width) solid var(--line-rule); pointer-events: auto; }
     .field-specimens { display: flex; flex-direction: column; align-items: start; gap: 12px; }
     .field-specimens > :global(input), .field-specimens > :global(textarea) { width: 100%; }
     .control-example { display: flex; align-items: center; flex-wrap: wrap; gap: var(--panel-gap); }
@@ -161,8 +161,8 @@
     .row-example button { border: 0; background: transparent; text-align: start; }
     .swatches { display: flex; flex-wrap: wrap; gap: 16px; }
     .swatches > div { display: grid; gap: 6px; }
-    .swatches span { width: 48px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
-    @media (max-width: 700px) { .system-page { padding: 20px 16px; } .page-heading { align-items: start; } .page-heading button { flex-shrink: 0; } .workspace-example { grid-template-columns: minmax(0, 1fr); } .navigation-example { border-inline-end: 0; border-block-end: 1px solid var(--rule); } .specimens { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
+    .swatches span { width: 48px; height: 32px; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-sm); }
+    @media (max-width: 700px) { .system-page { padding: 20px 16px; } .page-heading { align-items: start; } .page-heading button { flex-shrink: 0; } .workspace-example { grid-template-columns: minmax(0, 1fr); } .navigation-example { border-inline-end: 0; border-block-end: var(--line-width) solid var(--line-rule); } .specimens { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
     .type-roles { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; gap: 8px 24px; margin: 0; }
     .type-roles dt { color: var(--muted); font: var(--font-id); }
     .type-roles dd { margin: 0; color: var(--text); }

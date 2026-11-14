@@ -24,7 +24,7 @@ toolbar.textContent = "Show all context";
 shell.append(toolbar);
 let reader = document.createElement("div");
 reader.id = "reader";
-reader.style.cssText = "height:240px;overflow:auto;border:1px solid var(--border);margin-top:60px";
+reader.style.cssText = "height:240px;overflow:auto;border:var(--line-width) solid var(--line-control);margin-top:60px";
 shell.append(reader);
 let loads = 0;
 let component = mount(DiffViewer, { target: reader, props: { change, themeOverride: theme, loadFullFiles: async () => {

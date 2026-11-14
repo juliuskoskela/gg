@@ -29,6 +29,6 @@
 </div>
 
 <style>
-    .history-colors { padding: 8px; background: var(--surface); border: 1px solid var(--rule); }
+    .history-colors { padding: 8px; background: var(--surface); border: var(--line-width) solid var(--line-rule); }
     .color-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; }
 </style>

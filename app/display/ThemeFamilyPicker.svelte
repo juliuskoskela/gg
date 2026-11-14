@@ -16,13 +16,15 @@
 <style>
     @import "../controls/action.css";
     .family-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; pointer-events: auto; }
-    button { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-width: 0; padding: 6px; border: 1px solid var(--rule); border-radius: var(--radius-control); white-space: normal; text-align: start; }
+    button { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-width: 0; padding: 6px; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-control); white-space: normal; text-align: start; }
     button[aria-pressed=true] { border-color: var(--field-focus-border); background: var(--interaction-selected); }
-    .preview { display: grid; grid-template-columns: 11% 57% 32%; height: 66px; overflow: hidden; background: var(--palette-ground); border-radius: 3px; pointer-events: none; }
-    .preview-rail { background: var(--palette-ground); border-inline-end: 1px solid color-mix(in srgb, var(--palette-text) 10%, transparent); }
+    .preview { display: grid; grid-template-columns: 11% 57% 32%; height: 66px; overflow: hidden; background: var(--palette-ground); border-radius: var(--radius-sm); pointer-events: none;
+        /* the preview draws the seam of the family it shows, in that family's own palette */
+        --line-seam: color-mix(in srgb, var(--palette-text) 10%, transparent); }
+    .preview-rail { background: var(--palette-ground); border-inline-end: var(--line-width) solid var(--line-seam); }
     .preview-document { display: flex; flex-direction: column; gap: 5px; padding: 11px 9px; background: var(--palette-surface); }
     .preview-note { display: flex; flex-direction: column; gap: 5px; padding: 11px 6px; background: var(--palette-raised); }
-    i { display: block; width: 80%; height: 3px; border-radius: 2px; background: var(--palette-muted); opacity: .65; }
+    i { display: block; width: 80%; height: 3px; border-radius: var(--radius-sm); background: var(--palette-muted); opacity: .65; }
     .preview-document i:first-child { width: 60%; background: var(--palette-accent); opacity: 1; }
     .preview-document i:nth-child(3) { width: 60%; }
     .preview-note i:last-child { width: 60%; }

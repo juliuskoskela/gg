@@ -88,7 +88,7 @@
     </dialog>
 {/if}
 <style>
-    .palette { position: fixed; inset: min(12vh, 90px) 16px auto; width: min(560px, calc(100% - 32px)); max-width: none; max-height: min(70dvh, 640px); box-sizing: border-box; margin: 0 auto; padding: 0; background: var(--raised); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-surface); box-shadow: var(--shadow-overlay); pointer-events: auto; }
+    .palette { position: fixed; inset: min(12vh, 90px) 16px auto; width: min(560px, calc(100% - 32px)); max-width: none; max-height: min(70dvh, 640px); box-sizing: border-box; margin: 0 auto; padding: 0; background: var(--raised); color: var(--text); border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-surface); box-shadow: var(--shadow-overlay); pointer-events: auto; }
     .palette::backdrop { background: var(--scrim); }
     .content { display: flex; flex-direction: column; max-height: min(70dvh, 640px); padding: 12px; pointer-events: auto; }
     .heading { display: flex; align-items: center; justify-content: space-between; color: var(--text-strong); font: var(--font-heading); }

@@ -7,7 +7,7 @@ let component = css => `<div></div><style>${css}</style>`;
 test("semantic roles and resets pass, including color mixing and geometry", () => {
     assert.deepEqual(inspectSource("app/Test.svelte", component(`
         div { font: var(--font-body); color: color-mix(in srgb, var(--negative) 20%, transparent);
-          border: 1px solid var(--red); width: 16px; padding: 0; gap: var(--gap-row); margin-inline: auto; }
+          border: var(--line-width) solid var(--line-rule); width: 16px; padding: 0; gap: var(--gap-row); margin-inline: auto; }
     `)), []);
 });
 
@@ -18,7 +18,7 @@ test("rejects actual typography, colors and rhythm literals, not CSS comments or
         color: red; background: url("red.svg#fff"); border: 1px solid #fff;
         box-shadow: 0 0 2px rgb(0 0 0 / 20%); padding: 0 12px; row-gap: 4px; }
     `));
-    assert.deepEqual(found.map(item => item.rule), ["typography", "typography", "typography", "typography", "color", "color", "color", "spacing", "spacing"]);
+    assert.deepEqual(found.map(item => item.rule), ["typography", "typography", "typography", "typography", "color", "color", "line", "color", "spacing", "spacing"]);
     assert.equal(found.at(-1).scope, "CSS div");
 });
 
@@ -113,5 +113,54 @@ test("conditional and fallback script styles inspect every statically visible br
         node.style.setProperty('border-color', ok ? '#111' : '#222');
         let styles = {font: ok ? 'var(--font-body)' : 'var(--font-label)'};`;
     let found = inspectSource("app/Test.ts", source);
-    assert.deepEqual(found.map(item => item.value), ["red", "blue", "orange", "#111", "#222"]);
+    assert.deepEqual(found.map(item => item.value), ["red", "blue", "orange", "#111", "#111", "#222", "#222"]);
+});
+
+test("lines are one width in a line or state colour", () => {
+    for (let [property, value] of [
+        ["border", "var(--line-width) solid var(--line-rule)"], ["border-block-end", "var(--line-width) solid var(--line-popover)"],
+        ["outline", "var(--focus-width) solid var(--focus-ring)"], ["outline", "var(--indicator-width) solid var(--accent)"],
+        ["border", "0"], ["border", "none"], ["border", "var(--line-width) solid transparent"], ["border-color", "currentColor"],
+        ["border-color", "var(--negative)"], ["border-inline-end-width", "var(--line-width)"], ["outline", "var(--line-width) solid Highlight"],
+        ["border-style", "dashed"], ["border", "inherit"],
+    ]) assert.deepEqual(rulesFor(property, value, "app/Test.svelte"), [], `${property}: ${value}`);
+    for (let [property, value] of [
+        ["border", "1px solid var(--line-rule)"], ["border-block-start", "var(--line-width) solid var(--border)"], ["outline", "2px solid var(--accent)"],
+        ["border", "1.5px solid color-mix(in srgb, var(--text) 38%, transparent)"], ["border-width", "0 0 1.75px"], ["border-color", "var(--text)"],
+        ["border", "var(--hairline) solid var(--line-rule)"], ["border", "var(--line-width, 1px) solid var(--line-rule)"], ["outline-width", "thin"],
+    ]) assert.deepEqual(rulesFor(property, value, "app/Test.svelte"), ["line"], `${property}: ${value}`);
+});
+
+test("shadows with blur pass; a shadow without blur is a line", () => {
+    for (let value of ["var(--shadow-overlay)", "0 4px 12px var(--scrim)", "none"]) assert.deepEqual(rulesFor("box-shadow", value, "app/Test.svelte"), [], value);
+    for (let value of ["inset 0 0 0 1px var(--line-control)", "0 -1px 0 var(--line-rule)", "0 1px var(--line-rule)", "0 0 0 var(--line-width) var(--accent)"]) {
+        assert.deepEqual(rulesFor("box-shadow", value, "app/Test.svelte"), ["line"], value);
+    }
+});
+
+test("radii come from tokens", () => {
+    for (let value of ["var(--radius-control)", "0", "50%", "var(--sheet-radius) var(--sheet-radius) 0 0", "var(--radius-pill)"]) assert.deepEqual(rulesFor("border-radius", value, "app/Test.svelte"), [], value);
+    for (let value of ["4px", "999px", "var(--sheet-radius, 12px)", "1em"]) assert.deepEqual(rulesFor("border-radius", value, "app/Test.svelte"), ["radius"], value);
+    assert.deepEqual(rulesFor("border-top-left-radius", "2px", "app/Test.svelte"), ["radius"]);
+});
+
+test("a thin pseudo-element strip with a background is a line, a sized helper is not", () => {
+    let found = inspectSource("app/Test.svelte", component(`.a::after { content: ""; width: 1px; background: var(--line-rule); }
+        .b::before { content: ""; height: var(--line-width); background-color: var(--accent); }
+        .c::after { content: ""; width: 12px; height: 12px; background: var(--accent); }
+        .sr-only { width: 1px; height: 1px; overflow: hidden; }`));
+    assert.deepEqual(found.map(item => [item.rule, item.scope]), [["line", "CSS .a::after"], ["line", "CSS .b::before"]]);
+});
+
+test("line exceptions need a reason and cover one declaration", () => {
+    let found = inspectSource("app/Test.svelte", component(`.tick::after {
+      /* design-token-allow line: the tick is a glyph drawn with two borders */
+      border-width: 0 0 1.75px 1.75px; border-color: var(--text);
+    }`));
+    assert.deepEqual(found.map(item => item.property), ["border-color"]);
+});
+
+test("script styles cannot draw lines outside the system", () => {
+    let source = `let theme = { ".x": { borderTop: "1px solid var(--line-rule)", outline: "var(--line-width) solid var(--accent)", borderRadius: "4px" } };`;
+    assert.deepEqual(inspectSource("app/Test.ts", source).map(item => [item.rule, item.property]), [["line", "border-top"], ["radius", "border-radius"]]);
 });

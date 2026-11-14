@@ -47,8 +47,8 @@
 {/each}
 
 <style>
-    .menu-context { margin: 0 0 var(--space-1); padding: var(--space-1) var(--space-2); border-block-end: 1px solid var(--popover-rule); color: var(--muted); font: var(--font-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    hr { margin: var(--space-1) var(--space-2); border: 0; border-block-start: 1px solid var(--popover-rule); }
+    .menu-context { margin: 0 0 var(--space-1); padding: var(--space-1) var(--space-2); border-block-end: var(--line-width) solid var(--line-popover); color: var(--muted); font: var(--font-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    hr { margin: var(--space-1) var(--space-2); border: 0; border-block-start: var(--line-width) solid var(--line-popover); }
     .menu-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); width: 100%; min-height: var(--panel-control-size); padding: var(--space-1) var(--control-padding-inline); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: var(--font-body); text-align: start; cursor: pointer; outline: none; }
     .menu-item:disabled { color: var(--text-disabled); cursor: default; }
     .item-icon { display: inline-grid; place-items: center; flex: none; width: var(--space-4); color: var(--muted); --icon-size: 15px; }

@@ -117,6 +117,6 @@
 
 <style>
     .file-actions { position: relative; display: inline-flex; flex: none; }
-    .file-actions-dropdown { position: fixed; z-index: 80; min-width: 240px; max-width: min(380px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 0; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); color: var(--text); pointer-events: auto; }
+    .file-actions-dropdown { position: fixed; z-index: 80; min-width: 240px; max-width: min(380px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 0; padding: var(--space-1); border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); color: var(--text); pointer-events: auto; }
     .file-actions-dropdown:focus { outline: none; }
 </style>

@@ -69,10 +69,10 @@
     .pane.closed { visibility: hidden; }
     .pane.animating { transition: inline-size var(--motion-feedback) ease-out, block-size var(--motion-feedback) ease-out; }
     /* the seam sits on the pane's inner edge and runs end to end */
-    .left > .pane.present { border-inline-end: 1px solid var(--view-inner-rule); }
-    .right > .pane.present { border-inline-start: 1px solid var(--view-inner-rule); }
-    .top > .pane.present { border-block-end: 1px solid var(--view-inner-rule); }
-    .bottom > .pane.present { border-block-start: 1px solid var(--view-inner-rule); }
+    .left > .pane.present { border-inline-end: var(--line-width) solid var(--line-rule); }
+    .right > .pane.present { border-inline-start: var(--line-width) solid var(--line-rule); }
+    .top > .pane.present { border-block-end: var(--line-width) solid var(--line-rule); }
+    .bottom > .pane.present { border-block-start: var(--line-width) solid var(--line-rule); }
     .pane-body { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
     .pane-body > :global(*) { flex: 1; min-height: 0; }
     .content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }

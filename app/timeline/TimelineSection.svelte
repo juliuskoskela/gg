@@ -51,7 +51,7 @@
         min-height: var(--panel-toolbar-height);
         padding: 4px var(--pane-inset);
         background: var(--panel-header-bg);
-        border-block-end: 1px solid var(--view-inner-rule);
+        border-block-end: var(--line-width) solid var(--line-rule);
     }
 
     .timeline-section {

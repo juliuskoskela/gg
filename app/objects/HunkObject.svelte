@@ -54,8 +54,8 @@
 
     .target {
         color: var(--text);
-        outline: 2px solid var(--text);
-        outline-offset: -2px;
+        outline: var(--indicator-width) solid var(--accent);
+        outline-offset: calc(-1 * var(--indicator-width));
         border-radius: var(--radius-control);
     }
     @media (pointer: coarse), (max-width: 600px) {

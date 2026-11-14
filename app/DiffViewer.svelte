@@ -308,7 +308,7 @@
     .notice { padding: 12px; color: var(--muted); font-size: 13px; }
     .diff-viewer :global(.diff-fold) {
         display: flex; align-items: center; gap: 6px; width: max-content; max-width: calc(100% - 16px); min-height: 28px; padding: 4px 10px 4px 8px; margin: 2px 8px;
-        border: 0; border-radius: 4px; background: var(--raised); color: var(--muted);
+        border: 0; border-radius: var(--radius-control); background: var(--raised); color: var(--muted);
         font: var(--font-label); text-align: start; cursor: pointer; white-space: nowrap;
     }
     .diff-viewer :global(.diff-fold svg) { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

@@ -130,12 +130,12 @@
     /* desktop views share one sheet. the dock draws the seam against the topbar and navigation, and the views draw
        the rest, including the one against the footer. it doesn't clip, so a focused view's trace can cover its
        top and leading seams too. a phone shows one view edge to edge */
-    .workspace-dock:not(.compact) { box-sizing: border-box; overflow: visible; border-block-start: var(--hairline) solid var(--view-edge); border-inline-start: var(--hairline) solid var(--view-edge); }
+    .workspace-dock:not(.compact) { box-sizing: border-box; overflow: visible; border-block-start: var(--line-width) solid var(--line-seam); border-inline-start: var(--line-width) solid var(--line-seam); }
     .workspace-dock > :global(.split), .workspace-dock > :global(.tabs) { flex: 1; }
     .empty-dock { display: grid; align-content: center; justify-items: start; gap: 12px; height: 100%; padding: 24px; }
     .empty-dock p { margin: 0; color: var(--muted); font-size: 13px; }
     .empty-dock button { font-size: 13px; }
-    .empty-dock button { min-height: 32px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; }
+    .empty-dock button { min-height: 32px; padding: 5px 8px; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; }
     .panel-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
     .panel-body[hidden] { display: none; }
     .panel-body > :global(*) { flex: 1; min-height: 0; min-width: 0; }

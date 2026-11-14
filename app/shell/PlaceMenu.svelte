@@ -207,8 +207,8 @@
     .project-name { flex-shrink: 2; }
     .place-rule { flex: none; color: var(--muted); }
     .chevron { flex: none; margin-inline-start: 6px; color: var(--muted); }
-    .place-menu { position: absolute; inset-inline-start: 0; inset-block-start: calc(100% + 4px); z-index: 70; width: min(360px, calc(100vw - 24px)); max-height: min(640px, calc(100dvh - 80px)); overflow: auto; overscroll-behavior: contain; padding: 5px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
-    .menu-group { display: grid; gap: 2px; padding-block: 5px; border-block-start: 1px solid var(--rule); }
+    .place-menu { position: absolute; inset-inline-start: 0; inset-block-start: calc(100% + 4px); z-index: 70; width: min(360px, calc(100vw - 24px)); max-height: min(640px, calc(100dvh - 80px)); overflow: auto; overscroll-behavior: contain; padding: 5px; border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-control); background: var(--surface); }
+    .menu-group { display: grid; gap: 2px; padding-block: 5px; border-block-start: var(--line-width) solid var(--line-popover); }
     .place-menu button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 6px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font-size: var(--type-ui); text-align: start; cursor: pointer; }
     .place-menu button:disabled { color: var(--muted); cursor: default; }
     .place-menu button[aria-current="page"] { background: var(--interaction-selected, var(--hover)); }

@@ -94,7 +94,7 @@ describe("shared panel chrome", () => {
         expect(chrome.length).toBeGreaterThan(0);
         // one faint inner rule closes the whole header block, well below the view's own edge
         let luminance = (color: string) => { let [r, g, b] = color.match(/[\d.]+/g)!.map(Number); return .2126 * r + .7152 * g + .0722 * b; };
-        let edgeColor = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-edge)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
+        let edgeColor = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--line-seam)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
         for (let bar of chrome) {
             expect(bar.rule).toBe("1px");
             expect(bar.toolbarRule).toBe("0px");
@@ -104,8 +104,10 @@ describe("shared panel chrome", () => {
         expect(chrome[0].background).not.toBe(surface);
 
         let edge = (id: string) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate(element => {
-            let ring = getComputedStyle(element, "::after"), view = element.getBoundingClientRect(), title = element.querySelector(".panel-view-top")!.getBoundingClientRect();
-            return { shadow: ring.borderTopColor, inset: ring.inset, titleInside: title.top === view.top };
+            let own = getComputedStyle(element), leading = getComputedStyle(element, "::before"), top = getComputedStyle(element, "::after");
+            let view = element.getBoundingClientRect(), title = element.querySelector(".panel-view-top")!.getBoundingClientRect();
+            // all four sides of the trace, in order: trailing and bottom (its own seams), leading and top (strips over its neighbours' seams)
+            return { shadow: [own.borderInlineEndColor, own.borderBlockEndColor, leading.borderInlineEndColor, top.borderBlockEndColor].join("|"), leadingEnd: parseFloat(leading.insetInlineEnd) - (view.width - parseFloat(own.borderInlineEndWidth)), topEnd: parseFloat(top.insetBlockEnd) - (view.height - parseFloat(own.borderBlockEndWidth)), titleInside: title.top === view.top };
         });
         // views meet on one seam in the edge colour; only the focused view traces its own edge, over the seams
         // the leading view draws the seam as its trailing border; the dock draws the edge against the chrome
@@ -115,15 +117,17 @@ describe("shared panel chrome", () => {
         expect(dockEdge).toEqual({ width: "1px", color: edgeColor });
         let focusColor = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-focus-ring)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
         let blank = (shadow: string) => !shadow.includes(focusColor);
+        let traced = (shadow: string) => shadow.split("|").every(color => color === focusColor);
         let point = (id: string, x: number, y: number) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate((element, [x, y]) => { let r = element.getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }, [x, y]);
         // blank title bar space ignores the pointer, as a real click finds it
         let title = await point("diff", 300, 4);
         await ctx.page.mouse.click(title.x, title.y);
         await expect.poll(async () => blank((await edge("diff")).shadow)).toBe(false);
         let diff = await edge("diff");
-        expect(blank(diff.shadow)).toBe(false);
-        // the trace lies on the seams around the view rather than beside them
-        expect(diff.inset).toBe("-1px");
+        // every side of the trace is drawn, and the strips end at the view's edge so they lie on its neighbours' seams
+        expect(traced(diff.shadow)).toBe(true);
+        expect(Math.abs(diff.leadingEnd)).toBeLessThan(.01);
+        expect(Math.abs(diff.topEnd)).toBeLessThan(.01);
         expect(diff.titleInside).toBe(true);
         expect(blank((await edge("timeline")).shadow)).toBe(true);
         let empty = await point("timeline", 200, 800);

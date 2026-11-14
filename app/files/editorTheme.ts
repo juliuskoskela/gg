@@ -10,7 +10,10 @@ export let editorTheme = EditorView.theme({
     ".cm-scroller": { font: "var(--font-code)", overscrollBehavior: "contain", pointerEvents: "auto" },
     ".cm-content": { caretColor: "var(--text-strong)", pointerEvents: "auto" },
     ".cm-line": { pointerEvents: "auto" },
-    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--text-strong)" },
+    ".cm-cursor, .cm-dropCursor": {
+        /* design-token-allow line: the text cursor is a caret drawn as a border, not a line */
+        borderLeftColor: "var(--text-strong)",
+    },
     "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: "var(--selection-bg)" },
     ".cm-activeLine": { backgroundColor: "var(--hover)" },
     ".cm-gutters": { backgroundColor: "var(--surface)", color: "var(--faint)", border: "none" },
@@ -25,11 +28,15 @@ export let editorTheme = EditorView.theme({
     ".cm-change-modified": { top: "0", bottom: "0", backgroundColor: "var(--lane-0)" },
     ".cm-change-deleted": { top: "-3px", width: "4px", height: "6px", backgroundColor: "var(--negative)", clipPath: "polygon(0 0, 100% 50%, 0 100%)" },
     ".cm-searchMatch": { backgroundColor: "var(--accent-subtle)" },
-    ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "var(--accent-subtle)", outline: "1px solid var(--accent-border)" },
+    ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "var(--accent-subtle)", outline: "var(--line-width) solid var(--accent)" },
     ".cm-selectionMatch": { backgroundColor: "var(--accent-subtle)" },
-    "&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket": { backgroundColor: "var(--accent-subtle)", outline: "1px solid var(--accent-border)" },
+    "&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket": { backgroundColor: "var(--accent-subtle)", outline: "var(--line-width) solid var(--accent)" },
     ".cm-panels": { backgroundColor: "var(--panel-header-bg)", color: "var(--text)", pointerEvents: "auto" },
-    ".cm-panels.cm-panels-top": { borderTop: "1px solid var(--view-inner-rule)", borderBottom: "1px solid var(--view-inner-rule)" },
+    // the editor bar above already draws the rule the search panel would put on its top edge
+    ".cm-panels.cm-panels-top": { borderTop: "none", borderBottom: "var(--line-width) solid var(--line-rule)" },
+    ".cm-panels.cm-panels-bottom": { borderTop: "var(--line-width) solid var(--line-rule)" },
+    // codemirror's own fields and buttons outrank the global control styles
+    "& .cm-panel.cm-search .cm-textfield, & .cm-panel.cm-search .cm-button": { border: "var(--line-width) solid var(--line-control)", borderRadius: "var(--radius-control)", backgroundImage: "none" },
     ".cm-panel.cm-search": { font: "var(--font-label)" },
     ".cm-panel.cm-search input, .cm-panel.cm-search button, .cm-panel.cm-search label": { pointerEvents: "auto", font: "var(--font-label)" },
     ".cm-panel.cm-search [name=close]": { color: "var(--muted)" },

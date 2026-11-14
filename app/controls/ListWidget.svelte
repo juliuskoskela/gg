@@ -180,7 +180,7 @@
     }
 
     .listbox:focus-visible {
-        outline: 2px solid var(--accent);
+        outline: var(--focus-width) solid var(--focus-ring);
         border-radius: var(--radius-control);
     }
 

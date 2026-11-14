@@ -167,7 +167,7 @@
     .editor { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
     .editor[hidden] { display: none; }
     .editor-note, .editor-help { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; margin: 0; font-size: var(--type-caption); color: var(--muted); }
-    .editor-note { border-bottom: 1px solid var(--rule); }
+    .editor-note { border-bottom: var(--line-width) solid var(--line-rule); }
     .editor-surface { pointer-events: auto; position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; font-family: var(--stack-code); font-size: var(--type-code); line-height: var(--code-leading); }
     canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; }
     .screen-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }

@@ -55,7 +55,7 @@
 <style>
     @import "./action.css";
     @import "./action-primary.css";
-    button.checked:not(:disabled) { background: var(--selection-bg); border-color: var(--border); color: var(--selection-text); }
-    @media (hover: hover) { button.checked:not(:disabled):hover { background: var(--selection-hover); border-color: var(--control); } }
+    button.checked:not(:disabled) { background: var(--selection-bg); border-color: var(--line-control); color: var(--selection-text); }
+    @media (hover: hover) { button.checked:not(:disabled):hover { background: var(--selection-hover); border-color: var(--control-hover); } }
     button.checked:not(:disabled):active { background: var(--control-pressed); }
 </style>

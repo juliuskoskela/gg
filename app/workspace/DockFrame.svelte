@@ -142,17 +142,20 @@
     .split { display: grid; }
     /* every seam is drawn once, by the view before it: each view borders its trailing and bottom sides, and the
        dock borders its own top and leading sides. borders snap to whole device pixels where gaps would smear */
-    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; box-sizing: border-box; border-inline-end: var(--hairline) solid var(--view-edge); border-block-end: var(--hairline) solid var(--view-edge); border-radius: var(--view-radius); background: var(--surface); }
-    /* content clips inside the view, so the trace below can reach past the view's own box */
+    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; box-sizing: border-box; border-inline-end: var(--line-width) solid var(--line-seam); border-block-end: var(--line-width) solid var(--line-seam); border-radius: var(--view-radius); background: var(--surface); transition: border-color var(--motion-feedback) ease-out; }
+    /* content clips inside the view, so the focus strips below can sit outside the view's own box */
     .tabs > :global(*) { overflow: hidden; }
-    /* the focused view lifts above its neighbours so its trace can cover the seams around it */
-    .tabs:focus-within { z-index: 3; }
     .tabs:focus { outline: none; }
-    /* the focused view traces its edge on top of its seams rather than beside them, so it reads as one line.
-       a hairline outside its box lands on the neighbours' borders, and its own borders are inside the trace */
-    .tabs::after { content: ""; position: absolute; inset: calc(-1 * var(--hairline)); z-index: 10; pointer-events: none; border: var(--hairline) solid transparent; border-radius: inherit; transition: border-color var(--motion-feedback) ease-out; }
-    .tabs:focus-within::after { border-color: var(--view-focus-ring); }
-    @media (prefers-reduced-motion: reduce) { .tabs::after { transition: none; } }
+    /* the focused view traces its edge on its seams, never beside them. it owns its trailing and bottom seams, so it
+       recolours them; its leading and top seams belong to a neighbour or the dock, so a strip ends exactly at the view's
+       edge and draws a border of the same width inward from there. both lines start from the same edge with the same
+       width, so they land on the same device pixels at any zoom without knowing the device pixel ratio */
+    .tabs:focus-within { z-index: 3; border-color: var(--view-focus-ring); }
+    .tabs::before, .tabs::after { content: ""; position: absolute; z-index: 10; pointer-events: none; border: 0 solid transparent; transition: border-color var(--motion-feedback) ease-out; }
+    .tabs::before { inset-inline-end: 100%; inset-block: calc(-1 * var(--line-width)); width: 0; border-inline-end-width: var(--line-width); }
+    .tabs::after { inset-block-end: 100%; inset-inline: 0 calc(-1 * var(--line-width)); height: 0; border-block-end-width: var(--line-width); }
+    .tabs:focus-within::before, .tabs:focus-within::after { border-color: var(--view-focus-ring); }
+    @media (prefers-reduced-motion: reduce) { .tabs, .tabs::before, .tabs::after { transition: none; } }
     .stack { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
     .panel-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
     .panel-body[hidden] { display: none; }
@@ -166,12 +169,12 @@
     .split:not(.row) > .separator { margin-block: calc(-1 * var(--splitter-reach)); }
     .row > .separator::before { inset: 0; }
     .split:not(.row) > .separator::before { inset: 0; }
-    /* the seam is the dock showing through this gap, and the handle above it; a 2px line marks it in use */
-    .separator::after { content: ""; position: absolute; border-radius: var(--radius-sm); background: transparent; pointer-events: none; transition: background var(--motion-feedback) ease-out; }
-    .row > .separator::after { inset-block: 0; inset-inline-start: calc(50% - 1px); width: 2px; }
-    .split:not(.row) > .separator::after { inset-inline: 0; inset-block-start: calc(50% - 1px); height: 2px; }
+    /* the handle sits over the seam; an indicator-width border along it marks the handle in use */
+    .separator::after { content: ""; position: absolute; border: 0 solid transparent; border-radius: var(--radius-sm); pointer-events: none; transition: border-color var(--motion-feedback) ease-out; }
+    .row > .separator::after { inset-block: 0; inset-inline-start: calc(50% - var(--indicator-width) / 2); width: 0; border-inline-start-width: var(--indicator-width); }
+    .split:not(.row) > .separator::after { inset-inline: 0; inset-block-start: calc(50% - var(--indicator-width) / 2); height: 0; border-block-start-width: var(--indicator-width); }
     .separator:focus-visible { outline: none; }
-    .separator.dragging::after, .separator:focus-visible::after { background: var(--accent); }
-    @media (hover: hover) { .separator:hover::after { background: var(--control-hover); } }
+    .separator.dragging::after, .separator:focus-visible::after { border-color: var(--accent); }
+    @media (hover: hover) { .separator:hover::after { border-color: var(--control-hover); } }
     @media (pointer: coarse) { .row > .separator::before { inset-inline: calc(-1 * var(--splitter-reach)); } .split:not(.row) > .separator::before { inset-block: calc(-1 * var(--splitter-reach)); } }
 </style>

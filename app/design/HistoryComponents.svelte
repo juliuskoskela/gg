@@ -45,6 +45,6 @@
 
 <style>
     .specimens { display: grid; gap: var(--gap-section); max-width: 560px; }
-    .specimen { padding: var(--space-2); border: 1px solid var(--view-inner-rule); background: var(--surface); }
+    .specimen { padding: var(--space-2); border: var(--line-width) solid var(--line-rule); background: var(--surface); }
     .id { font: var(--font-id); }
 </style>

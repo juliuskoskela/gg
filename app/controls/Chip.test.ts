@@ -13,7 +13,7 @@ describe("reference chip tones", () => {
     it("keeps neutral defaults and explicit drop and disconnected indicators", async () => {
         let { default: Chip } = await import("./Chip.svelte");
         let { container, rerender } = render(Chip, { props: { context: false, target: false } });
-        container.style.cssText = "--text:#e8e9ec;--muted:#a3a7b0;--control:#555b65;--hover:#343943;--ref-bookmark:#97b2ce;--ref-remote:#9ba7b7";
+        container.style.cssText = "--text:#e8e9ec;--muted:#a3a7b0;--control:#555b65;--hover:#343943;--accent:#6c93b4;--ref-bookmark:#97b2ce;--ref-remote:#9ba7b7";
         let chip = container.querySelector<HTMLElement>(".chip")!;
         expect(chip.dataset.tone).toBe("neutral");
         await rerender({ context: false, target: true, disconnected: true, tone: "bookmark" });

@@ -7,6 +7,15 @@ let namedColors = new Set(`aliceblue antiquewhite aqua aquamarine azure beige bi
 let typography = new Set(["font-size", "font-weight", "line-height"]);
 let spacing = /^(?:(?:row|column)-gap|gap|(?:margin|padding)(?:-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?)?)$/;
 let inherited = /^(?:inherit|initial|unset|revert|revert-layer)$/;
+// lines (doc/specs/lines.md): one width for every line, plus the focus ring and state marks
+let lineWidths = new Set(["--line-width", "--focus-width", "--indicator-width"]);
+// the four roles, then state marks that keep their meaning colour: drop targets and selection (accent), errors
+// and warnings, keyboard focus (and the focused view's trace), a focused field and a hovered control outline
+let lineColours = new Set(["--line-seam", "--line-rule", "--line-popover", "--line-control", "--accent", "--negative", "--warning", "--focus-ring", "--view-focus-ring", "--field-focus-border", "--control-hover"]);
+let lineKeywords = /^(?:none|hidden|solid|dashed|transparent|currentcolor|inherit|initial|unset|revert|revert-layer|!important|highlight|canvastext|buttontext|graytext|linktext|selecteditem|selecteditemtext|mark|marktext|field|fieldtext|canvas|buttonborder|buttonface|accentcolor|accentcolortext|auto)$/i;
+let lineProperty = /^(?:border(?:-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?)?(?:-(?:width|color|style))?|outline(?:-(?:width|color|style))?)$/;
+let radiusProperty = /^border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius$/;
+let radiusTokens = /^--(?:radius-[\w-]+|view-radius|sheet-radius)$/;
 let normalize = value => value.replace(/\s+/g, " ").trim();
 
 // remove comments, quoted content and urls so text and asset names are not colors.
@@ -31,7 +40,54 @@ export function rulesFor(property, value, file) {
         let dimensions = [...visible.matchAll(/(?:^|[^\w-])([-+]?(?:\d*\.)?\d+(?:e[+-]?\d+)?)(?:[a-z]+|%)(?=$|[^\w])/gi)];
         if (dimensions.some(match => Number(match[1]) !== 0) || /^[-+]?(?:\d*\.)?\d+$/.test(visible.trim()) && Number(visible) !== 0) rules.push("spacing");
     }
+    if (lineProperty.test(property) && !inherited.test(normalize(value)) && !lineAllowed(property, visualValue(value))) rules.push("line");
+    if (property === "box-shadow" && shadowLine(visualValue(value))) rules.push("line");
+    if (radiusProperty.test(property) && !inherited.test(normalize(value)) && !radiusAllowed(visualValue(value))) rules.push("radius");
     return rules;
+}
+
+// top-level words of a value, with each var() or function kept whole
+function words(value) {
+    let result = [], depth = 0, current = "";
+    for (let character of value) {
+        if (character === "(") depth++;
+        if (character === ")") depth--;
+        if (/\s/.test(character) && depth === 0) { if (current) result.push(current); current = ""; }
+        else current += character;
+    }
+    if (current) result.push(current);
+    return result;
+}
+
+function variable(word) {
+    // a fallback inside the var() is still a literal, so only a bare reference names a token
+    return word.match(/^var\(\s*(--[\w-]+)\s*\)$/)?.[1] ?? null;
+}
+
+function lineAllowed(property, value) {
+    for (let word of words(value.trim())) {
+        if (lineKeywords.test(word)) continue;
+        if (/^[-+]?0(?:\.0+)?(?:[a-z]+)?$/i.test(word)) continue;
+        let name = variable(word);
+        if (!name) return false;
+        let width = /-width$/.test(property), colour = /-color$/.test(property);
+        if (width ? !lineWidths.has(name) : colour ? !lineColours.has(name) : !lineWidths.has(name) && !lineColours.has(name)) return false;
+    }
+    return true;
+}
+
+// a shadow with no blur and a spread or offset draws a line, and a line must be a border to snap with the others
+function shadowLine(value) {
+    for (let shadow of value.split(/,(?![^(]*\))/)) {
+        let lengths = words(shadow.trim()).filter(word => /^[-+]?(?:\d*\.)?\d+(?:[a-z]+)?$/i.test(word) || /^var\(--(?:hairline|line-width|focus-width|indicator-width)\)$/.test(word));
+        let number = word => word.startsWith("var(") ? 1 : parseFloat(word);
+        if (lengths.length >= 2 && (lengths.length < 3 || number(lengths[2]) === 0) && lengths.some((word, index) => index !== 2 && number(word) !== 0)) return true;
+    }
+    return false;
+}
+
+function radiusAllowed(value) {
+    return words(value.trim().replace(/\s*\/\s*/g, " ")).every(word => /^[-+]?0(?:[a-z]+|%)?$/i.test(word) || word === "50%" || radiusTokens.test(variable(word) ?? ""));
 }
 
 function combinations(parts) {
@@ -48,7 +104,7 @@ function walk(node, visit) {
 export function inspectSource(file, source) {
     let violations = [];
     function declaration(property, value, scope, offset, preceding = "") {
-        let allow = preceding.match(/\/\*\s*design-token-allow\s+(typography|color|spacing):\s*([^*]+)\*\/\s*$/);
+        let allow = preceding.match(/\/\*\s*design-token-allow\s+(typography|color|spacing|line|radius):\s*([^*]+)\*\/\s*$/);
         if (allow && allow[2].trim().length < 16) throw new Error(`${file}: exception needs a specific reason`);
         for (let rule of rulesFor(property, value, file)) {
             if (allow?.[1] === rule) continue;
@@ -63,11 +119,24 @@ export function inspectSource(file, source) {
         function visit(node, context) {
             if (node.type === "Rule") context += " " + text.slice(node.prelude.start - prefix.length, node.prelude.end - prefix.length);
             if (node.type === "Atrule") context += ` @${node.name} ${node.prelude ?? ""}`;
+            if (node.type === "Rule" && /::?(?:before|after)\b/.test(node.prelude ? text.slice(node.prelude.start - prefix.length, node.prelude.end - prefix.length) : "")) thinStrip(node, context);
             if (node.type === "Declaration") {
                 let start = node.start - prefix.length;
                 declaration(node.property, node.value, context, offset + Math.max(0, start), text.slice(0, start));
             }
             for (let child of node.children ?? node.block?.children ?? []) visit(child, context);
+        }
+        // a pseudo-element painted as a thin strip is a line that won't snap like a border
+        function thinStrip(rule, context) {
+            let declarations = (rule.block?.children ?? []).filter(child => child.type === "Declaration");
+            let thin = declarations.some(child => /^(?:width|height|inline-size|block-size)$/.test(child.property) && /^(?:(?:0?\.\d+|[12])px|var\(--(?:hairline|line-width|indicator-width)\))$/.test(normalize(child.value)));
+            let paint = declarations.find(child => /^background(?:-color)?$/.test(child.property) && !/^(?:none|transparent|0)$/.test(normalize(child.value)));
+            if (!thin || !paint) return;
+            let start = paint.start - prefix.length;
+            let allow = text.slice(0, start).match(/\/\*\s*design-token-allow\s+line:\s*([^*]+)\*\/\s*$/);
+            if (allow && allow[1].trim().length < 16) throw new Error(`${file}: exception needs a specific reason`);
+            if (allow) return;
+            violations.push({ file, rule: "line", scope: normalize(context), property: paint.property, value: normalize(paint.value), line: source.slice(0, offset + Math.max(0, start)).split("\n").length });
         }
         visit(tree, scope);
     }
@@ -98,7 +167,7 @@ export function inspectSource(file, source) {
             if (ts.isPropertyAssignment(node)) {
                 let name = node.name.getText(tree).replace(/^["']|["']$/g, "");
                 let property = name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
-                if (typography.has(property) || spacing.test(property) || /^(?:color|background(?:-color)?|border(?:-color)?|font|fill|stroke|box-shadow)$/.test(property)) {
+                if (typography.has(property) || spacing.test(property) || /^(?:color|background(?:-color)?|border(?:-[a-z-]+)?|outline(?:-[a-z]+)?|font|fill|stroke|box-shadow)$/.test(property)) {
                     for (let assigned of new Set(alternatives(node.initializer))) declaration(property, assigned, "script object", offset + node.getStart(tree), text.slice(0, node.getStart(tree)));
                 }
             }

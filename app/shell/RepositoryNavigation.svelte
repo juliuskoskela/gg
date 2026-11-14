@@ -56,9 +56,9 @@
     button span { overflow-wrap: anywhere; min-width: 0; }
     .selection-item.selection-item[aria-current="page"] { font-weight: var(--weight-medium); color: var(--selection-text); background: var(--selection-bg); }
     .selection-item[aria-current="page"] > :global(svg) { color: var(--text); }
-    .working-copy { color: var(--text); background: var(--surface); border: 1px solid var(--border); }
+    .working-copy { color: var(--text); background: var(--surface); border: var(--line-width) solid var(--line-control); }
     .working-copy > :global(svg) { color: var(--brand); }
-    kbd { margin-inline-start: auto; padding: 0 5px; border-radius: var(--radius-sm); background: var(--raised); color: var(--muted); font: 11px/18px var(--stack-code); box-shadow: inset 0 0 0 1px var(--border); }
+    kbd { margin-inline-start: auto; padding: 0 5px; border-radius: var(--radius-sm); background: var(--raised); color: var(--muted); font: 11px/18px var(--stack-code); border: var(--line-width) solid var(--line-control); }
     .collapsed button { justify-content: center; padding: 8px; }
     .collapsed nav { margin-block-start: 16px; }
     @media (hover: hover) {

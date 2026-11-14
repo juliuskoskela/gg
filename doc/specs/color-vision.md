@@ -95,3 +95,7 @@ are below. The browser tests independently enforce the required minimums.
 | Accent and negative (ΔE00) | 8.36 | 15.32 | 15 |
 | Plain-surface contrast ratio | 4.69 | 4.69 | 4.5 |
 | Hovered graph-row contrast ratio | 4.68 | 4.62 | 4.5 |
+
+## Graph lanes in light themes
+
+The eight lanes have their own hues (`--palette-lane-0` … `--palette-lane-7`) rather than borrowing syntax and status colours, so they can be tuned without moving those. In light themes they were found by search like the colour vision palettes: each lane keeps its hue within about 15° of its earlier colour (20° in the red/green palettes), takes the highest OKLCH lightness at which it still reads at 4.5:1 on a hovered selected row (`--selection-hover`, the darkest background a change id sits on), and as much chroma as sRGB and the lane separations leave. That puts every lane near OKLCH L 0.48–0.52. The colour vision palettes are held to the same hovered-row floor, although the checks only require it for typical vision, so lanes don't turn illegible under the pointer. Dark themes keep their earlier lane colours.

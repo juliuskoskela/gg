@@ -86,11 +86,11 @@
 {/if}
 
 <style>
-    .restore-tools { position: absolute; inset-block-start: 4px; inset-inline-end: 8px; z-index: 3; background: var(--surface); border: 1px solid var(--border); }
-    .tool-host { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; border-inline-start: 1px solid var(--rule); background: var(--surface); }
+    .restore-tools { position: absolute; inset-block-start: 4px; inset-inline-end: 8px; z-index: 3; background: var(--surface); border: var(--line-width) solid var(--line-control); }
+    .tool-host { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; border-inline-start: var(--line-width) solid var(--line-rule); background: var(--surface); }
     .tool-host.over-full { position: fixed; inset-block: 0; inset-inline-end: 0; width: min(320px, 40vw); z-index: 50; box-shadow: var(--shadow-overlay); }
     .tool-host.destination { position: fixed; inset: 0; z-index: 60; padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom); }
-    .tool-header { display: flex; align-items: center; gap: 8px; min-height: 40px; border-block-end: 1px solid var(--rule); background: var(--ground); }
+    .tool-header { display: flex; align-items: center; gap: 8px; min-height: 40px; border-block-end: var(--line-width) solid var(--line-rule); background: var(--ground); }
     .destination .tool-header { min-height: 52px; }
     .tool-header h1 { font-size: var(--type-ui); }
     .tool-tabs { padding: 3px var(--panel-inset); gap: 2px; display: flex; flex: 1; min-width: 0; overflow-x: auto; }
@@ -100,6 +100,6 @@
     .tool-header > button { min-width: 40px; display: grid; place-items: center; }
     .destination .tool-header > button { min-width: 44px; min-height: 44px; }
     .tool-content { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
-    footer { display: flex; justify-content: flex-end; border-block-start: 1px solid var(--rule); }
+    footer { display: flex; justify-content: flex-end; border-block-start: var(--line-width) solid var(--line-rule); }
     @media (hover: hover) { button:hover { background: var(--hover); color: var(--text); } }
 </style>

@@ -359,7 +359,7 @@
     .layout { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 0; }
     .layout.open { grid-template-columns: minmax(240px, 34%) minmax(0, 1fr); }
     .index { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 4px 0; }
-    .layout.open .index { border-inline-end: 1px solid var(--rule); }
+    .layout.open .index { border-inline-end: var(--line-width) solid var(--line-rule); }
 
     .rows { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
     .row { position: relative; display: flex; align-items: flex-start; border-radius: var(--radius-control); }
@@ -380,7 +380,7 @@
     .row-meta > :global(svg) { flex: none; }
     .anchor { min-width: 0; overflow: hidden; font: var(--font-id); text-overflow: ellipsis; white-space: nowrap; }
     /* counts read like notification badges: a number on a soft ink pill */
-    .pill { display: inline-flex; flex: none; align-items: center; gap: 3px; height: 16px; min-width: 16px; padding: 0 5px; border-radius: 8px; background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); font: 500 11px/1 var(--stack-ui); font-variant-numeric: tabular-nums; --icon-size: 10px; }
+    .pill { display: inline-flex; flex: none; align-items: center; gap: 3px; height: 16px; min-width: 16px; padding: 0 5px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); font: 500 11px/1 var(--stack-ui); font-variant-numeric: tabular-nums; --icon-size: 10px; }
     .draft-tag { display: inline-flex; flex: none; align-items: center; gap: 3px; margin-inline-end: 2px; color: var(--text); font-weight: 500; }
     .flag { display: inline-flex; flex: none; color: var(--muted); }
     .flag.warning { color: var(--warning); }
@@ -398,7 +398,7 @@
     .close { display: grid; place-items: center; flex: none; width: 28px; height: 28px; margin: -2px -6px 0 0; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
     @media (hover: hover) { .close:hover { background: var(--interaction-hover); color: var(--text); } }
     .close:focus-visible, .post-edit:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: -2px; }
-    .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 8px 0 0 -8px; padding-block-end: 10px; border-block-end: 1px solid var(--rule); }
+    .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 8px 0 0 -8px; padding-block-end: 10px; border-block-end: var(--line-width) solid var(--line-rule); }
     .tip { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--muted); font: var(--font-label); --icon-size: 12px; }
 
     .posts { display: grid; gap: 20px; margin: 16px 0 0; padding: 0; list-style: none; }
@@ -406,7 +406,7 @@
     .author { color: var(--text-strong); font: var(--font-emphasis); }
     .state-actions { display: inline-flex; align-items: center; gap: var(--space-1); }
     .row-activity { display: flex; flex-wrap: wrap; column-gap: var(--space-2); color: var(--muted); font: var(--font-label); }
-    .agent { padding: 0 5px; border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 16px; }
+    .agent { padding: 0 5px; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-sm); line-height: 16px; }
     .post-edit { margin-inline-start: auto; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
     @media (hover: hover) and (pointer: fine) {
         .post-edit { opacity: 0; }

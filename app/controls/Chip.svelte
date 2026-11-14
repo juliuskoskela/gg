@@ -40,7 +40,7 @@
         --ref-tone: var(--muted);
         color: var(--ref-tone);
         /* a soft tint names the reference without boxing it; outlines are kept for states */
-        border: 1px solid transparent;
+        border: var(--line-width) solid transparent;
         border-radius: var(--radius-sm);
         padding: 0 6px;
         background: color-mix(in oklab, var(--ref-tone) 8%, transparent);
@@ -56,20 +56,20 @@
 
     .context {
         color: inherit;
-        border-color: var(--control-border);
+        border-color: var(--line-control);
         background: var(--hover);
     }
 
     .target {
-        outline: 2px solid var(--text);
-        outline-offset: -2px;
+        outline: var(--indicator-width) solid var(--accent);
+        outline-offset: calc(-1 * var(--indicator-width));
         border-radius: var(--radius-control);
         color: var(--text);
     }
 
     .disconnected {
         border-style: dashed;
-        border-color: color-mix(in oklab, var(--ref-tone) 40%, transparent);
+        border-color: var(--line-control);
         background: transparent;
     }
 

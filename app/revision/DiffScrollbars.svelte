@@ -56,6 +56,6 @@
     .diff-scrollbars[hidden] { display: none; }
     .horizontal-track { min-width: 0; height: 14px; overflow-x: scroll; overflow-y: hidden; pointer-events: auto; }
     .horizontal-track.empty { visibility: hidden; }
-    .horizontal-track:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .horizontal-track:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
     @media (pointer: coarse) { .horizontal-track { height: 16px; } }
 </style>

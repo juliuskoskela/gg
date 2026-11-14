@@ -122,6 +122,6 @@
 <style>
     .multiline { white-space: pre-line; }
     p { grid-column: 1 / -1; overflow-wrap: anywhere; }
-    p:has(code) { padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); }
+    p:has(code) { padding: 10px 12px; border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-control); background: var(--surface); }
     label { color: var(--muted); font-size: 13px; }
 </style>

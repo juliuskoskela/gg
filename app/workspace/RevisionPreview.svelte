@@ -78,7 +78,7 @@
     .file-status { color: var(--muted); font: var(--font-label); }
     .all-files { min-height: 44px; border: 0; background: transparent; color: var(--accent); padding: 8px 0; cursor: pointer; }
     .empty { padding-block: 12px; color: var(--muted); }
-    .diff-preview { border-block-start: 1px solid var(--rule); margin-block-start: 8px; padding-block-start: 12px; min-width: 0; }
+    .diff-preview { border-block-start: var(--line-width) solid var(--line-rule); margin-block-start: 8px; padding-block-start: 12px; min-width: 0; }
     .diff-preview h3 { display: flex; gap: 8px; }
     .diff-preview h3 span { color: var(--muted); font-weight: var(--weight-regular); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     pre { margin: 8px 0 0; overflow: auto; pointer-events: auto; font: var(--type-code)/var(--code-leading) var(--stack-code); user-select: text; }

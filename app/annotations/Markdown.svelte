@@ -35,9 +35,9 @@
     .markdown :global(code) { padding: .1em .3em; border-radius: var(--radius-sm); background: var(--diff-buffer); font: var(--type-code)/1.5 var(--stack-code); font-variant-ligatures: none; }
     .markdown :global(pre) { overflow-x: auto; padding: 8px 10px; border-radius: var(--radius-control); background: var(--diff-buffer); }
     .markdown :global(pre code) { padding: 0; background: none; }
-    .markdown :global(blockquote) { padding-inline-start: 10px; border-inline-start: 2px solid var(--rule); color: var(--muted); }
+    .markdown :global(blockquote) { padding-inline-start: 10px; border-inline-start: var(--indicator-width) solid var(--line-control); color: var(--muted); }
     .markdown :global(a) { color: inherit; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 2px; }
-    .markdown :global(hr) { border: 0; border-block-start: 1px solid var(--rule); }
+    .markdown :global(hr) { height: 0; border: 0; border-block-start: var(--line-width) solid var(--line-control); }
     .markdown :global(table) { border-collapse: collapse; }
-    .markdown :global(th), .markdown :global(td) { padding: 2px 8px; border: 1px solid var(--rule); }
+    .markdown :global(th), .markdown :global(td) { padding: 2px 8px; border: var(--line-width) solid var(--line-control); }
 </style>

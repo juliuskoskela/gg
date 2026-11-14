@@ -68,7 +68,7 @@
 </div>
 
 <style>
-    #dialog-chrome { grid-area: 2/2/2/2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 80px); overflow-y: auto; overscroll-behavior: contain; background: var(--raised); border-radius: var(--radius-surface); border: 1px solid var(--border); box-shadow: var(--shadow-overlay); padding: 24px; gap: 20px; pointer-events: auto; }
+    #dialog-chrome { grid-area: 2/2/2/2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 80px); overflow-y: auto; overscroll-behavior: contain; background: var(--raised); border-radius: var(--radius-surface); border: var(--line-width) solid var(--line-popover); box-shadow: var(--shadow-overlay); padding: 24px; gap: 20px; pointer-events: auto; }
     #dialog-header { margin: 0; color: var(--text-strong); font: var(--font-heading); }
     #dialog-content { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; font: var(--font-body); min-width: 0; }
     #dialog-content > :global(p) { grid-column: 1 / -1; margin: 0; max-width: var(--prose-measure); overflow-wrap: anywhere; }

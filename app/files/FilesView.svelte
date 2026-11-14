@@ -375,7 +375,7 @@
     .page { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
     .page[hidden] { display: none; }
     /* both panes open on a bar of the same height and shade, closed by the inner rule */
-    .pane-bar { display: flex; flex: none; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-toolbar-height); box-sizing: border-box; background: var(--panel-header-bg); border-block-end: 1px solid var(--view-inner-rule); --control-height: var(--panel-control-size); --control-padding-block: var(--control-padding-compact); --input-surface: var(--panel-header-bg); }
+    .pane-bar { display: flex; flex: none; align-items: center; gap: var(--panel-gap); min-width: 0; min-height: var(--panel-toolbar-height); box-sizing: border-box; background: var(--panel-header-bg); border-block-end: var(--line-width) solid var(--line-rule); --control-height: var(--panel-control-size); --control-padding-block: var(--control-padding-compact); --input-surface: var(--panel-header-bg); }
     .editor-pane { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--surface); pointer-events: auto; }
     .editor-bar { padding-inline: var(--panel-inset); --hover: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg)); }
     .crumbs { display: flex; flex: 0 1 auto; align-items: baseline; gap: var(--space-1); min-width: 0; overflow: hidden; white-space: nowrap; }
@@ -386,7 +386,7 @@
     .bar-actions > :global(*) { pointer-events: auto; }
     .back { flex: none; pointer-events: auto; }
     .editor-bar .text-link { pointer-events: auto; }
-    .notice { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: var(--panel-gap); padding: var(--space-2) var(--panel-inset); background: var(--panel-header-bg); border-block-end: 1px solid var(--view-inner-rule); color: var(--muted); font: var(--font-body); }
+    .notice { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: var(--panel-gap); padding: var(--space-2) var(--panel-inset); background: var(--panel-header-bg); border-block-end: var(--line-width) solid var(--line-rule); color: var(--muted); font: var(--font-body); }
     .notice.warn { color: var(--warning); }
     .notice > :global(button) { pointer-events: auto; }
     .message { margin: var(--space-2) var(--panel-inset); color: var(--muted); font: var(--font-body); }

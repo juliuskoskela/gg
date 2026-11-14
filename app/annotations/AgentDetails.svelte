@@ -13,5 +13,5 @@
 
 <style>
     .model { color: var(--muted); overflow-wrap: anywhere; }
-    .risk { color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding-inline: var(--space-1); font: var(--font-label); }
+    .risk { color: var(--text); border: var(--line-width) solid var(--line-control); border-radius: var(--radius-sm); padding-inline: var(--space-1); font: var(--font-label); }
 </style>

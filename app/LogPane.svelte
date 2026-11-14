@@ -584,7 +584,7 @@
     .graph-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; color: var(--muted); }
     .graph-caption > span:first-child { color: var(--muted); }
     .picks { gap: 6px; color: var(--text); }
-    .pick-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--text); color: var(--surface); font: 600 11px/1 var(--stack-ui); font-variant-numeric: tabular-nums; }
+    .pick-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill); background: var(--text); color: var(--surface); font: 600 11px/1 var(--stack-ui); font-variant-numeric: tabular-nums; }
     .clear-picks { min-height: 24px; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: inherit; font-size: var(--type-caption); cursor: pointer; }
     @media (hover: hover) { .clear-picks:hover { background: var(--hover); color: var(--text); } }
     .empty-graph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--muted); text-align: center; }

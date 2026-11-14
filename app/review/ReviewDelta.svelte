@@ -77,7 +77,7 @@
 </section>
 
 <style>
-    .review-delta { min-width: 0; padding-block: var(--space-3); border-block-start: 1px solid var(--rule); }
+    .review-delta { min-width: 0; padding-block: var(--space-3); border-block-start: var(--line-width) solid var(--line-rule); }
     /* inside a section that already has a heading and rule */
     .embedded { padding-block: 0; border-block-start: 0; }
     h3 { font: var(--font-heading); margin: 0 0 var(--space-2); }

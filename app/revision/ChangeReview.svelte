@@ -43,7 +43,7 @@
     {/if}
 </details>
 <style>
-    details { border-block-end: 1px solid var(--rule); }
+    details { border-block-end: var(--line-width) solid var(--line-rule); }
     summary { pointer-events: auto; cursor: pointer; padding: var(--panel-inset); font: var(--font-body); }
     summary span { font: var(--font-id); margin-inline-end: var(--space-2); }
     .single-review { height: 70vh; display: flex; flex-direction: column; min-height: 0; }

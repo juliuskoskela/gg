@@ -63,10 +63,10 @@
     .views { position: relative; display: flex; align-items: center; }
     #views-menu { display: grid; place-items: center; width: var(--control-height); height: var(--control-height); min-height: var(--control-height); padding: var(--space-1); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; }
     #views-menu[aria-expanded="true"] { background: var(--interaction-selected, var(--hover)); }
-    .views-menu { position: fixed; max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; z-index: 70; min-width: 180px; display: grid; gap: var(--gap-row); padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); }
+    .views-menu { position: fixed; max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; z-index: 70; min-width: 180px; display: grid; gap: var(--gap-row); padding: var(--space-1); border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-popover); background: var(--popover-surface); box-shadow: var(--shadow-overlay); }
     .views-menu button { min-height: var(--control-height); padding: var(--space-1) var(--control-padding-inline); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: var(--font-body); text-align: start; cursor: pointer; }
     .views-menu button[aria-checked="true"] { font: var(--font-emphasis); background: var(--interaction-selected); }
-    .views-menu button[role="menuitem"] { border-block-start: 1px solid var(--popover-rule); border-radius: 0; }
+    .views-menu button[role="menuitem"] { border-block-start: var(--line-width) solid var(--line-popover); border-radius: 0; }
     @media (hover: hover) {
         #views-menu:hover { background: var(--hover); }
         .views-menu button:hover { background: var(--interaction-hover); }

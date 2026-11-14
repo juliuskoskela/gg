@@ -10,7 +10,7 @@
     {/if}
 </details>
 <style>
-    details { border-block-start: 1px solid var(--rule); padding-block: var(--space-2); }
+    details { border-block-start: var(--line-width) solid var(--line-rule); padding-block: var(--space-2); }
     summary { cursor: pointer; pointer-events: auto; font: var(--font-body); overflow-wrap: anywhere; }
     article { display: grid; gap: var(--gap-row); padding-block: var(--space-2); }
     h5 { font: var(--font-emphasis); margin: 0; overflow-wrap: anywhere; }

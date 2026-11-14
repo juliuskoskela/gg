@@ -33,7 +33,7 @@
 </section>
 
 <style>
-    section { padding-block: var(--gap-section); border-block-start: 1px solid var(--rule); }
+    section { padding-block: var(--gap-section); border-block-start: var(--line-width) solid var(--line-rule); }
     h2 { margin: 0 0 var(--gap-group); font: var(--font-heading); }
     .plugin + .plugin { margin-block-start: var(--gap-section); }
     p, details { color: var(--muted); font: var(--font-label); }

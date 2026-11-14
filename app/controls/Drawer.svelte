@@ -41,9 +41,9 @@
 <style>
     dialog { position: fixed; inset: 0; margin: 0; padding: 0; border: 0; width: 100%; max-width: none; height: 100%; max-height: none; background: transparent; color: var(--text); overflow: hidden; pointer-events: auto; }
     dialog::backdrop { background: var(--scrim); }
-    .drawer-content { pointer-events: auto; width: min(320px, calc(100% - 32px)); height: 100%; display: flex; flex-direction: column; background: var(--surface); border-inline-end: 1px solid var(--rule); box-shadow: var(--shadow-overlay); padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom); }
-    .trailing .drawer-content { margin-inline-start: auto; border-inline-end: 0; border-inline-start: 1px solid var(--rule); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 12px; border-block-end: 1px solid var(--rule); }
+    .drawer-content { pointer-events: auto; width: min(320px, calc(100% - 32px)); height: 100%; display: flex; flex-direction: column; background: var(--surface); border-inline-end: var(--line-width) solid var(--line-popover); box-shadow: var(--shadow-overlay); padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom); }
+    .trailing .drawer-content { margin-inline-start: auto; border-inline-end: 0; border-inline-start: var(--line-width) solid var(--line-popover); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 12px; border-block-end: var(--line-width) solid var(--line-popover); }
     h2 { margin: 0; font-size: var(--type-ui); font-weight: 500; }
     button { display: grid; place-items: center; width: 36px; min-height: 36px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; }
     .drawer-body { pointer-events: auto; padding: 12px; overflow: auto; overscroll-behavior: contain; min-height: 0; flex: 1; }

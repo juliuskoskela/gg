@@ -134,7 +134,7 @@
 {/if}
 
 <style>
-    .inspector-sheet { position: absolute; z-index: 30; inset-inline: 0; inset-block-end: 0; height: min(52dvh, 85%); display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--sheet-surface, var(--raised)); border-block-start: 1px solid var(--sheet-border, var(--border)); border-radius: var(--sheet-radius, 12px) var(--sheet-radius, 12px) 0 0; box-shadow: var(--sheet-shadow, var(--shadow-overlay)); pointer-events: auto; overflow: hidden; transform: translateY(0); transition: transform var(--motion-sheet-duration, 220ms) var(--motion-sheet-ease, cubic-bezier(.32,.72,0,1)); }
+    .inspector-sheet { position: absolute; z-index: 30; inset-inline: 0; inset-block-end: 0; height: min(52dvh, 85%); display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--sheet-surface, var(--raised)); border-block-start: var(--line-width) solid var(--line-popover); border-radius: var(--sheet-radius) var(--sheet-radius) 0 0; box-shadow: var(--sheet-shadow, var(--shadow-overlay)); pointer-events: auto; overflow: hidden; transform: translateY(0); transition: transform var(--motion-sheet-duration, 220ms) var(--motion-sheet-ease, cubic-bezier(.32,.72,0,1)); }
     .inspector-sheet.collapsed { transform: translateY(calc(100% - var(--inspector-peek-height, 72px) - env(safe-area-inset-bottom))); }
     .inspector-sheet.tracking { transition: none; }
     .peek-sizer { position: absolute; height: calc(var(--inspector-peek-height, 72px) + env(safe-area-inset-bottom)); visibility: hidden; }
@@ -142,12 +142,12 @@
     .expanded-content.concealed { visibility: hidden; }
     .sheet-handle { position: relative; display: flex; align-items: center; justify-content: flex-end; min-height: 44px; padding: 4px 16px; gap: 4px; color: var(--muted); background: transparent; border: 0; cursor: ns-resize; touch-action: none; flex-shrink: 0; }
     .handle-label { font: var(--font-label); }
-    .grab-mark { width: 32px; height: 4px; border-radius: 2px; background: var(--control); position: absolute; inset-block-start: 10px; inset-inline-start: calc(50% - 16px); }
+    .grab-mark { width: 32px; height: 4px; border-radius: var(--radius-sm); background: var(--control); position: absolute; inset-block-start: 10px; inset-inline-start: calc(50% - 16px); }
     .preview-heading { display: flex; align-items: center; gap: 8px; padding: 0 8px 4px 16px; flex-shrink: 0; }
     .preview-heading h2 { flex: 1; color: var(--text-strong); font: var(--font-title); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
     .preview-heading button { border: 0; background: transparent; color: var(--text); min-width: 44px; min-height: 44px; display: grid; place-items: center; cursor: pointer; }
     .preview-scroll { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; pointer-events: auto; }
-    .preview-footer { flex-shrink: 0; padding: 4px 12px max(4px, env(safe-area-inset-bottom)); border-block-start: 1px solid var(--rule); }
+    .preview-footer { flex-shrink: 0; padding: 4px 12px max(4px, env(safe-area-inset-bottom)); border-block-start: var(--line-width) solid var(--line-popover); }
     .preview-footer button { min-height: 44px; display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; border-radius: var(--radius-control); padding: 8px; color: var(--text); background: var(--hover); font-size: var(--type-ui); cursor: pointer; }
     .collapsed .sheet-handle { position: absolute; inset-block-start: 0; inset-inline-end: 0; width: 44px; height: calc(var(--inspector-peek-height, 72px) + env(safe-area-inset-bottom)); justify-content: center; padding: 0 0 env(safe-area-inset-bottom); z-index: 1; }
     .collapsed .handle-label { display: none; }

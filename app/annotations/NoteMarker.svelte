@@ -65,7 +65,7 @@
     .gutter-marker:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
     @media (hover: hover) { .note-marker:hover { color: var(--text); } }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    .note-preview { position: fixed; inset: auto; margin: 0; width: max-content; max-width: 300px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--popover-surface); color: var(--text); box-shadow: var(--shadow-overlay); font: var(--type-caption)/1.5 var(--stack-ui); pointer-events: none; }
+    .note-preview { position: fixed; inset: auto; margin: 0; width: max-content; max-width: 300px; padding: 6px 10px; border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-control); background: var(--popover-surface); color: var(--text); box-shadow: var(--shadow-overlay); font: var(--type-caption)/1.5 var(--stack-ui); pointer-events: none; }
     .note-preview p { display: grid; margin: 4px 0; }
     .where { color: var(--muted); font-family: var(--stack-code); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -43,6 +43,6 @@
 
 <style>
     .zoom-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    .zoom-error { position: fixed; inset-inline: 16px; inset-block-end: 16px; z-index: 500; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--negative); background: var(--raised); color: var(--text); font-size: var(--type-body); }
-    button { min-height: 32px; padding: 4px 8px; color: var(--text); background: var(--surface); border: 1px solid var(--border); }
+    .zoom-error { position: fixed; inset-inline: 16px; inset-block-end: 16px; z-index: 500; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px; border: var(--line-width) solid var(--negative); background: var(--raised); color: var(--text); font-size: var(--type-body); }
+    button { min-height: 32px; padding: 4px 8px; color: var(--text); background: var(--surface); border: var(--line-width) solid var(--line-control); }
 </style>

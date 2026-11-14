@@ -11,7 +11,7 @@
   max-width: min(360px, calc(100vw - 16px));
   margin: 0;
   padding: var(--space-3);
-  border: 1px solid var(--border);
+  border: var(--line-width) solid var(--line-popover);
   border-radius: var(--radius-control);
   background: var(--popover-surface);
   color: var(--text);
@@ -121,10 +121,16 @@
   --sheet-handle-height: 4px;
   /* the painted width of a 1px border; app/hairline.ts keeps it current as the display scale changes */
   --hairline: 1px;
+  /* every line is this wide, so they all land on the same device pixels at any zoom; see doc/specs/lines.md */
+  --line-width: var(--hairline);
+  /* state marks that aren't structure: drop targets, selection bars, a splitter in use */
+  --indicator-width: 2px;
   --radius-sm: 3px;
   --radius-control: 4px;
   --radius-surface: 6px;
   --radius-popover: 6px;
+  /* fully rounded ends for badges, pills and scrollbar thumbs at any height */
+  --radius-pill: 999px;
   --control-height: 32px;
   --file-row-height: max(24px, calc(var(--type-ui) * 1.5 + 4px));
   --control-padding-inline: 8px;
@@ -187,31 +193,30 @@
   --surface: var(--palette-surface);
   --panel-header-bg: color-mix(in srgb, var(--surface) 60%, var(--ground));
   --panel-toolbar-bg: var(--panel-header-bg);
-  --panel-header-control-border: color-mix(in srgb, var(--text) 10%, var(--panel-header-bg));
   --panel-tab-active: color-mix(in srgb, var(--text) 6%, var(--panel-header-bg));
   --raised: var(--palette-raised);
   --hover: color-mix(in srgb, var(--text) 6%, var(--surface));
   --active: color-mix(in srgb, var(--text) 10%, var(--surface));
   --active-hover: color-mix(in srgb, var(--text) 16%, var(--surface));
-  --border: color-mix(in srgb, var(--text) 16%, var(--surface));
-  --rule: color-mix(in srgb, var(--text) 7%, var(--surface));
-  /* views share one sheet split by hairline seams; inside a view, surfaces step in lightness instead.
-     the view holding focus traces its whole edge a few steps above the seams. */
-  /* the seam carries all structure between views, so it needs to read on its own */
-  --view-edge: color-mix(in srgb, var(--text) 12%, var(--surface));
-  /* inside a view, bars meet content on a hairline well below the view's own edge */
-  --view-inner-rule: color-mix(in srgb, var(--text) 4%, var(--surface));
+  /* the view holding focus traces its whole edge a few steps above the seams */
   --view-focus-ring: color-mix(in srgb, var(--text) 32%, var(--surface));
   /* a view's first pill and last tool sit this far from its sides and top */
   --view-bar-inset: 6px;
+  /* lines: every line in the app is a border of --line-width in one of four colours, chosen by where it sits */
+  /* between views: the seam carries all structure between them, so it needs to read on its own */
+  --line-seam: color-mix(in srgb, var(--text) 12%, var(--surface));
+  /* inside a view, where bars meet content and between sections: well below the seam */
+  --line-rule: color-mix(in srgb, var(--text) 4%, var(--surface));
+  /* menus, popovers, dialogs and sheets mix against their own surface; a rule would vanish there */
+  --line-popover: color-mix(in srgb, var(--text) 14%, var(--popover-surface));
+  /* the resting outline of fields, outlined buttons, chips and cards */
+  --line-control: color-mix(in srgb, var(--text) 25%, var(--input-surface));
   /* views meet square: each draws its trailing and bottom seam as a border, so no gap separates them */
   --view-radius: 0px;
   --dock-gutter: 0px;
   /* how far a splitter's handle reaches over each view beside its seam */
   --splitter-reach: 5px;
   --control: var(--muted);
-  --control-border: color-mix(in srgb, var(--text) 25%, var(--input-surface));
-  --input-border: var(--control-border);
   --field-focus-border: color-mix(in srgb, var(--text) 55%, var(--surface));
   --input-surface: var(--palette-input);
   --control-hover: color-mix(in srgb, var(--text) 45%, var(--input-surface));
@@ -254,13 +259,13 @@
   --danger-solid-pressed: var(--palette-danger-pressed);
   --text-on-danger: var(--neutral-0);
   --warning: var(--palette-warning);
-  /* graph labels use text-grade hues; red remains reserved for conflict and divergence. */
-  --lane-0: var(--palette-type);
-  --lane-1: var(--palette-violet);
-  --lane-2: var(--palette-function);
-  --lane-3: var(--palette-warning);
+  /* graph labels use text-grade hues of their own, as light as hovered rows allow; red remains reserved for conflict and divergence. */
+  --lane-0: var(--palette-lane-0);
+  --lane-1: var(--palette-lane-1);
+  --lane-2: var(--palette-lane-2);
+  --lane-3: var(--palette-lane-3);
   --lane-4: var(--palette-lane-4);
-  --lane-5: var(--palette-positive);
+  --lane-5: var(--palette-lane-5);
   --lane-6: var(--palette-lane-6);
   --lane-7: var(--palette-lane-7);
   /* wires stay neutral so colour belongs to the stations; raise the tint to bring lane colour back into them. */
@@ -276,10 +281,7 @@
   --ref-tag: var(--palette-warning);
   --focus-ring: color-mix(in srgb, var(--text) 65%, var(--surface));
   --popover-surface: var(--palette-popover);
-  /* dividers inside menus mix against the menu's own surface; --rule mixes against the page and vanishes here */
-  --popover-rule: color-mix(in srgb, var(--text) 14%, var(--popover-surface));
   --sheet-surface: var(--surface);
-  --sheet-border: var(--border);
   --sheet-shadow-color: light-dark(#09090b14, #00000066);
   --sheet-shadow: 0 -4px 20px var(--sheet-shadow-color);
   --scrim: light-dark(#09090b38, #000000a6);
@@ -325,7 +327,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: var(--fo
 @media (pointer: coarse), (max-width: 600px) { .text-link { min-height: 44px; } }
 textarea, select, input {
   outline: none;
-  border: 1px solid var(--input-border);
+  border: var(--line-width) solid var(--line-control);
   border-radius: var(--radius-control);
   padding: var(--control-padding-block, 5px) var(--control-padding-inline); min-height: var(--control-height); font-size: var(--type-ui); line-height: 1.54;
   min-width: 0;
@@ -334,7 +336,7 @@ textarea, select, input {
   caret-color: var(--accent);
 }
 textarea:focus-visible, select:focus-visible, input:focus-visible { border-color: var(--field-focus-border); outline: none; background: var(--surface); }
-textarea:disabled, input:disabled, select:disabled { border-color: var(--rule); background: var(--raised); color: var(--text-disabled); cursor: default; }
+textarea:disabled, input:disabled, select:disabled { border-color: var(--line-rule); background: var(--raised); color: var(--text-disabled); cursor: default; }
 input[type="checkbox"] { min-height: 16px; width: 16px; height: 16px; padding: 0; accent-color: var(--accent-solid); }
 input::placeholder, textarea::placeholder { color: var(--faint); opacity: 1; }
 select { cursor: pointer; }
@@ -342,6 +344,8 @@ select:disabled { cursor: default; }
 select:open { border-color: var(--field-focus-border); background: var(--raised); }
 select:not(:disabled):active { border-color: var(--control-hover); background: var(--interaction-pressed); }
 h1, h2, h3, p { margin: 0; }
+/* a default <hr> is an inset bevel two lines thick; menus restyle it in their own colour */
+hr { height: 0; border: 0; border-block-start: var(--line-width) solid var(--line-rule); }
 h2, h3 { font-size: var(--type-ui); font-weight: 500; color: var(--text-strong); }
 ul, ol { margin: 0; padding: 0; }
 pre, code { font-family: var(--stack-code); }
@@ -377,14 +381,14 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   select:disabled::picker-icon { display: none; }
   select > button { flex: 1; min-width: 0; min-height: 0; height: auto; display: block; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; text-align: start; box-shadow: none; overflow: hidden; }
   selectedcontent { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  select::picker(select) { margin-block-start: 4px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--popover-surface); color: var(--text); font: var(--type-ui)/1.54 var(--stack-ui); box-shadow: var(--shadow-overlay); max-width: calc(100vw - 32px); max-height: min(320px, 60dvh); overflow: auto; overscroll-behavior: contain; }
+  select::picker(select) { margin-block-start: 4px; padding: 4px; border: var(--line-width) solid var(--line-popover); border-radius: var(--radius-control); background: var(--popover-surface); color: var(--text); font: var(--type-ui)/1.54 var(--stack-ui); box-shadow: var(--shadow-overlay); max-width: calc(100vw - 32px); max-height: min(320px, 60dvh); overflow: auto; overscroll-behavior: contain; }
   select option { min-height: 32px; padding: 6px 8px; border-radius: var(--radius-control); gap: 8px; outline: none; background: transparent; color: var(--text); }
   select option:checked { background: var(--interaction-selected); color: var(--selection-text); font-weight: 500; }
   select option:disabled { color: var(--text-disabled); }
   select option:not(:disabled):active { background: var(--interaction-pressed); }
   select option:checked:not(:disabled):active { background: var(--interaction-selected-pressed); }
-  select option:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-  select hr { margin: 4px; border: 0; border-block-start: 1px solid var(--popover-rule); }
+  select option:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: calc(-1 * var(--focus-width)); }
+  select hr { height: 0; margin: 4px; border: 0; border-block-start: var(--line-width) solid var(--line-popover); }
   @media (hover: hover) {
     select option:not(:disabled):hover { background: var(--interaction-hover); }
     select option:checked:not(:disabled):hover { background: var(--interaction-selected-hover); }
@@ -399,9 +403,9 @@ textarea, select, input, button, ol, ul, label, a, aside { pointer-events: auto;
   textarea, select, input:not([type="checkbox"]):not([type="radio"]) { font-size: max(16px, 1rem); min-height: var(--touch-target); }
 }
 @media (forced-colors: active) {
-  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 1px solid Highlight; outline-offset: 1px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: var(--line-width) solid Highlight; outline-offset: 1px; }
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .selection-item:focus-visible { outline-color: Highlight; }
-  .selection-item[aria-selected="true"]:not(:focus-visible), button[aria-pressed="true"]:not(:focus-visible) { outline: 1px solid Highlight; outline-offset: -1px; }
+  .selection-item[aria-selected="true"]:not(:focus-visible), button[aria-pressed="true"]:not(:focus-visible) { outline: var(--line-width) solid Highlight; outline-offset: calc(-1 * var(--line-width)); }
   :root { --view-focus-ring: Highlight; }
 }
 
@@ -416,5 +420,5 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="
 #shell[data-focus-modality="pointer"] :focus-visible,
 #shell[data-focus-modality="pointer"] .panel-tab-item:has(> .panel-tab:focus-visible) {
   --focus-ring: transparent;
-  --field-focus-border: var(--input-border);
+  --field-focus-border: var(--line-control);
 }

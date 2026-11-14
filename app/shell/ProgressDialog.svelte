@@ -32,7 +32,7 @@
         width: min(300px, calc(100vw - 32px));
         padding: 20px;
         background: var(--surface);
-        border: 1px solid var(--rule);
+        border: var(--line-width) solid var(--line-popover);
         border-radius: var(--radius-control);
     }
 </style>

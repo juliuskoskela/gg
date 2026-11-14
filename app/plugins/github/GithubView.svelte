@@ -69,7 +69,7 @@
     @import "../../controls/action.css";
     .github-view { padding: var(--panel-inset); display: grid; align-content: start; gap: var(--gap-group); min-width: 0; }
     form, .detail { display: grid; gap: var(--gap-row); }
-    .detail { border-block-start: 1px solid var(--rule); padding-block-start: var(--space-4); }
+    .detail { border-block-start: var(--line-width) solid var(--line-rule); padding-block-start: var(--space-4); }
     label { display: grid; gap: var(--gap-row); font: var(--font-label); }
     input { min-width: 0; width: 100%; box-sizing: border-box; }
     .check { display: flex; align-items: start; gap: var(--gap-row); }

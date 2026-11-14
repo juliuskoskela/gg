@@ -157,7 +157,7 @@
     input, textarea { width: 100%; box-sizing: border-box; }
     .actions, .member-nav, .queue-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-row); }
     .member-nav { justify-content: space-between; }
-    .member { border-block: 1px solid var(--border); padding-block: var(--space-3); }
+    .member { border-block: var(--line-width) solid var(--line-rule); padding-block: var(--space-3); }
     .muted { color: var(--muted); }
     .error { color: var(--negative); }
     h3 { font: var(--font-heading); margin: 0 0 var(--gap-group); }

@@ -57,10 +57,10 @@
     .history-intro { padding: var(--space-2) var(--panel-inset); }
     .history-intro p { max-width: var(--prose-measure); margin: 0; color: var(--muted); font: var(--font-label); }
     .history-layout { display: grid; grid-template-columns: minmax(220px, 34%) minmax(0, 1fr); flex: 1; min-height: 0; }
-    .history-index { pointer-events: auto; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-1); border-inline-end: 1px solid var(--view-inner-rule); }
+    .history-index { pointer-events: auto; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-1); border-inline-end: var(--line-width) solid var(--line-rule); }
     .history-state { padding: var(--space-1) var(--space-2); margin: 0; color: var(--muted); font: var(--font-body); overflow-wrap: anywhere; }
     .history-state p { margin: 0 0 var(--space-2); }
     .load-more { margin-block-start: var(--space-1); }
     .history-detail { pointer-events: auto; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-4) var(--panel-inset) var(--space-5); scroll-padding: var(--space-4); }
-    @container history (max-width: 650px) { .history-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(100px, 38%) minmax(0, 1fr); } .history-index { border-inline-end: 0; border-block-end: 1px solid var(--view-inner-rule); } }
+    @container history (max-width: 650px) { .history-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(100px, 38%) minmax(0, 1fr); } .history-index { border-inline-end: 0; border-block-end: var(--line-width) solid var(--line-rule); } }
 </style>

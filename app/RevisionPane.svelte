@@ -113,15 +113,15 @@
     .revision-workspace.with-files { grid-template-columns: minmax(0, 1fr) 4px var(--files-width); }
     .files-separator { position: relative; width: 4px; margin: 0; border: 0; padding: 0; background: transparent; cursor: col-resize; touch-action: none; user-select: none; }
     .files-separator::before { content: ""; position: absolute; inset-block: 0; inset-inline: -5px; }
-    .files-separator::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 1px; width: 1px; background: var(--rule); pointer-events: none; }
+    .files-separator::after { content: ""; position: absolute; inset-block: 0; inset-inline-start: 1px; width: 0; border-inline-start: var(--line-width) solid var(--line-rule); pointer-events: none; }
     .files-separator:focus-visible { outline: none; }
     .files-separator.dragging, .files-separator:focus-visible { background: var(--accent-subtle); }
-    .files-separator.dragging::after, .files-separator:focus-visible::after { background: var(--accent); }
-    @media (hover: hover) { .files-separator:hover { background: var(--hover); } .files-separator:hover::after { background: var(--control-hover); } }
+    .files-separator.dragging::after, .files-separator:focus-visible::after { border-color: var(--accent); }
+    @media (hover: hover) { .files-separator:hover { background: var(--hover); } .files-separator:hover::after { border-color: var(--control-hover); } }
     @media (pointer: coarse) { .files-separator::before { inset-inline: -10px; } }
     .revision-content { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
     .revision-main { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
-    .module-tabs { display: flex; flex-shrink: 0; gap: 4px; overflow-x: auto; overscroll-behavior: contain; padding: 6px var(--pane-inset); border-block-end: 1px solid var(--rule); }
+    .module-tabs { display: flex; flex-shrink: 0; gap: 4px; overflow-x: auto; overscroll-behavior: contain; padding: 6px var(--pane-inset); border-block-end: var(--line-width) solid var(--line-rule); }
     .module-tabs button { padding: 5px 10px; min-height: 32px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; white-space: nowrap; }
     .module-error { padding: 24px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
 

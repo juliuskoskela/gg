@@ -64,9 +64,9 @@
 </div>
 
 <style>
-    .note-editor { display: grid; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
+    .note-editor { display: grid; min-width: 0; border: var(--line-width) solid var(--line-control); border-radius: var(--radius-control); background: var(--surface); }
     .note-editor:focus-within { border-color: var(--field-focus-border); }
-    .tabs { display: flex; gap: 2px; padding: 3px; border-block-end: 1px solid var(--rule); }
+    .tabs { display: flex; gap: 2px; padding: 3px; border-block-end: var(--line-width) solid var(--line-rule); }
     .tabs button { min-height: 24px; padding: 2px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: 500 var(--type-caption)/1 var(--stack-ui); cursor: pointer; }
     .tabs button[aria-pressed="true"] { background: var(--interaction-selected); color: var(--text-strong); }
     .tabs button:disabled { color: var(--text-disabled); cursor: default; }

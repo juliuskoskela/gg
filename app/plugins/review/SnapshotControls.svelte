@@ -66,7 +66,7 @@
 </details>
 <style>
     @import "../../controls/action.css";
-    .snapshot-tools { border-block: 1px solid var(--border); padding-block: var(--space-3); }
+    .snapshot-tools { border-block: var(--line-width) solid var(--line-rule); padding-block: var(--space-3); }
     summary { pointer-events: auto; cursor: pointer; font: var(--font-body); }
     .snapshot-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-group); }
     .muted { color: var(--muted); }
