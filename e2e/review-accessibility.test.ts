@@ -15,19 +15,15 @@ describe("reviewed revision navigation", () => {
     });
     afterEach(async () => destroyContext(ctx));
 
-    it("opens revision tools and reaches a command by keyboard", async () => {
+    it("opens the Revision menu and reaches a command by keyboard", async () => {
         let backend = await startGG(ctx);
         await ctx.page.goto(backend);
         await ctx.page.locator(".graph .selection-item").first().click();
-        let views = ctx.page.getByRole("button", { name: "Views", exact: true });
-        await views.focus();
-        await views.press("Enter");
-        await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools" }).click();
-        let tab = ctx.page.getByRole("tab", { name: "Revision tools", exact: true });
-        await expect.poll(() => tab.getAttribute("aria-selected")).toBe("true");
-        let tool = ctx.page.locator(".revision-tools button:not(:disabled)").first();
-        await tool.focus();
-        expect(await tool.evaluate(element => element === document.activeElement)).toBe(true);
+        let revisionMenu = ctx.page.getByRole("menubar", { name: "Application menu" }).getByRole("menuitem", { name: "Revision", exact: true });
+        await revisionMenu.focus();
+        await revisionMenu.press("ArrowDown");
+        let tool = ctx.page.getByRole("menu", { name: "Revision" }).locator('button:not(:disabled)').first();
+        await expect.poll(() => tool.evaluate(element => element === document.activeElement)).toBe(true);
         let box = (await tool.boundingBox())!;
         expect(box.y).toBeGreaterThanOrEqual(0);
         expect(box.y + box.height).toBeLessThanOrEqual(844);

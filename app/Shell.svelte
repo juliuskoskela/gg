@@ -398,7 +398,7 @@
         {/if}
 
         {#if $lineMenu}
-            <ContextMenu items={$lineMenu.commands} heading={$lineMenu.heading} x={$lineMenu.x} y={$lineMenu.y} onClose={() => lineMenu.set(null)} />
+            <ContextMenu items={$lineMenu.commands} heading={$lineMenu.heading} views={$lineMenu.views ?? false} x={$lineMenu.x} y={$lineMenu.y} onClose={() => lineMenu.set(null)} />
         {/if}
 
         {#if $currentContext && $hasMenu}

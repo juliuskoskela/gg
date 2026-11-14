@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Snippet } from "svelte";
     import { onMount, tick } from "svelte";
-    import { dock } from "../workspace/dock";
+    import { dock, isPanelId, type PanelId } from "../workspace/dock";
     import CommandPalette from "../commands/CommandPalette.svelte";
     import { workspaceController } from "../workspace/state";
     import type { RepoConfig } from "../messages/RepoConfig";
@@ -14,6 +14,7 @@
     import RepositoryNavigation from "./RepositoryNavigation.svelte";
     import PanelToggle from "../controls/PanelToggle.svelte";
     import PlaceMenu from "./PlaceMenu.svelte";
+    import TopMenuBar from "./TopMenuBar.svelte";
     import ViewsMenu from "./ViewsMenu.svelte";
 
     interface Props {
@@ -41,27 +42,25 @@
     }
 
     onMount(() => {
-        if (!standalone && new URLSearchParams(window.location.search).get("panel") === "settings") void openSettings();
-        if (!standalone && new URLSearchParams(window.location.search).get("panel") === "history") void openHistory();
+        // standalone pages hand panel requests to the main window through this parameter
+        let requested = new URLSearchParams(window.location.search).get("panel");
+        if (!standalone && isPanelId(requested)) void openPanel(requested);
     });
 
-    async function openHistory() {
-        if (standalone) { window.location.assign("/?panel=history"); return; }
+    async function openPanel(id: PanelId) {
+        if (standalone) { window.location.assign(`/?panel=${id}`); return; }
         menuOpen = false;
-        dock.open("history");
+        dock.open(id);
         await tick();
-        document.getElementById("panel-tab-history")?.focus();
+        document.getElementById(`panel-tab-${id}`)?.focus();
+    }
+
+    async function openHistory() {
+        await openPanel("history");
     }
 
     async function openSettings() {
-        if (standalone) {
-            window.location.assign("/?panel=settings");
-            return;
-        }
-        menuOpen = false;
-        dock.open("settings");
-        await tick();
-        document.getElementById("panel-tab-settings")?.focus();
+        await openPanel("settings");
     }
 
     async function refresh() {
@@ -85,6 +84,7 @@
     <header class="workspace-topbar">
         {#if !persistentNavigation}<button class="navigation-trigger" type="button" aria-label="Open repository navigation" aria-expanded={menuOpen} aria-controls="workspace-navigation" onclick={() => menuOpen = true}><Icon name="menu" /></button>{/if}
         <PlaceMenu {workspace} />
+        <div class="menubar-slot"><TopMenuBar {refreshing} onSettings={openSettings} onHistory={openHistory} onWorkingCopy={selectWorkingCopy} onPanel={openPanel} /></div>
         {#if !standalone}<div class="views-control"><ViewsMenu /></div>{/if}
     </header>
     {#if persistentNavigation}
@@ -127,9 +127,11 @@
     .navigation-footer :global(button) { width: 100%; justify-content: flex-start; }
     .with-navigation:not(.expanded-navigation) .navigation-footer :global(button) { justify-content: center; }
     .with-navigation .workspace-sheet { grid-row: 2; grid-column: 2; }
-    .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: wrap; min-height: 40px; padding: var(--space-1) var(--pane-inset); background: var(--ground); min-width: 0; }
+    .workspace-topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--panel-gap); flex-wrap: nowrap; min-height: 40px; padding: var(--space-1) var(--pane-inset); background: var(--ground); min-width: 0; }
+    /* the place label ellipsizes first; the menus keep their full labels */
+    .menubar-slot { display: flex; align-items: center; flex: none; min-width: 0; }
     .navigation-trigger { display: grid; place-items: center; width: 32px; min-height: 32px; flex-shrink: 0; padding: 6px; background: transparent; color: var(--text); border: 0; border-radius: var(--radius-control); cursor: pointer; }
-    .views-control { margin-inline-start: auto; }
+    .views-control { margin-inline-start: auto; flex: none; display: flex; align-items: center; }
     .workspace-footer { grid-column: 1 / -1; grid-row: 3; min-width: 0; padding: 4px var(--pane-inset) max(4px, env(safe-area-inset-bottom)); background: var(--ground); }
     .workspace-footer, .workspace-topbar { padding-left: max(var(--pane-inset), env(safe-area-inset-left)); padding-right: max(var(--pane-inset), env(safe-area-inset-right)); }
     /* app chrome shares one ground without rules; views are tiles on it and carry their own edges.
@@ -144,6 +146,6 @@
 
     .navigation-trigger:active { background: var(--control-pressed); }
     @media (pointer: coarse), (max-width: 600px) { .workspace-frame { --repository-footer-height: 52px; } .navigation-trigger { width: 44px; min-height: 44px; } .workspace-topbar { height: auto; min-height: 52px; } }
-    @media (max-width: 600px) { .workspace-topbar { gap: var(--panel-gap); padding-block: max(4px, env(safe-area-inset-top)) 4px; } }
+    @media (max-width: 600px) { .workspace-topbar { flex-wrap: wrap; gap: var(--panel-gap); padding-block: max(4px, env(safe-area-inset-top)) 4px; } .menubar-slot { order: 2; flex: 1 1 100%; } }
     @media (max-width: 350px) { .workspace-frame { --repository-footer-height: 100px; } }
 </style>

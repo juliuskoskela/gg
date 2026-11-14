@@ -7,6 +7,7 @@ mod review;
 mod review_delta;
 mod session;
 mod splits;
+mod workspaces;
 
 use anyhow::Result;
 use futures_util::TryStreamExt;

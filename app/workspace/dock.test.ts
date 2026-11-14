@@ -8,31 +8,54 @@ describe("panel dock", () => {
         expect(openPanels(openPanel(defaultLayout(), "tree"))).toContain("tree");
     });
 
-    it("opens revision tools to the right of Description without changing saved defaults", () => {
+    it("opens files to the left of Diff and annotations beside Description without changing saved defaults", () => {
         let initial = defaultLayout();
-        let next = openPanel(initial, "revision-tools");
-        expect(openPanels(initial)).not.toContain("revision-tools");
-        expect(next.type).toBe("split");
-        if (next.type !== "split" || next.second.type !== "split") throw new Error("expected description region");
-        let group = next.second.first;
-        expect(group).toEqual({ type: "split", direction: "row", ratio: 0.68,
-            first: { type: "tabs", active: "description", panels: ["description"] },
-            second: { type: "tabs", active: "revision-tools", panels: ["revision-tools"] } });
-        expect(openPanels(openPanel(next, "revision-tools")).filter(id => id === "revision-tools")).toHaveLength(1);
-        expect(closePanel(next, "revision-tools")).toEqual(initial);
+        let withTree = openPanel(initial, "tree");
+        expect(openPanels(initial)).not.toContain("tree");
+        expect(withTree.type).toBe("split");
+        if (withTree.type !== "split" || withTree.second.type !== "split") throw new Error("expected diff region");
+        expect(withTree.second.second).toEqual({ type: "split", direction: "row", ratio: 0.32,
+            first: { type: "tabs", active: "tree", panels: ["tree"] },
+            second: { type: "tabs", active: "diff", panels: ["diff"] } });
+        expect(openPanels(openPanel(withTree, "tree")).filter(id => id === "tree")).toHaveLength(1);
+        expect(closePanel(withTree, "tree")).toEqual(initial);
+
+        let withNotes = openPanel(initial, "annotations");
+        expect(findTabs(withNotes, "description")).toEqual({ type: "tabs", active: "annotations", panels: ["description", "annotations"] });
+        expect(closePanel(withNotes, "annotations")).toEqual(initial);
     });
 
-    it("restores and moves revision tools like every other dock panel", () => {
-        let root = openPanel(defaultLayout(), "revision-tools");
-        root = movePanel(root, "revision-tools", "timeline", "tab");
-        expect(findTabs(root, "timeline")?.panels).toEqual(["revision-tools", "timeline"]);
-        let restored = restoreDock({ version: 1, root, compactActive: "revision-tools" });
-        expect(restored).toEqual({ root, compactActive: "revision-tools" });
-        let layout = createDock(null);
-        layout.open("revision-tools");
-        expect(get(layout).compactActive).toBe("revision-tools");
-        layout.close("revision-tools");
-        expect(openPanels(get(layout).root)).not.toContain("revision-tools");
+    it("strips retired tool panels from saved layouts while keeping surviving views", () => {
+        let saved = {
+            version: 1,
+            root: {
+                type: "split", direction: "row", ratio: 0.4,
+                first: { type: "tabs", active: "revision-tools", panels: ["timeline", "revision-tools"] },
+                second: {
+                    type: "split", direction: "column", ratio: 0.5,
+                    first: { type: "tabs", active: "operation", panels: ["operation"] },
+                    second: { type: "tabs", active: "diff", panels: ["diff"] },
+                },
+            },
+            compactActive: "revision-tools",
+        };
+        let restored = restoreDock(saved);
+        expect(restored).not.toBeNull();
+        expect(openPanels(restored!.root)).toEqual(["timeline", "diff"]);
+        expect(restored!.compactActive).toBe("timeline");
+        // a retired panel is dropped, not taken as a reason to discard the whole saved layout
+        let tree = restored!.root!;
+        expect(tree.type === "split" && tree.ratio).toBe(0.4);
+    });
+
+    it("loads a stored layout of only retired panels as the default, then saves a clean one", () => {
+        let memory = new Map<string, string>([["gg.dock.layout", JSON.stringify({ version: 1, root: { type: "tabs", active: "operation", panels: ["operation", "revision-tools"] }, compactActive: "operation" })]]);
+        let storage = { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => { memory.set(key, value); } };
+        let layout = createDock(storage);
+        expect(get(layout)).toEqual({ root: defaultLayout(), compactActive: "timeline" });
+        expect(memory.get("gg.dock.layout")).not.toContain("operation");
+        // unknown ids that were never panels still invalidate the layout
+        expect(restoreDock({ version: 1, root: { type: "tabs", active: "nonsense", panels: ["timeline", "nonsense"] }, compactActive: null })).toBeNull();
     });
 
     it("opens and restores one Settings tab without changing review panels", () => {

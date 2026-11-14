@@ -56,7 +56,7 @@ describe("GG+ workspace", () => {
         await empty.waitFor();
         expect((await empty.boundingBox())!.y).toBeLessThan((await ctx.page.locator(".graph-body").boundingBox())!.y + (await ctx.page.locator(".graph-body").boundingBox())!.height);
         await ctx.page.route("**/api/query/query_snapshot", route => route.fulfill({ status: 503, body: "Snapshot temporarily unavailable" }));
-        await ctx.page.getByRole("button", { name: "More repository actions", exact: true }).click();
+        await ctx.page.getByRole("menubar", { name: "Application menu" }).getByRole("menuitem", { name: "Repository", exact: true }).click();
         await ctx.page.getByRole("menuitem", { name: "Refresh repository", exact: true }).click();
         await ctx.page.getByRole("alert").waitFor();
         expect((await ctx.page.locator(".workspace-content").boundingBox())!.height).toBeGreaterThan(300);
@@ -93,18 +93,21 @@ describe("GG+ workspace", () => {
 
     });
 
-    it("opens revision tools independently of the editable description", async () => {
+    it("exposes revision tools in the top menubar and timeline toolbar independently of the editable description", async () => {
         await ctx.page.goto(await startGG(ctx));
         await ctx.page.getByRole("textbox", { name: "Revision description", exact: true }).waitFor();
-        await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
-        await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools", exact: true }).click();
-        await ctx.page.locator(".revision-tools").waitFor();
+        await ctx.page.getByRole("menubar", { name: "Application menu" }).getByRole("menuitem", { name: "Revision", exact: true }).click();
+        let revisionMenu = ctx.page.getByRole("menu", { name: "Revision" });
+        await revisionMenu.waitFor();
         for (let name of ["Copy change ID", "Copy commit ID", "New child", "Abandon"]) {
-            expect(await ctx.page.locator(".revision-tools").getByRole("button", { name, exact: true }).count()).toBe(1);
+            expect(await revisionMenu.getByRole("menuitem", { name, exact: true }).count()).toBe(1);
+        }
+        await ctx.page.keyboard.press("Escape");
+        let quickActions = ctx.page.getByRole("group", { name: "Timeline quick actions", exact: true });
+        for (let name of ["New child", "Edit as working copy", "Squash into parent", "Split change…", "Abandon"]) {
+            expect(await quickActions.getByRole("button", { name, exact: true }).count()).toBe(1);
         }
         expect(await ctx.page.locator(".overview .revision-tools, .overview .revision-actions").count()).toBe(0);
-        await closeView(ctx.page, "Revision tools");
-        expect(await ctx.page.locator(".revision-tools").count()).toBe(0);
         expect(await ctx.page.getByRole("textbox", { name: "Revision description", exact: true }).isVisible()).toBe(true);
         let gutters = await ctx.page.locator(".timeline-section").evaluate(node => {
             let outer = node.getBoundingClientRect();
@@ -226,7 +229,7 @@ describe("GG+ workspace", () => {
     it("keeps repository actions discoverable in phone commands", async () => {
         await ctx.page.setViewportSize({ width: 320, height: 740 });
         await ctx.page.goto(await startGG(ctx));
-        let trigger = ctx.page.getByRole("button", { name: "More repository actions", exact: true });
+        let trigger = ctx.page.getByRole("menubar", { name: "Application menu" }).getByRole("menuitem", { name: "Tools", exact: true });
         await trigger.click();
         await ctx.page.getByRole("menuitem", { name: "Commands…", exact: true }).click();
         let commands = ctx.page.getByRole("dialog", { name: "Commands" });

@@ -1,18 +1,20 @@
-import { afterEach, describe, expect, it } from "vitest";
+import type { Component } from "svelte";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { get } from "svelte/store";
-import OperationView from "./OperationView.svelte";
-import { workspaceViews } from "./views";
+import { workspaceViews, type ViewContext } from "./views";
 import { createWorkspaceController, readToolLayout } from "./state";
 
+let dummyView = (() => {}) as unknown as Component<ViewContext>;
 let original = location.href;
 let registeredViews = workspaceViews.length;
+beforeEach(() => addView("operation"));
 afterEach(() => {
     workspaceViews.splice(registeredViews);
     localStorage.removeItem("gg.workspace.layout");
     history.replaceState(null, "", original);
 });
 function addView(id: string) {
-    workspaceViews.push({ id, label: id, scope: "repository", placement: "picker", desktop: "tab", mobile: "full", component: OperationView });
+    workspaceViews.push({ id, label: id, scope: "repository", placement: "picker", desktop: "tab", mobile: "full", component: dummyView });
 }
 
 describe("adaptive tool host state", () => {

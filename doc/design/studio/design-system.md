@@ -119,8 +119,9 @@ change's actual description title and body first, including for the working copy
 Use a ready-to-fill multiline field for an empty working-copy description. Existing
 mutable text uses `EditableText`: quiet text at rest, neutral hover feedback, click or
 keyboard activation to enter the editor. Keep drafts and full-width editing. There is
-no pen button or visible Edit description label. Revision commands live in their own
-Revision tools panel, available from Views. The old Details disclosure,
+no pen button or visible Edit description label. Revision commands live in the
+topbar Revision menu, with the most frequent ones as icon buttons in the timeline
+header. The old Details disclosure,
 stored overview visibility preference and independent metadata scroll cap are removed.
 
 `RevisionOverview` composes description text/editing and `RevisionMetadata`.

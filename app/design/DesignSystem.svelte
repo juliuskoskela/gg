@@ -2,7 +2,6 @@
     import { focusModality } from "../display/focus";
     import { effectiveTheme, themePreference, themeFamily, themeFamilies, darkDepth, colorVision, colorVisions } from "../display/theme";
     import { setContext } from "svelte";
-    import RevisionTools from "../revision/RevisionTools.svelte";
     import RevisionOverview from "../revision/RevisionOverview.svelte";
     import { revisionFixture } from "./revisionFixture";
     import TextField from "../controls/TextField.svelte";
@@ -44,7 +43,7 @@
     let samplePreset = $state("custom");
     let timelineExample = $state<HTMLDivElement>();
     let sampleChanges: RevChange[] = [{ kind: "Modified", path: { repo_path: "app/workspace.ts", relative_path: "app/workspace.ts" }, has_conflict: false, hunks: [{ location: { from_file: { start: 1, len: 6 }, to_file: { start: 1, len: 6 } }, lines: { lines: [' import PanelTabs from "./controls/PanelTabs.svelte";\n', ' \n', '-let selection = "underline";\n', '+let selection = "surface";\n', ' let panels = ["Timeline", "Diff", "Edit"];\n', ' // Keep the active panel visible.\n', ' function selectPanel(index: number = 0) { return panels[index]; }\n'] } }], stat: { added: 1, removed: 1 } }];
-    let items = $state([{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]);
+    let items = $state([{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "tree", label: "Files" }]);
     let workspace = { query_choices: { default: "all()", "My revisions": "mine()" } };
     let rows = [
         { kind: "context", number: 1, text: 'import PanelTabs from "./controls/PanelTabs.svelte";' },
@@ -80,10 +79,10 @@
                         {#if item.id === "diff"}
                             <div class="diff-example"><DiffViewer change={sampleChanges[0]} themeOverride={theme} /></div><PanelFooter><div class="example-file-navigation"><Icon name="chevron-up" /><Icon name="chevron-down" /><Icon name="file-text" /><span>app/workspace.ts</span></div></PanelFooter>
                         {:else if item.id === "edit"}<PanelHeader><Icon name="file-text" /><span>app/workspace.ts</span></PanelHeader><TextAreaField label="Example editor" spellcheck="false" value={rows.filter(row => row.kind !== "removed").map(row => row.text).join("\n")} />
-                        {:else}<PanelHeader><h2>Current operation</h2></PanelHeader><p class="operation-example">No pending operation in this component preview.</p>{/if}
+                        {:else}<PanelHeader><h2>Files</h2></PanelHeader><p class="operation-example">app/workspace.ts (1 changed)</p>{/if}
                     </div>
                 {/each}
-                {#if !items.length}<p class="operation-example">No views open. <button type="button" onclick={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "operation", label: "Operation" }]; active = "diff"; }}>Restore views</button></p>{/if}
+                {#if !items.length}<p class="operation-example">No views open. <button type="button" onclick={() => { items = [{ id: "diff", label: "Diff" }, { id: "edit", label: "Edit" }, { id: "tree", label: "Files" }]; active = "diff"; }}>Restore views</button></p>{/if}
             </div>
         </section>
         <section id="typography" class="description-specimen" aria-labelledby="typography-heading">
@@ -104,7 +103,6 @@
             <section><h2>Timeline panel</h2><p>View controls share a collapsible toolbar below the title line. Preset and filter fields stay at the bottom, outside the graph's scroll area.</p><div class="sample"><PanelTabs items={[{ id: "timeline", label: "Timeline" }]} active="timeline" prefix="single" onSelect={() => {}}>{#snippet tools()}<TimelineDisplayOptions />{/snippet}</PanelTabs><div class="timeline-example" id="single-timeline" role="region" aria-labelledby="single-tab-timeline"><TimelineSection showHeader={false} bind:element={timelineExample}>{#snippet summary()}<span >2 revisions</span>{/snippet}<div class="timeline-example-rows"><p>Keep revision descriptions readable</p><p>Unify panel chrome</p></div>{#snippet footer()}<div  class="timeline-example-fields"><SelectWidget options={[{ label: "Default", value: "all()" }]} bind:value={sampleQuery}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget><TextField label="Example revset" bind:value={sampleQuery} /></div>{/snippet}</TimelineSection></div></div></section>
             <section id="toolbar-contract"><h2>Toolbar contributions</h2><p>A view owns its controls; the panel frame chooses their placement. Independent contributions share one row and retain their own state. Standalone views use the same controls locally.</p><button type="button" onclick={() => localTools = !localTools}>{localTools ? "Host in panel" : "Render standalone"}</button><PanelGroup><PanelTabs items={[{ id: "toolbar-example", label: "Example view" }]} active="toolbar-example" prefix="toolbar-example" onSelect={() => {}} /><ToolbarExample local={localTools} /></PanelGroup></section>
             <section><h2>Controls</h2><p>Independent toggles and exclusive choices share the workspace control components.</p><div class="control-example"><ToggleTray label="Example wrapping"><ToggleItem icon="corner-down-left" text="Wrap lines" label="Wrap example lines" on={wrap} onClick={() => wrap = !wrap} /></ToggleTray><ActionWidget onClick={() => {}}><Icon name="refresh-cw" />Refresh</ActionWidget><ActionWidget primary onClick={() => {}}>Save description</ActionWidget><ActionWidget disabled disabledReason="Select a revision first" onClick={() => {}}>Unavailable</ActionWidget></div></section>
-            <section><h2>Revision tools</h2><p>Commands live in their own dockable panel, available from Views. They follow the selected revision.</p><div class="tools-specimen"><PanelTabs items={[{ id: "tools", label: "Revision tools" }]} active="tools" prefix="tools-specimen" onSelect={() => {}} /><div id="tools-specimen-tools" role="region" aria-labelledby="tools-specimen-tab-tools"><RevisionTools headers={[]} /></div></div></section>
             <section id="selects"><h2>Dropdowns</h2><p>Remote and revset choices use the same native select, inset Feather chevron and keyboard behavior.</p><div class="control-example"><SelectWidget label="Example remote" options={[{ value: "origin" }, { value: "upstream" }]} bind:value={sampleRemote} /><SelectWidget label="Example preset" options={[{ value: "custom", label: "Custom" }, { value: "default", label: "Default" }]} bind:value={samplePreset}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget></div></section>
             <section class="field-specimens"><h2>Fields and inline editing</h2><p>Text, search and multiline fields share native behavior and the same surface, border and focus tokens.</p><TextField label="Example search" type="search" placeholder="Find a file…" bind:value={sampleSearch} />
                 {#if editingSample}<TextAreaField label="Example description" bind:value={sampleDescription} /><button type="button" onclick={() => editingSample = false}>Done</button>{:else}<EditableText text={sampleDescription} label="Edit example description" onEdit={() => editingSample = true} />{/if}

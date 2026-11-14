@@ -36,7 +36,7 @@
         y: number;
         placement?: "pointer" | "above-end";
         onClose: () => void;
-        // every menu ends with the views that can still be opened, so right-clicking is always a way to add one
+        // empty panel space opts into closed views; object menus stay scoped to their operand
         views?: boolean;
     }
 
@@ -48,7 +48,7 @@
         y,
         placement = "pointer",
         onClose,
-        views = true
+        views = false
     }: Props = $props();
     let commands = $derived(items ?? [...actionCommands(operand, $currentWorkspaceIdentity, $ignoreToggled, $currentMutation, $mutationPending), ...annotationCommands(operand), ...pluginCommands(operand, true, $pluginContributions)]);
     let viewItems = $derived(views ? openViewCommands(undefined, $pluginContributions).filter(command => !command.reason) : []);

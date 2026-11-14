@@ -10,10 +10,12 @@ import type { Operand } from "../messages/Operand";
 import type { RevHeader } from "../messages/RevHeader";
 import type { RevsResult } from "../messages/RevsResult";
 import type { RepoConfig } from "../messages/RepoConfig";
+import type { WorkspaceContext } from "../messages/WorkspaceContext";
 import { changeSelectEvent, currentMutation, ignoreToggled, pickedRevisions, repoConfigEvent, repoStatusEvent, revisionSelectEvent } from "../stores";
+import { workspaceController } from "../workspace/state";
 import BinaryMutator from "../mutators/BinaryMutator";
 import RevisionMutator from "../mutators/RevisionMutator";
-import RefMutator from "../mutators/RefMutator";
+import WorkspaceMutator, { siblingWorkspacePrefix } from "../mutators/WorkspaceMutator";
 import { handleCommand } from "../mutators/commands";
 import { revisionCapabilities } from "../mutators/revisionActions";
 import { revisionIdCommands } from "./revisionIds";
@@ -70,7 +72,7 @@ export function revisionCommands(headers: RevHeader[], checkSelection = true, ..
         let reason = (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : !headers.length ? "Select a revision" :
             scattered && id !== "move" && id !== "abandon" ? "Select a continuous range with Shift+click for this action" :
             checkSelection && !(scattered || selectionCurrent(headers)) ? "Selection has changed" : id === "split" && headers.some(header => header.is_immutable) ? "Immutable revisions are protected" : id === "split" && headers.some(header => header.has_conflict) ? "Resolve conflicts before splitting" : !permitted ?
-            (immutable && ["move", "insert", "add_parent", "remove_parent", "new_parent", "edit", "abandon", "squash", "restore"].includes(id) ? "Immutable revisions are protected" : "This action requires a different selection or one parent") : null;
+            (immutable && ["move", "insert", "add_parent", "remove_parent", "new_parent", "edit", "abandon", "squash", "restore"].includes(id) ? "Immutable revisions are protected" : id === "edit" && headers.length === 1 && headers[0].is_working_copy ? "Already the working copy" : id === "remove_parent" && headers.length === 1 && headers[0].parent_ids.length < 2 ? "Has only one parent" : "This action requires a different selection or one parent") : null;
         return { id, label, icon, scope: "Revision", group, destructive: id === "abandon", reason, execute: () => {
             // keep a stale scattered menu from turning its old picks into a range.
             if (scattered && get(pickedRevisions) !== picks) return;
@@ -180,13 +182,45 @@ let contextPresentation: Record<string, [string, number, boolean]> = {
     "Bookmark:track": ["link", 1, false], "Bookmark:untrack": ["slash", 1, false], "Bookmark:rename": ["type", 1, false], "Bookmark:move_to": ["move", 1, false],
     "Bookmark:delete": ["trash-2", 2, true],
     "Workspace:open": ["folder", 0, false], "Workspace:rename": ["type", 0, false], "Workspace:forget": ["x-circle", 2, true],
+    "Parent:inspect": ["git-commit", 0, false], "Parent:remove_parent": ["scissors", 2, true],
 };
 
 export function contextCommands(operand: Operand | null | undefined, ..._dependencies: unknown[]): Command[] {
-    if (!operand || (operand.type !== "Change" && operand.type !== "Ref" && operand.type !== "Workspace")) return [];
+    if (!operand || (operand.type !== "Change" && operand.type !== "Ref" && operand.type !== "Workspace" && operand.type !== "Parent")) return [];
     let entries: { id: string; label: string; scope: string; reason?: string }[] = [];
+    if (operand.type === "Parent") {
+        let immutable = !get(ignoreToggled) && operand.child.is_immutable;
+        let removeReason = operand.child.parent_ids.length <= 1 ? "Requires a merge revision" : immutable ? "Immutable revisions are protected" : undefined;
+        let parentCommands: Command[] = [
+            {
+                id: "context-inspect", label: "Select parent revision", scope: "Parent", icon: "git-commit", group: 0, reason: null,
+                execute: () => {
+                    let set = { from: operand.header.id, to: operand.header.id };
+                    revisionSelectEvent.set(set);
+                    workspaceController.selectRevision(set);
+                },
+            },
+            ...revisionIdCommands([operand.header]),
+            {
+                id: "context-remove_parent", label: "Remove this parent", scope: "Parent", icon: "scissors", group: 2, destructive: true,
+                reason: (get(currentMutation) || get(mutationPending)) ? "Another operation is in progress" : removeReason ?? null,
+                execute: async () => {
+                    if (contextCommands(operand).find(c => c.id === "context-remove_parent")?.reason) return;
+                    let status = get(repoStatusEvent), config = get(repoConfigEvent), protection = currentProtectionVersion();
+                    let valid = () => protectionVersion === protection && !get(currentMutation) && !get(mutationPending) && get(repoStatusEvent) === status && get(repoConfigEvent) === config;
+                    let mutator = new BinaryMutator(operand, { type: "Repository" }, get(ignoreToggled));
+                    let eligibility = mutator.canDrop();
+                    if (eligibility.type !== "yes") { await getInput("Action unavailable", eligibility.type === "maybe" ? eligibility.hint : "This parent cannot be removed.", []); return; }
+                    let details = eligibility.hint.map(part => typeof part === "string" ? part : part.type === "ChangeId" || part.type === "CommitId" ? part.hex.slice(0, 8) : part.bookmark_name).join("");
+                    let confirm = await getInput("Review revision change", `${details}. Descendants may be rewritten and conflicts may result.`, [{ label: "Action", choices: ["Cancel", "Apply"] }]);
+                    if (confirm?.Action === "Apply" && valid() && mutator.canDrop().type === "yes") mutator.doDrop();
+                },
+            },
+        ];
+        return parentCommands;
+    }
     if (operand.type === "Change") {
-        let parent = operand.headers.at(-1)?.parent_ids.length === 1;
+        let parent = operand.headers.at(-1)?.parent_ids?.length === 1;
         let singleHunk = !operand.hunk || operand.headers.length === 1;
         let reason = !parent ? "Requires exactly one parent" : !singleHunk ? "Select one revision for a hunk" : !get(ignoreToggled) && operand.headers.some(h => h.is_immutable) ? "Immutable revisions are protected" : undefined;
         let kind = operand.hunk ? "hunk" : "file";
@@ -257,30 +291,64 @@ async function moveOperand(operand: Operand, valid: () => boolean, copy = false)
     if (result?.Action === "Move" && valid() && mutator.canDrop().type === "yes") mutator.doDrop();
 }
 
-export function nativeRepositoryCommands(enabled = isTauri()): Command[] {
-    if (!enabled) return [];
-    let actions = [
-        ["open", "Open repository…", "o", false, "Ctrl/⌘ O"],
-        ["init", "Initialize repository…", "n", true, "Ctrl/⌘ Shift N"],
-        ["clone", "Clone repository…", "o", true, "Ctrl/⌘ Shift O"],
-        ["reopen", "Reopen repository", "f5", false, "F5"],
-    ] as const;
-    let commands: Command[] = actions.map(([id, label, key, shift, shortcut]) => ({
-        id: `repository.${id}`, label, icon: "folder", scope: "Repository", shortcut, reason: null,
-        execute: () => trigger("forward_accelerator", { key, ctrl: key !== "f5", shift }),
-    }));
-    commands.push({ id: "repository.recent", label: "Open recent workspace…", icon: "folder", scope: "Repository", reason: null, execute: async () => {
-        let recent = await query<string[]>("query_recent_workspaces", null);
-        if (recent.type !== "data" || !recent.value.length) { await getInput("Recent workspaces", "No recent workspaces available.", []); return; }
-        let answer = await getInput("Open recent workspace", "", [{ label: "Workspace", choices: recent.value }]);
-        let path = answer?.Workspace;
-        if (!path || !recent.value.includes(path)) return;
-        let result = await query<RepoConfig>("query_workspace", { path });
-        if (result.type === "data") repoConfigEvent.set(result.value);
-        else repoConfigEvent.set({ type: "LoadError", absolute_path: path, message: result.message });
-    } });
-    commands.push({ id: "repository.close", label: "Close window", icon: "x", scope: "Repository", reason: null,
-        execute: async () => { let { getCurrentWindow } = await import("@tauri-apps/api/window"); await getCurrentWindow().close(); } });
+async function openWorkspacePath(path: string) {
+    let trimmed = path.trim();
+    if (!trimmed) return;
+    let result = await query<RepoConfig>("query_workspace", { path: trimmed });
+    if (result.type === "data") repoConfigEvent.set(result.value);
+    else repoConfigEvent.set({ type: "LoadError", absolute_path: trimmed, message: result.message });
+}
+
+export function repositoryLocationCommands(desktop = isTauri()): Command[] {
+    let busy = !!get(currentMutation) || get(mutationPending);
+    let busyReason = busy ? "Another operation is in progress" : null;
+    let desktopOnly = "Available in the desktop app";
+    let workspace = get(repoConfigEvent);
+    let commands: Command[] = [
+        {
+            id: "repository.open", label: "Open repository…", icon: "folder", scope: "Repository", shortcut: desktop ? "Ctrl/⌘ O" : undefined, reason: busyReason,
+            execute: async () => {
+                if (desktop) { trigger("forward_accelerator", { key: "o", ctrl: true, shift: false }); return; }
+                let answer = await getInput("Open repository", "", ["Repository path"]);
+                let path = answer?.["Repository path"]?.trim();
+                if (path) await openWorkspacePath(path);
+            },
+        },
+        {
+            id: "repository.recent", label: "Open recent workspace…", icon: "clock", scope: "Repository", reason: busyReason,
+            execute: async () => {
+                let recent = await query<string[]>("query_recent_workspaces", null);
+                if (recent.type !== "data" || !recent.value.length) { await getInput("Recent workspaces", "No recent workspaces available.", []); return; }
+                let answer = await getInput("Open recent workspace", "", [{ label: "Workspace", choices: recent.value }]);
+                let path = answer?.Workspace;
+                if (!path || !recent.value.includes(path)) return;
+                await openWorkspacePath(path);
+            },
+        },
+        // the web server has no init or clone endpoints; those run in the desktop app's own process
+        {
+            id: "repository.init", label: "Initialize repository…", icon: "plus-circle", scope: "Repository", shortcut: desktop ? "Ctrl/⌘ Shift N" : undefined, reason: busyReason ?? (desktop ? null : desktopOnly),
+            execute: () => { if (desktop) trigger("forward_accelerator", { key: "n", ctrl: true, shift: true }); },
+        },
+        {
+            id: "repository.clone", label: "Clone repository…", icon: "download-cloud", scope: "Repository", shortcut: desktop ? "Ctrl/⌘ Shift O" : undefined, reason: busyReason ?? (desktop ? null : desktopOnly),
+            execute: () => { if (desktop) trigger("forward_accelerator", { key: "o", ctrl: true, shift: true }); },
+        },
+        {
+            id: "repository.reopen", label: "Reopen repository", icon: "refresh-cw", scope: "Repository", shortcut: desktop ? "F5" : undefined, reason: busyReason ?? (desktop || workspace.type === "Workspace" ? null : "Open a repository first"),
+            execute: async () => {
+                if (desktop) { trigger("forward_accelerator", { key: "f5", ctrl: false, shift: false }); return; }
+                let current = get(repoConfigEvent);
+                await openWorkspacePath(current.type === "Workspace" ? current.absolute_path : "");
+            },
+        },
+    ];
+    if (desktop) {
+        commands.push({
+            id: "repository.close", label: "Close window", icon: "x", scope: "Repository", reason: null,
+            execute: async () => { let { getCurrentWindow } = await import("@tauri-apps/api/window"); await getCurrentWindow().close(); },
+        });
+    }
     return commands;
 }
 
@@ -289,14 +357,30 @@ export function repositoryCommands(remoteName = "", ..._dependencies: unknown[])
     let remotes = config.type === "Workspace" ? config.git_remotes : [];
     let busy = !!get(currentMutation) || get(mutationPending);
     let status = get(repoStatusEvent);
+    let identity = get(currentWorkspaceIdentity);
+    let renameReason = busy ? "Another operation is in progress" : identity.type === "checking" ? "Checking current workspace" : identity.type === "unavailable" ? "Cannot determine current workspace" : null;
     let commands: Command[] = [
-        ...nativeRepositoryCommands(),
+        ...repositoryLocationCommands(),
         { id: "repository.undo", label: undoLabel(status?.operation_description), icon: "rotate-ccw", scope: "Repository", shortcut: "Ctrl/⌘ Z", reason: busy ? "Another operation is in progress" : null, execute: async () => { await executeRecovery(false); } },
         { id: "repository.redo", label: "Redo", icon: "rotate-cw", scope: "Repository", shortcut: "Ctrl/⌘ Shift Z", reason: busy ? "Another operation is in progress" : !status?.can_redo ? "Nothing to redo" : null, execute: async () => { await executeRecovery(true); } },
     ];
     commands.push(
         { id: "repository.refresh", label: "Refresh repository", icon: "refresh-cw", scope: "Repository", reason: busy ? "Another operation is in progress" : null, execute: () => { window.dispatchEvent(new Event("gg:refresh-repository")); } },
         { id: "repository.immutable", label: get(ignoreToggled) ? "Restore immutability protection" : "Override immutability protection", icon: "shield", scope: "Repository", reason: busy ? "Another operation is in progress" : null, execute: () => { if (!get(currentMutation) && !get(mutationPending)) ignoreToggled.update(value => !value); } },
+        { id: "repository.new_workspace", label: "New workspace…", icon: "folder-plus", scope: "Repository", reason: busy ? "Another operation is in progress" : config.type !== "Workspace" ? "Open a repository first" : null, execute: async () => {
+            let configNow = get(repoConfigEvent);
+            if (configNow.type !== "Workspace" || get(currentMutation) || get(mutationPending)) return;
+            // the backend names the default sibling after the project, which a secondary workspace's folder isn't
+            let context = await query<WorkspaceContext>("query_workspace_context", null);
+            let prefix = siblingWorkspacePrefix(configNow.absolute_path, context.type === "data" ? context.value?.project_name : undefined);
+            await WorkspaceMutator.add(prefix, () => !get(currentMutation) && !get(mutationPending) && get(repoConfigEvent) === configNow);
+        } },
+        { id: "repository.rename_workspace", label: "Rename workspace…", icon: "type", scope: "Repository", reason: renameReason, execute: () => {
+            let current = get(currentWorkspaceIdentity);
+            if (current.type !== "known" || get(currentMutation) || get(mutationPending)) return;
+            let statusNow = get(repoStatusEvent), configNow = get(repoConfigEvent);
+            new WorkspaceMutator(current.name, () => !get(currentMutation) && !get(mutationPending) && get(repoStatusEvent) === statusNow && get(repoConfigEvent) === configNow).handle("rename");
+        } },
     );
     for (let action of ["fetch", "push"] as const) {
         commands.push({ id: `repository.${action}`, label: action === "fetch" ? "Fetch remote bookmarks…" : "Push all bookmarks…", icon: action === "fetch" ? "arrow-down" : "arrow-up", scope: "Repository", reason: busy ? "Another operation is in progress" : !remotes.length ? "No Git remote configured" : null, execute: async () => {

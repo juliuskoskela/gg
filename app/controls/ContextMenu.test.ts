@@ -351,4 +351,42 @@ describe("ContextMenu (file history)", () => {
 
         expect(get(logQueryRequest)).toBe('files("a \\"quoted\\" \\\\ name.txt")');
     });
+
+    it("keeps object menus scoped without Open View clutter while offering views in empty space", async () => {
+        let { default: ContextMenu } = await import("./ContextMenu.svelte");
+        let objectMenu = render(ContextMenu, { props: { operand: { type: "Revision", header: mockHeader }, x: 20, y: 20, onClose: () => {} } });
+        expect(objectMenu.queryByRole("menuitem", { name: "Open Editor" })).toBeNull();
+        objectMenu.unmount();
+
+        let emptyMenu = render(ContextMenu, { props: { items: [], views: true, x: 20, y: 20, onClose: () => {} } });
+        expect(emptyMenu.getByRole("menuitem", { name: "Open Editor" })).toBeTruthy();
+        emptyMenu.unmount();
+    });
+
+    it("offers Delete tag on tag chips and parent actions on merge parent chips", async () => {
+        let { default: ContextMenu } = await import("./ContextMenu.svelte");
+        let { default: TagObject } = await import("../objects/TagObject.svelte");
+        let { currentContext, hasMenu } = await import("../stores");
+        let { get } = await import("svelte/store");
+        let tagView = render(TagObject, { props: { header: mockHeader, ref: { type: "Tag", tag_name: "v1.0" } } });
+        tagView.getByRole("option", { name: "v1.0" }).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 }));
+        expect(get(currentContext)).toEqual({ type: "Ref", header: mockHeader, ref: { type: "Tag", tag_name: "v1.0" } });
+        expect(get(hasMenu)).toEqual({ x: 30, y: 40 });
+        let tagMenu = render(ContextMenu, { props: { operand: get(currentContext), x: 30, y: 40, onClose: () => {} } });
+        expect(tagMenu.getByRole("menuitem", { name: "Delete tag" })).toBeTruthy();
+        tagMenu.unmount();
+        tagView.unmount();
+
+        let mergeChild: RevHeader = {
+            ...mockHeader,
+            parent_ids: [
+                { type: "CommitId", hex: "parent1", prefix: "par", rest: "ent1" },
+                { type: "CommitId", hex: "parent2", prefix: "par", rest: "ent2" },
+            ],
+        };
+        let parentMenu = render(ContextMenu, { props: { operand: { type: "Parent", header: mockHeader, child: mergeChild }, x: 30, y: 40, onClose: () => {} } });
+        expect(parentMenu.getByRole("menuitem", { name: "Select parent revision" })).toBeTruthy();
+        expect(parentMenu.getByRole("menuitem", { name: "Remove this parent" })).toBeTruthy();
+        parentMenu.unmount();
+    });
 });

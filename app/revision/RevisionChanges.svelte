@@ -165,7 +165,7 @@
 <div class="changes-module" bind:clientWidth={width}>
     {#if showTools}
         <PanelHeader className="changes-heading" label="Diff tools">
-            <DiffTools {changes} headers={revs.headers} title={focused ? "" : "Changes"} onCompare={compare} placement={!onRequestFiles} />
+            <DiffTools {changes} headers={revs.headers} selectedPath={currentChange?.path.repo_path ?? ""} title={focused ? "" : "Changes"} onCompare={compare} placement={!onRequestFiles} />
         </PanelHeader>
     {/if}
     {#snippet fileBar()}

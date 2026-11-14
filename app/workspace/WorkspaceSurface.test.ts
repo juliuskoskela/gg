@@ -45,7 +45,7 @@ describe("workspace surface", () => {
         repoConfigEvent.set(workspace);
         repoStatusEvent.set(workspace.status);
         let scope = repositoryScope(workspace);
-        dock.set({ root: { type: "split", direction: "row", ratio: 0.5, first: { type: "tabs", active: "tree", panels: ["tree"] }, second: { type: "tabs", active: "operation", panels: ["operation", "diff"] } }, compactActive: "tree" });
+        dock.set({ root: { type: "split", direction: "row", ratio: 0.5, first: { type: "tabs", active: "tree", panels: ["tree"] }, second: { type: "tabs", active: "description", panels: ["description", "diff"] } }, compactActive: "tree" });
 
         // the timeline shows an older revision; an earlier visit to the working copy remembered another file
         let older_set: RevSet = { from: older.id, to: older.id };
@@ -86,9 +86,9 @@ describe("workspace surface", () => {
 
     it("names the view Editor in the Views menu and its tab, keeping the id saved layouts use", async () => {
         let { viewChoices, panelLabelFor } = await import("./panels");
-        expect(viewChoices(false).find(choice => choice.id === "tree")?.label).toBe("Editor");
+        expect(viewChoices().find(choice => choice.id === "tree")?.label).toBe("Editor");
         expect(panelLabelFor("tree")).toBe("Editor");
-        expect(viewChoices(false).some(choice => choice.label === "Files")).toBe(false);
+        expect(viewChoices().some(choice => choice.label === "Files")).toBe(false);
     });
 
     it("shows the app's own edit menu on a text field in any view, instead of the native one", async () => {

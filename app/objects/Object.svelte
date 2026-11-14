@@ -92,7 +92,8 @@ Core component for direct-manipulation objects. A drag&drop source.
             operand?.type == "Ref" ||
             operand?.type == "Change" ||
             operand?.type == "Revision" ||
-            operand?.type == "Workspace"
+            operand?.type == "Workspace" ||
+            operand?.type == "Parent"
         ) {
             event.preventDefault();
             event.stopPropagation();

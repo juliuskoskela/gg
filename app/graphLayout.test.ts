@@ -1,6 +1,6 @@
 import "./global.css";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { fireEvent, render } from "@testing-library/svelte";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { anchoredHistoryScroll, createHistoryDensity, historyDensity, historyDensityKey, historyRowSize } from "./graphLayout";
 import { cleanupMocks, setupMocks } from "./mocks";
@@ -222,5 +222,35 @@ describe("history density", () => {
         expect(get(timelineDisplay)).toEqual({ change: true, commit: true, stats: false, bookmarks: true, tags: false });
         expect(JSON.parse(localStorage.getItem("gg.timeline.display")!)).toEqual({ change: true, commit: true, stats: false, bookmarks: true, tags: false });
         expect(getByRole("menuitemcheckbox", { name: "Commit IDs" }).getAttribute("aria-checked")).toBe("true");
+    });
+
+    it("exposes primary graph action buttons alongside timeline display options", async () => {
+        let { default: TimelineDisplayOptions } = await import("./timeline/TimelineDisplayOptions.svelte");
+        let { selectionHeaders } = await import("./stores");
+        selectionHeaders.set([]);
+        let { getByRole } = render(TimelineDisplayOptions);
+        let newChild = getByRole("button", { name: "New child" }) as HTMLButtonElement;
+        expect(newChild.disabled).toBe(true);
+        expect(newChild.title).toContain("Select a revision");
+
+        selectionHeaders.set([{
+            id: {
+                change: { type: "ChangeId", hex: "abc12345", prefix: "abc", rest: "12345", offset: null, is_divergent: false },
+                commit: { type: "CommitId", hex: "def67890", prefix: "def", rest: "67890" },
+            },
+            description: { lines: ["test"] },
+            author: { name: "Test", email: "test@example.com", timestamp: "2025-01-01T00:00:00Z" },
+            has_conflict: false,
+            is_working_copy: false,
+            working_copy_of: null,
+            is_immutable: false,
+            refs: [],
+            parent_ids: [{ type: "CommitId", hex: "parent00", prefix: "par", rest: "ent00" }],
+        }]);
+        await waitFor(() => expect(newChild.disabled).toBe(false));
+        for (let label of ["New child", "Edit as working copy", "Squash into parent", "Split change…", "Abandon"]) {
+            expect((getByRole("button", { name: label }) as HTMLButtonElement).disabled).toBe(false);
+        }
+        selectionHeaders.set([]);
     });
 });

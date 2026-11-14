@@ -158,7 +158,7 @@ describe("shared panel chrome", () => {
     it.each([768, 390, 320])("scrolls overflowing tabs independently of view tools and reveals keyboard focus at %ipx", async width => {
         await ctx.page.setViewportSize({ width, height: 960 });
         await ctx.page.goto(`${url}/?inspect=main`);
-        await ctx.page.evaluate(() => localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, root: { type: "tabs", panels: ["timeline", "description", "diff", "tree", "edit", "evolution", "history", "revision-tools", "operation", "settings"], active: "diff" }, compactActive: "diff" })));
+        await ctx.page.evaluate(() => localStorage.setItem("gg.dock.layout", JSON.stringify({ version: 1, root: { type: "tabs", panels: ["timeline", "description", "diff", "tree", "edit", "evolution", "history", "annotations", "terminal", "settings"], active: "diff" }, compactActive: "diff" })));
         await ctx.page.reload();
         let tabs = ctx.page.getByRole("tablist", { name: "Panels", exact: true });
         let tools = ctx.page.getByRole("group", { name: "Diff tools", exact: true });

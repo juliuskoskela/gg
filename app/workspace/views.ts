@@ -1,7 +1,6 @@
 import type { Component } from "svelte";
 import type { PanelId } from "./dock";
 import type { RepoStatus } from "../messages/RepoStatus";
-import OperationView from "./OperationView.svelte";
 
 export type ViewContext = { status?: RepoStatus; hasSelection?: boolean; viewState?: unknown; onViewStateChange?: (value: unknown) => void };
 export type WorkspaceView = {
@@ -25,7 +24,6 @@ export let workspaceViews: WorkspaceView[] = [
     { id: "terminal", label: "Terminal", panel: "terminal", scope: "repository", placement: "picker", mobile: "full" },
     { id: "history", label: "Graph", commandLabel: "Return to graph", destination: "history", scope: "repository", placement: "graph", mobile: "graph" },
     { id: "changes", label: "Changes", commandLabel: "Inspect full revision", destination: "inspect", available: context => !!context.hasSelection, scope: "revision", placement: "inspector", mobile: "sheet" },
-    { id: "operation", label: "Current operation", scope: "repository", placement: "picker", desktop: "tab", mobile: "full", available: context => !!context.status, component: OperationView },
     { id: "evolution", label: "Change evolution", panel: "evolution", scope: "revision", placement: "inspector", mobile: "sheet", available: context => !!context.hasSelection },
     { id: "annotations", label: "Annotations", panel: "annotations", scope: "repository", placement: "inspector", mobile: "full" },
     { id: "operation-history", label: "Repository history", panel: "history", scope: "repository", placement: "graph", mobile: "full" },

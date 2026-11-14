@@ -16,19 +16,24 @@ describe("repository footer", () => {
         let content = (await ctx.page.locator(".workspace-sheet").boundingBox())!;
         expect(bounds.y).toBeGreaterThanOrEqual(content.y + content.height - 1);
         expect(bounds.y + bounds.height).toBeLessThanOrEqual(900);
-        let sync = footer.getByRole("group", { name: "Remote synchronization" });
-        expect(await sync.getByRole("combobox", { name: "Git remote" }).count()).toBe(1);
-        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation", "More repository actions"]) {
+        let sync = footer.getByRole("group", { name: "Left toolbar tools" });
+        let remote = sync.getByRole("combobox", { name: "Git remote" });
+        expect(await remote.count()).toBe(1);
+        for (let name of ["Fetch remote bookmarks", "Push all bookmarks", "Undo the latest operation", "Redo the latest undone operation"]) {
             let button = footer.getByRole("button", { name, exact: true });
             expect(await button.isVisible()).toBe(true);
             let box = (await button.boundingBox())!;
             expect(box.x).toBeGreaterThanOrEqual(0);
             expect(box.x + box.width).toBeLessThanOrEqual(width);
         }
+        let remoteBox = (await remote.boundingBox())!;
+        let fetchBox = (await footer.getByRole("button", { name: "Fetch remote bookmarks", exact: true }).boundingBox())!;
+        expect(remoteBox.x + remoteBox.width).toBeLessThanOrEqual(fetchBox.x + 2);
+        expect(await footer.getByRole("button", { name: "More repository actions", exact: true }).count()).toBe(0);
         expect(await ctx.page.getByRole("button", { name: "Commands", exact: true }).count()).toBe(0);
         expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
         await ctx.page.evaluate(() => document.documentElement.dir = "rtl");
-        for (let name of ["Fetch remote bookmarks", "More repository actions"]) {
+        for (let name of ["Fetch remote bookmarks", "Undo the latest operation"]) {
             let box = (await footer.getByRole("button", { name, exact: true }).boundingBox())!;
             expect(box.x).toBeGreaterThanOrEqual(0);
             expect(box.x + box.width).toBeLessThanOrEqual(width);
@@ -41,24 +46,26 @@ describe("repository footer", () => {
         }
     });
 
-    it("opens secondary actions above the footer and restores focus from Commands", async () => {
+    it("opens topbar repository and tools menus and restores focus from Commands", async () => {
         await ctx.page.setViewportSize({ width: 390, height: 900 });
         await ctx.page.goto(url);
-        let more = ctx.page.getByRole("button", { name: "More repository actions" });
-        await more.focus();
-        await more.press("ArrowUp");
-        let menu = ctx.page.getByRole("menu", { name: "Repository actions" });
-        await menu.waitFor();
-        await expect.poll(async () => {
-            let popup = (await menu.boundingBox())!;
-            let footer = (await ctx.page.locator(".workspace-footer").boundingBox())!;
-            return popup.y + popup.height <= footer.y + 4;
-        }).toBe(true);
-        expect(await menu.getByRole("menuitem", { name: "Refresh repository", exact: true }).count()).toBe(1);
-        await menu.getByRole("menuitem", { name: "Commands…", exact: true }).click();
+        let menubar = ctx.page.getByRole("menubar", { name: "Application menu" });
+        let repoTrigger = menubar.getByRole("menuitem", { name: "Repository", exact: true });
+        await repoTrigger.click();
+        let repoMenu = ctx.page.getByRole("menu", { name: "Repository" });
+        await repoMenu.waitFor();
+        expect(await repoMenu.getByRole("menuitem", { name: "Refresh repository", exact: true }).count()).toBe(1);
+        await ctx.page.keyboard.press("Escape");
+
+        let toolsTrigger = menubar.getByRole("menuitem", { name: "Tools", exact: true });
+        await toolsTrigger.focus();
+        await toolsTrigger.press("ArrowDown");
+        let toolsMenu = ctx.page.getByRole("menu", { name: "Tools" });
+        await toolsMenu.waitFor();
+        await toolsMenu.getByRole("menuitem", { name: "Commands…", exact: true }).click();
         let palette = ctx.page.getByRole("dialog", { name: "Commands", exact: true });
         await palette.waitFor();
         await ctx.page.keyboard.press("Escape");
-        await expect.poll(() => more.evaluate(element => element === document.activeElement)).toBe(true);
+        await expect.poll(() => toolsTrigger.evaluate(element => element === document.activeElement)).toBe(true);
     });
 });

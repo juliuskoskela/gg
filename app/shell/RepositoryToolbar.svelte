@@ -1,20 +1,19 @@
 <script lang="ts">
-    import { untrack } from "svelte";
-    import { onMount, tick } from "svelte";
+    import { onMount, tick, untrack } from "svelte";
     import { mutationPending } from "../operations";
     import SelectWidget from "../controls/SelectWidget.svelte";
     import ActionWidget from "../controls/ActionWidget.svelte";
     import Icon from "../controls/Icon.svelte";
-    import ContextMenu from "../controls/ContextMenu.svelte";
-    import type { Command } from "../commands/registry";
     import IdSpan from "../controls/IdSpan.svelte";
-    import { repositoryCommands } from "../commands/registry";
+    import { repositoryCommands, revisionCommands, type Command } from "../commands/registry";
     import type { Operand } from "../messages/Operand";
     import type { RichHint } from "../mutators/BinaryMutator";
     import BinaryMutator from "../mutators/BinaryMutator";
-    import { currentMutation, ignoreToggled, currentSource, currentTarget, hasModal, repoConfigEvent, repoStatusEvent } from "../stores";
+    import { currentMutation, ignoreToggled, currentSource, currentTarget, hasModal, pickedRevisions, repoConfigEvent, repoStatusEvent, selectWorkingCopy, selectionHeaders } from "../stores";
     import { isTauri, trigger } from "../ipc";
     import BookmarkSpan from "../controls/BookmarkSpan.svelte";
+    import { dock, type PanelId } from "../workspace/dock";
+    import { bottomToolbar, bottomToolFor, type BottomToolId } from "./bottomToolbar";
 
     interface Props {
         target: boolean;
@@ -24,17 +23,6 @@
 
     let { target, refreshing = false, onRefresh }: Props = $props();
     let remoteName = $state("");
-    let moreOpen = $state(false);
-    let moreX = $state(0);
-    let moreY = $state(0);
-    let moreButton!: HTMLButtonElement;
-    function toggleMore() {
-        if (moreOpen) { moreOpen = false; return; }
-        let bounds = moreButton.getBoundingClientRect();
-        moreX = bounds.right;
-        moreY = bounds.top;
-        moreOpen = true;
-    }
 
     let dropHint: RichHint | null = $state(null);
     let maybe = $state(false);
@@ -65,52 +53,83 @@
         dropHint = null;
     }
 
-    onMount(() => { let refresh = () => { if (!refreshing) onRefresh(); }; window.addEventListener("gg:refresh-repository", refresh); return () => window.removeEventListener("gg:refresh-repository", refresh); });
+    onMount(() => {
+        let refresh = () => { if (!refreshing) onRefresh(); };
+        window.addEventListener("gg:refresh-repository", refresh);
+        return () => window.removeEventListener("gg:refresh-repository", refresh);
+    });
 
-    function runRepository(id: string) {
-        repositoryCommands(remoteName).find(command => command.id === id)?.execute();
+    async function openPanel(id: PanelId) {
+        dock.open(id);
+        await tick();
+        document.getElementById(`panel-tab-${id}`)?.focus();
     }
-    function onUndo() { runRepository("repository.undo"); }
-    function onRedo() { runRepository("repository.redo"); }
-    function onPush(_remote: string) { runRepository("repository.push"); }
-    function onFetch(_remote: string) { runRepository("repository.fetch"); }
+
     let remotes = $derived($repoConfigEvent.type === "Workspace" ? $repoConfigEvent.git_remotes : []);
     $effect.pre(() => {
         if (!remotes.includes(remoteName)) remoteName = remotes[0] ?? "";
     });
-    let overflowCommands = $derived(repositoryCommands(remoteName, $currentMutation, $mutationPending, $repoConfigEvent, $repoStatusEvent, $ignoreToggled)
-        .filter(command => !["repository.fetch", "repository.push", "repository.undo", "repository.redo"].includes(command.id))
-        .map(command => command.id === "repository.refresh" ? { ...command, reason: refreshing ? "Refreshing repository" : command.reason } : command));
-    let moreCommands = $derived([...overflowCommands, {
-        id: "repository.commands", label: "Commands…", icon: "command", scope: "Repository", group: 1, reason: null,
-        execute: async () => { moreOpen = false; await tick(); moreButton.focus(); window.dispatchEvent(new Event("gg:open-commands")); },
-    } satisfies Command]);
     let remoteOptions = $derived(remotes.length ? remotes.map(value => ({ value })) : [{ value: "", label: "No remote" }]);
-    let busy = $derived(!!$currentMutation || $mutationPending);
-    let redoReason = $derived(busy ? "Another operation is in progress" : !$repoStatusEvent?.can_redo ? "Nothing to redo. New operations clear redo history." : "");
+    // without a visible selector, fetch and push ask which remote rather than silently using the first
+    let chosenRemote = $derived($bottomToolbar.left.includes("remote") || $bottomToolbar.right.includes("remote") || remotes.length === 1 ? remoteName : "");
+    let activeHeaders = $derived($pickedRevisions.length > 1 ? $pickedRevisions : $selectionHeaders);
+    let repository = $derived(repositoryCommands(chosenRemote, $currentMutation, $mutationPending, $repoConfigEvent, $repoStatusEvent, $ignoreToggled));
+    let revision = $derived(revisionCommands(activeHeaders, false, $currentMutation, $mutationPending, $repoStatusEvent, $ignoreToggled));
+
+    function commandFor(id: BottomToolId): Command | undefined {
+        if (id === "refresh") {
+            let command = repository.find(command => command.id === "repository.refresh");
+            return command && refreshing ? { ...command, reason: "Refreshing repository" } : command;
+        }
+        if (id === "fetch" || id === "push" || id === "undo" || id === "redo" || id === "immutable") {
+            return repository.find(command => command.id === `repository.${id}`);
+        }
+        return revision.find(command => command.id === id);
+    }
+
     $effect.pre(() => {
-        let source = $currentSource, target = $currentTarget;
-        untrack(() => setDropHint(source, target));
+        let source = $currentSource, current = $currentTarget;
+        untrack(() => setDropHint(source, current));
     });
     $effect.pre(() => {
         if (isTauri()) trigger("set_modifier_state", { alt: $ignoreToggled });
     });
 </script>
 
-<div class="repository-toolbar" role="group" aria-label="Repository actions" inert={$hasModal}>
-    <div class="sync-actions" role="group" aria-label="Remote synchronization">
-        <ActionWidget secondary tip="Fetch remote bookmarks" disabled={!remoteName || busy} onClick={() => onFetch(remoteName)}><Icon name="arrow-down" /> <span class="action-label">Fetch</span></ActionWidget>
-        <ActionWidget secondary tip="Push all bookmarks" disabled={!remoteName || busy} onClick={() => onPush(remoteName)}><Icon name="arrow-up" /> <span class="action-label">Push</span></ActionWidget>
-        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No remote"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}>{#snippet children({ option })}{option.value || "No remote"}{/snippet}</SelectWidget></div>
-    </div>
-    <div class="history-actions" role="group" aria-label="Operation history">
-        <ActionWidget secondary tip="Undo the latest operation" disabled={busy} onClick={onUndo}><Icon name="rotate-ccw" /> <span class="action-label">Undo</span></ActionWidget>
-        <ActionWidget secondary tip="Redo the latest undone operation" disabled={!!redoReason} disabledReason={redoReason} onClick={onRedo}><Icon name="rotate-cw" /> <span class="action-label">Redo</span></ActionWidget>
-    </div>
-    <button class="more-button" type="button" aria-label="More repository actions" title="More repository actions" aria-haspopup="menu" aria-expanded={moreOpen} bind:this={moreButton} onclick={event => { event.stopPropagation(); toggleMore(); }} onkeydown={event => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); if (!moreOpen) toggleMore(); } }}><Icon name="more-horizontal" /></button>
-</div>
+{#snippet renderTool(id: BottomToolId)}
+    {@const tool = bottomToolFor(id)}
+    {#if id === "remote"}
+        <div class="remote-select"><SelectWidget label="Git remote" title={remoteName || "No Git remote configured"} options={remoteOptions} bind:value={remoteName} disabled={!remotes.length}>{#snippet children({ option })}{option.value || "No remote"}{/snippet}</SelectWidget></div>
+    {:else if id === "working_copy"}
+        <ActionWidget secondary tip={tool.tip} onClick={selectWorkingCopy}><Icon name={tool.icon} /> <span class="action-label">{tool.label}</span></ActionWidget>
+    {:else if id === "commands"}
+        <ActionWidget secondary tip={tool.tip} onClick={() => window.dispatchEvent(new Event("gg:open-commands"))}><Icon name={tool.icon} /> <span class="action-label">{tool.label}</span></ActionWidget>
+    {:else if id === "terminal" || id === "annotations" || id === "history"}
+        <ActionWidget secondary tip={tool.tip} onClick={() => void openPanel(id)}><Icon name={tool.icon} /> <span class="action-label">{tool.label}</span></ActionWidget>
+    {:else}
+        {@const command = commandFor(id)}
+        {@const icon = id === "immutable" && $ignoreToggled ? "shield-off" : tool.icon}
+        {@const tip = id === "immutable" ? command?.label ?? tool.tip : tool.tip}
+        <ActionWidget secondary {tip} disabled={!command || !!command.reason} disabledReason={command?.reason ?? ""} onClick={() => { if (id === "refresh") { if (!refreshing) onRefresh(); } else void command?.execute(); }}><Icon name={icon} /> <span class="action-label">{tool.label}</span></ActionWidget>
+    {/if}
+{/snippet}
 
-{#if moreOpen}<ContextMenu items={moreCommands} views={false} heading="Repository actions" placement="above-end" x={moreX} y={moreY} onClose={() => moreOpen = false} />{/if}
+<div class="repository-toolbar" role="group" aria-label="Repository actions" inert={$hasModal}>
+    {#if $bottomToolbar.left.length}
+        <div class="sync-actions" role="group" aria-label="Left toolbar tools">
+            {#each $bottomToolbar.left as id (id)}
+                {@render renderTool(id)}
+            {/each}
+        </div>
+    {/if}
+    {#if $bottomToolbar.right.length}
+        <div class="history-actions" role="group" aria-label="Right toolbar tools">
+            {#each $bottomToolbar.right as id (id)}
+                {@render renderTool(id)}
+            {/each}
+        </div>
+    {/if}
+</div>
 
 {#if dropHint}
     <div role="status" class="drag-bar" class:target class:maybe>
@@ -129,32 +148,27 @@
 {/if}
 
 <style>
-    .repository-toolbar { display: flex; align-items: center; gap: var(--tool-group-gap); width: 100%; min-width: 0; pointer-events: auto; }
-    .sync-actions, .history-actions { display: flex; align-items: center; gap: 2px; min-width: 0; }
+    .repository-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--tool-group-gap); width: 100%; min-width: 0; pointer-events: auto; }
+    .sync-actions, .history-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-row); min-width: 0; }
     .history-actions { margin-inline-start: auto; }
-    .remote-select { width: 104px; min-width: 0; margin-inline-start: 4px; }
+    .remote-select { width: 104px; min-width: 0; }
     .remote-select :global(select) { height: var(--control-height); padding-block: 0; }
     .remote-select :global(.select-trigger) { min-height: 0; height: 100%; padding-block: 0; }
     .repository-toolbar :global(button:not(.select-trigger)) { font: var(--font-body); }
-    .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .more-button { height: var(--control-height); }
-    .more-button { display: grid; place-items: center; flex: none; width: var(--control-height); min-width: 28px; min-height: 28px; padding: 4px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); cursor: pointer; }
-    .more-button[aria-expanded="true"] { background: var(--interaction-selected); }
-    @media (hover: hover) { .more-button:hover { background: var(--hover); } }
-    .more-button:active { background: var(--control-pressed); }
+    .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button) { height: var(--control-height); }
     .drag-bar { position: fixed; inset-block-end: calc(var(--repository-footer-height, 40px) + env(safe-area-inset-bottom) + 16px); inset-inline: 16px; margin-inline: auto; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-surface); box-shadow: var(--shadow-float); z-index: 60; font: var(--font-body); pointer-events: none; }
     .drag-bar.target { color: var(--text); }
     .drag-bar.maybe { color: var(--warning); }
     @media (max-width: 1100px) { .action-label { display: none; } }
     @media (pointer: coarse), (max-width: 600px) {
-        .repository-toolbar { gap: 8px; }
-        .repository-toolbar :global(button:not(.select-trigger)) { min-height: 44px; min-width: 44px; }
-        .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button), .more-button { height: 44px; }
+        .repository-toolbar { gap: var(--space-2); }
+        .repository-toolbar :global(button:not(.select-trigger)) { min-height: var(--touch-target); min-width: var(--touch-target); }
+        .sync-actions :global(button:not(.select-trigger)), .history-actions :global(button) { height: var(--touch-target); }
         .remote-select { width: 92px; }
-        .remote-select :global(select) { height: 44px; }
+        .remote-select :global(select) { height: var(--touch-target); }
     }
     @media (max-width: 350px) {
-        .repository-toolbar { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
-        .sync-actions { grid-column: 1 / -1; }
+        .repository-toolbar { gap: var(--space-1) var(--space-3); }
         .history-actions { margin-inline-start: 0; }
     }
 </style>

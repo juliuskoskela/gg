@@ -11,7 +11,7 @@ describe("opening views from right-click", () => {
     });
     afterAll(async () => { if (ctx) await destroyContext(ctx); });
 
-    it("offers closed views in empty space and after object actions, opening them beside the clicked view", async () => {
+    it("offers closed views in empty space while keeping object menus scoped to object actions", async () => {
         let page = ctx.page;
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto(url);
@@ -32,8 +32,8 @@ describe("opening views from right-click", () => {
 
         await page.locator(".graph .selection-item").nth(1).click({ button: "right" });
         let items = await page.getByRole("menu").getByRole("menuitem").allTextContents();
-        // views follow the actions; destructive actions stay last
-        expect(items.indexOf("Open Editor")).toBeGreaterThan(items.indexOf("New child"));
+        expect(items).toContain("New child");
+        expect(items).not.toContain("Open Editor");
         expect(items.at(-1)).toBe("Abandon");
     });
 });

@@ -1,7 +1,7 @@
 import { isPluginPanelId, type PluginPanelId } from "../plugins/contributions";
 import { writable, type Writable } from "svelte/store";
 
-export type CorePanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "operation" | "revision-tools" | "settings" | "evolution" | "history" | "annotations" | "terminal";
+export type CorePanelId = "timeline" | "description" | "diff" | "tree" | "edit" | "settings" | "evolution" | "history" | "annotations" | "terminal";
 export type PanelId = CorePanelId | PluginPanelId;
 export type Edge = "tab" | "tab-end" | "left" | "right" | "top" | "bottom";
 export type DockNode =
@@ -9,7 +9,8 @@ export type DockNode =
     | { type: "tabs"; active: PanelId; panels: PanelId[] };
 export type DockState = { root: DockNode | null; compactActive: PanelId | null };
 
-let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "operation", "revision-tools", "settings", "evolution", "history", "annotations", "terminal"];
+let PANEL_IDS: PanelId[] = ["timeline", "description", "diff", "tree", "edit", "settings", "evolution", "history", "annotations", "terminal"];
+let RETIRED_PANELS = new Set(["operation", "revision-tools"]);
 const STORAGE_KEY = "gg.dock.layout";
 
 const slot: Record<CorePanelId, { beside: PanelId | null; edge: Edge }> = {
@@ -18,8 +19,6 @@ const slot: Record<CorePanelId, { beside: PanelId | null; edge: Edge }> = {
     diff: { beside: "description", edge: "bottom" },
     tree: { beside: "diff", edge: "left" },
     edit: { beside: "diff", edge: "tab" },
-    operation: { beside: null, edge: "right" },
-    "revision-tools": { beside: "description", edge: "right" },
     evolution: { beside: "diff", edge: "tab" },
     history: { beside: "timeline", edge: "tab" },
     annotations: { beside: "description", edge: "tab" },
@@ -145,24 +144,31 @@ export function setRatio(node: DockNode, path: number[], ratio: number): DockNod
         : { ...node, second: setRatio(node.second, rest, ratio) };
 }
 
-function parseNode(value: unknown, seen: Set<PanelId>): DockNode | null {
-    if (!value || typeof value !== "object") return null;
+type ParsedNode = { ok: true; node: DockNode | null } | { ok: false };
+
+function parseNode(value: unknown, seen: Set<PanelId>): ParsedNode {
+    if (!value || typeof value !== "object") return { ok: false };
     let record = value as Record<string, unknown>;
     if (record.type === "tabs" && Array.isArray(record.panels)) {
-        if (!record.panels.length || record.panels.some(id => !isPanelId(id) || seen.has(id))) return null;
-        let panels = record.panels as PanelId[];
-        if (new Set(panels).size !== panels.length) return null;
+        if (!record.panels.length) return { ok: false };
+        // drop retired tool panels from saved layouts without discarding surrounding views
+        if (record.panels.some(id => !(typeof id === "string" && RETIRED_PANELS.has(id)) && (!isPanelId(id) || seen.has(id)))) return { ok: false };
+        let panels = record.panels.filter((id): id is PanelId => !(typeof id === "string" && RETIRED_PANELS.has(id)));
+        if (new Set(panels).size !== panels.length) return { ok: false };
+        if (!panels.length) return { ok: true, node: null };
         panels.forEach(id => seen.add(id));
         let active = isPanelId(record.active) && panels.includes(record.active) ? record.active : panels[0];
-        return { type: "tabs", active, panels };
+        return { ok: true, node: { type: "tabs", active, panels } };
     }
     if (record.type === "split" && (record.direction === "row" || record.direction === "column") && typeof record.ratio === "number") {
         let first = parseNode(record.first, seen);
         let second = parseNode(record.second, seen);
-        if (!first || !second) return null;
-        return { type: "split", direction: record.direction, ratio: clampRatio(record.ratio), first, second };
+        if (!first.ok || !second.ok) return { ok: false };
+        if (!first.node) return { ok: true, node: second.node };
+        if (!second.node) return { ok: true, node: first.node };
+        return { ok: true, node: { type: "split", direction: record.direction, ratio: clampRatio(record.ratio), first: first.node, second: second.node } };
     }
-    return null;
+    return { ok: false };
 }
 
 export function restoreDock(value: unknown): DockState | null {
@@ -171,8 +177,9 @@ export function restoreDock(value: unknown): DockState | null {
     if (record.version !== 1) return null;
     if (record.root === null) return { root: null, compactActive: null };
     let seen = new Set<PanelId>();
-    let root = parseNode(record.root, seen);
-    if (!root) return null;
+    let parsed = parseNode(record.root, seen);
+    if (!parsed.ok || !parsed.node) return null;
+    let root = parsed.node;
     let open = openPanels(root);
     let compactActive = isPanelId(record.compactActive) && open.includes(record.compactActive) ? record.compactActive : open[0] ?? null;
     return { root, compactActive };

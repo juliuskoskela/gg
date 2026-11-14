@@ -29,6 +29,11 @@ describe("command guards and labels", () => {
         expect(calls).toEqual([]);
         expect(revisionCommands([header]).find(c => c.id === "abandon")?.reason).toBe("Selection has changed");
     });
+    it("names why the working copy can't be edited and a single parent can't be removed", () => {
+        let workingCopy = { ...header, is_working_copy: true };
+        expect(revisionCommands([workingCopy]).find(c => c.id === "edit")?.reason).toBe("Already the working copy");
+        expect(revisionCommands([{ ...header, parent_ids: [id.commit] }]).find(c => c.id === "remove_parent")?.reason).toBe("Has only one parent");
+    });
     it("rechecks immutable protection before execution", () => {
         ignoreToggled.set(true);
         let immutable = { ...header, is_immutable: true };

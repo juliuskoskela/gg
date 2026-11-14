@@ -12,7 +12,7 @@
         controls?: string | undefined;
         disabled?: boolean;
         element?: HTMLButtonElement | undefined;
-        onClick?: () => void;
+        onClick?: (event: MouseEvent) => void;
         onKeyDown?: (event: KeyboardEvent) => void;
     }
 
@@ -55,7 +55,7 @@
     .toggle {
         position: relative;
         display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-        min-width: var(--toggle-height, 28px); min-height: var(--toggle-height, 28px); padding: 0 12px;
+        min-width: var(--toggle-height, var(--panel-control-size)); min-height: var(--toggle-height, var(--panel-control-size)); padding: 0 12px;
         border: 0; border-radius: 0;
         background: transparent; color: var(--muted);
         font: 500 var(--type-caption)/1 var(--stack-ui); white-space: nowrap;
@@ -63,7 +63,7 @@
         transition: none;
         -webkit-tap-highlight-color: transparent;
     }
-    .toggle.icon-only { min-width: var(--toggle-height, 28px); padding: 0 6px; }
+    .toggle.icon-only { min-width: var(--toggle-height, var(--panel-control-size)); padding: 0 6px; }
     .caret { display: inline-flex; margin-inline-start: -3px; --icon-size: 10px; }
 
     .toggle.on { background: var(--active); color: var(--text-strong); }

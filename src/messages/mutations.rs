@@ -292,6 +292,14 @@ pub struct UndoOperation;
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub struct RedoOperation;
 
+/// Creates a new workspace for this repository at the given path.
+#[derive(Deserialize, Debug)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub struct AddWorkspace {
+    pub name: String,
+    pub path: String,
+}
+
 /// Forgets a workspace, removing it from the repository.
 /// If the workspace's working copy commit is empty, it is abandoned.
 #[derive(Deserialize, Debug)]

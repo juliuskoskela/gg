@@ -5,6 +5,7 @@ mod revision;
 mod selected;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Error, Result, anyhow};
@@ -21,6 +22,7 @@ use jj_cli::{
 use jj_lib::{
     backend::{CommitId, TreeValue},
     conflicts::{self, ConflictMarkerStyle, ConflictMaterializeOptions, MaterializedTreeValue},
+    file_util,
     files::FileMergeHunkLevel,
     git::{
         self, GitFetchRefExpression, GitPushOptions, GitPushRefTargets, GitSettings,
@@ -31,8 +33,10 @@ use jj_lib::{
     object_id::ObjectId as ObjectIdTrait,
     op_store,
     operation::Operation,
-    ref_name::WorkspaceNameBuf,
-    ref_name::{GitRefNameBuf, RefNameBuf, RemoteName, RemoteNameBuf, RemoteRefSymbol},
+    ref_name::{
+        GitRefNameBuf, RefNameBuf, RemoteName, RemoteNameBuf, RemoteRefSymbol, WorkspaceName,
+        WorkspaceNameBuf,
+    },
     refs::{self, LocalAndRemoteRef, RefPushAction},
     repo::Repo,
     repo_path::RepoPath,
@@ -52,8 +56,8 @@ use super::{
 };
 
 use crate::messages::mutations::{
-    ExternalDiff, ExternalResolve, ForgetWorkspace, GitFetch, GitPush, GitRefspec, MutationOptions,
-    MutationResult, RedoOperation, RenameWorkspace, UndoOperation,
+    AddWorkspace, ExternalDiff, ExternalResolve, ForgetWorkspace, GitFetch, GitPush, GitRefspec,
+    MutationOptions, MutationResult, RedoOperation, RenameWorkspace, UndoOperation,
 };
 
 macro_rules! precondition {
@@ -787,6 +791,101 @@ async fn finish_restore(
             })
         }
         None => Ok(MutationResult::Unchanged),
+    }
+}
+
+#[async_trait(?Send)]
+impl Mutation for AddWorkspace {
+    async fn execute(
+        self: Box<Self>,
+        ws: &mut WorkspaceSession,
+        _options: &MutationOptions,
+    ) -> Result<MutationResult> {
+        // no transaction here: add_workspace snapshots, then commits the new workspace's
+        // working-copy commit in its own transaction, so validate everything before it runs
+        let trimmed_name = self.name.trim();
+        let trimmed_path = self.path.trim();
+
+        if trimmed_name.is_empty() && trimmed_path.is_empty() {
+            precondition!("Workspace name cannot be empty");
+        }
+        if trimmed_name == "."
+            || trimmed_name == ".."
+            || trimmed_name.contains('/')
+            || trimmed_name.contains('\\')
+        {
+            precondition!("Workspace name cannot contain path separators");
+        }
+
+        let current_root = dunce::canonicalize(ws.workspace.workspace_root())
+            .unwrap_or_else(|_| ws.workspace.workspace_root().to_path_buf());
+
+        let raw_path = if trimmed_path.is_empty() {
+            let Some(parent_dir) = current_root.parent() else {
+                precondition!("Cannot determine sibling directory; specify a destination path");
+            };
+            let project_name = ws
+                .workspace_context()
+                .map(|ctx| ctx.project_name)
+                .unwrap_or_else(|_| "repo".to_owned());
+            parent_dir.join(format!("{project_name}-{trimmed_name}"))
+        } else {
+            let candidate = PathBuf::from(trimmed_path);
+            if candidate.is_absolute() {
+                candidate
+            } else {
+                current_root.join(candidate)
+            }
+        };
+
+        let path = if raw_path.exists() {
+            dunce::canonicalize(&raw_path).unwrap_or(raw_path)
+        } else if let (Some(parent), Some(leaf)) = (raw_path.parent(), raw_path.file_name())
+            && let Ok(canon_parent) = dunce::canonicalize(parent)
+        {
+            canon_parent.join(leaf)
+        } else {
+            raw_path
+        };
+
+        let name = if trimmed_name.is_empty() {
+            let Some(derived) = path
+                .file_name()
+                .map(|os| os.to_string_lossy().trim().to_owned())
+                .filter(|s| !s.is_empty())
+            else {
+                precondition!("Workspace name cannot be empty");
+            };
+            derived
+        } else {
+            trimmed_name.to_owned()
+        };
+
+        let workspace_name = WorkspaceName::new(&name);
+        if ws.view().get_wc_commit_id(workspace_name).is_some() {
+            precondition!("Workspace '{}' already exists", workspace_name.as_symbol());
+        }
+
+        if path.exists() {
+            if !path.is_dir() || !file_util::is_empty_dir(&path)? {
+                precondition!(
+                    "Destination path '{}' already exists and is not an empty directory",
+                    path.display()
+                );
+            }
+        } else if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.exists()
+        {
+            precondition!("Parent directory '{}' does not exist", parent.display());
+        }
+
+        ws.add_workspace(name, path).await?;
+
+        Ok(MutationResult::Updated {
+            new_status: ws.format_status(),
+            new_selection: None,
+        })
     }
 }
 

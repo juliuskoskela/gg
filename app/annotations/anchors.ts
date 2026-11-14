@@ -13,7 +13,7 @@ function ids(header: RevHeader) {
 }
 
 export function subjectOf(header: RevHeader): string {
-    return header.description.lines.find(line => line.trim())?.trim() ?? "";
+    return header.description?.lines.find(line => line.trim())?.trim() ?? "";
 }
 
 /** the new side of a hunk, which is what people usually mean when pointing at changed code */

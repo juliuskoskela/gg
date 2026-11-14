@@ -62,7 +62,7 @@
         if (field || target.closest("select, [contenteditable]:not([contenteditable='false'])") || (getSelection()?.toString() ?? "").trim()) return;
         event.preventDefault();
         menuPanel.set(id);
-        lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [] });
+        lineMenu.set({ x: event.clientX, y: event.clientY, heading: null, commands: [], views: true });
     }
     let frame = $state<HTMLDivElement>();
     // plain content ignores the pointer, so a click there would leave focus on the page; the view claims it instead

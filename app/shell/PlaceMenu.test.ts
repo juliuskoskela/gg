@@ -21,48 +21,51 @@ async function mount() {
 }
 
 describe("repository identity navigation", () => {
-    it("opens one coherent menu with native actions, current workspaces, and deduplicated recent locations", async () => {
-        let calls: string[] = [];
+    it("opens one focused location menu with workspaces, workspace rename, and deduplicated recent locations", async () => {
         setupMocks(command => {
             if (command === "query_workspace_context") return context;
             if (command === "query_recent_workspaces") return ["/work/cortex", "/work/other", "/work/other"];
-            if (command === "forward_accelerator") calls.push(command);
         });
-        let { findByRole, getByRole, getAllByRole, container } = await mount();
+        let { findByRole, getByRole, getAllByRole, queryByRole, container } = await mount();
         let identity = await findByRole("button", { name: "Repository navigation: review@cortex" });
         expect(container.querySelectorAll(".place-button")).toHaveLength(1);
         expect(container.querySelector(".workspace-name")?.textContent).toBe("review");
         await fireEvent.click(identity);
         expect(getByRole("dialog", { name: "Repository navigation" })).toBeTruthy();
         expect((getByRole("button", { name: "unavailable Path not recorded" }) as HTMLButtonElement).disabled).toBe(true);
-        expect(getByRole("button", { name: "review Current /work/cortex" }).getAttribute("aria-current")).toBe("page");
+        let current = getByRole("button", { name: "review Current /work/cortex" });
+        expect(current.getAttribute("aria-current")).toBe("page");
+        expect(document.activeElement).toBe(current);
         await findByRole("button", { name: "other /work/other" });
         expect(getAllByRole("button", { name: "other /work/other" })).toHaveLength(1);
-        expect(getByRole("button", { name: /^Open repository…/ })).toBe(document.activeElement);
-        expect(getByRole("button", { name: /^Clone repository…/ })).toBeTruthy();
-        expect(getByRole("button", { name: /^Reopen repository/ })).toBeTruthy();
-        await fireEvent.click(getByRole("button", { name: /^Initialize repository…/ }));
-        await waitFor(() => expect(calls).toEqual(["forward_accelerator"]));
-        expect(document.activeElement).toBe(identity);
+        expect(getByRole("button", { name: "New workspace…" })).toBeTruthy();
+        expect(getByRole("button", { name: "Rename current workspace…" })).toBeTruthy();
+        expect(queryByRole("button", { name: /^Open repository…/ })).toBeNull();
+        expect(queryByRole("button", { name: /^Clone repository…/ })).toBeNull();
+        expect(queryByRole("button", { name: "Close window" })).toBeNull();
     });
 
     it("supports arrow opening, wrapping, Home, End, Escape, and outside dismissal", async () => {
-        setupMocks(command => command === "query_workspace_context" ? context : []);
+        setupMocks(command => command === "query_workspace_context" ? context : ["/work/other"]);
         let { findByRole, getByRole, queryByRole } = await mount();
         let identity = await findByRole("button", { name: "Repository navigation: review@cortex" });
         identity.focus();
         await fireEvent.keyDown(identity, { key: "ArrowUp" });
-        let close = getByRole("button", { name: "Close window" });
-        await waitFor(() => expect(document.activeElement).toBe(close));
-        await fireEvent.keyDown(close, { key: "ArrowDown" });
-        expect(document.activeElement?.textContent).toContain("Open repository…");
-        await fireEvent.keyDown(document.activeElement!, { key: "End" });
-        expect(document.activeElement).toBe(close);
-        await fireEvent.keyDown(close, { key: "Home" });
-        expect(document.activeElement?.textContent).toContain("Open repository…");
-        await fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
-        expect(document.activeElement).toBe(close);
-        await fireEvent.keyDown(close, { key: "Escape" });
+        let rename = getByRole("button", { name: "Rename current workspace…" });
+        await waitFor(() => expect(document.activeElement).toBe(rename));
+        let last = await findByRole("button", { name: "other /work/other" });
+        await fireEvent.keyDown(rename, { key: "End" });
+        expect(document.activeElement).toBe(last);
+        await fireEvent.keyDown(last, { key: "ArrowDown" });
+        let first = getByRole("button", { name: "review Current /work/cortex" });
+        expect(document.activeElement).toBe(first);
+        await fireEvent.keyDown(first, { key: "End" });
+        expect(document.activeElement).toBe(last);
+        await fireEvent.keyDown(last, { key: "Home" });
+        expect(document.activeElement).toBe(first);
+        await fireEvent.keyDown(first, { key: "ArrowUp" });
+        expect(document.activeElement).toBe(last);
+        await fireEvent.keyDown(last, { key: "Escape" });
         expect(queryByRole("dialog")).toBeNull();
         expect(document.activeElement).toBe(identity);
         await fireEvent.click(identity);
@@ -159,6 +162,51 @@ describe("repository identity navigation", () => {
         await fireEvent.submit(field.closest("form")!);
         await waitFor(() => expect(paths).toEqual(["/fixture/repository"]));
         expect(queryByRole("dialog")).toBeNull();
+    });
+
+    it("creates a workspace from PlaceMenu and refreshes workspace list on status updates", async () => {
+        let activeContext: WorkspaceContext = context;
+        let newStatus = { operation_description: "create workspace", working_copy: { type: "CommitId" as const, hex: "11112222", prefix: "111", rest: "12222" }, can_redo: false };
+        let mutations: string[] = [];
+        setupMocks(command => {
+            if (command === "query_workspace_context") return activeContext;
+            if (command === "query_recent_workspaces") return [];
+            if (command === "add_workspace") {
+                mutations.push(command);
+                activeContext = {
+                    ...context,
+                    workspaces: [...context.workspaces, { name: "experiment", path: "/work/cortex-experiment" }],
+                };
+                return { type: "Updated", new_status: newStatus, new_selection: null };
+            }
+            if (command === "open_workspace") {
+                mutations.push(command);
+                return { type: "Unchanged" };
+            }
+        });
+        let { findByRole, getByRole } = await mount();
+        let { currentInput } = await import("../stores");
+        let identity = await findByRole("button", { name: "Repository navigation: review@cortex" });
+        await fireEvent.click(identity);
+        await fireEvent.click(getByRole("button", { name: "New workspace…" }));
+
+        let prompt = await waitFor(() => {
+            let value = get(currentInput);
+            expect(value?.title).toBe("New Workspace");
+            return value!;
+        });
+        expect(prompt.detail).toContain("/work/cortex-<name>");
+        prompt.callback({
+            fields: {
+                "Workspace Name": "experiment",
+                "Destination": "",
+                "Open Workspace": "false",
+            },
+        });
+
+        await waitFor(() => expect(mutations).toEqual(["add_workspace"]));
+        await fireEvent.click(identity);
+        expect(await findByRole("button", { name: "experiment /work/cortex-experiment" })).toBeTruthy();
     });
 
 });

@@ -63,7 +63,7 @@ describe("shared menu interaction", () => {
     });
 
     it("keeps the whole menu within the viewport for each placement", () => {
-        for (let placement of ["pointer", "above-end", "below-end"] as const) {
+        for (let placement of ["pointer", "above-end", "below-end", "below-start"] as const) {
             expect(menuPosition({ x: 390, y: 844 }, { width: 180, height: 200 }, placement, { width: 390, height: 844 }))
                 .toEqual({ left: 202, top: 636 });
         }
@@ -103,12 +103,16 @@ describe("shared menu interaction", () => {
         expect(document.activeElement).toBe(getByRole("menuitemcheckbox", { name: "Option 79" }));
     });
 
-    it("moves keyboard focus into the Views menu and returns it on Escape", async () => {
+    it("moves keyboard focus into the icon-only Views menu without tool tabs and returns it on Escape", async () => {
         let { getByRole, queryByRole } = render(ViewsMenu);
         let opener = getByRole("button", { name: "Views" });
+        expect(opener.textContent?.trim()).toBe("");
+        expect(opener.querySelector("svg")).not.toBeNull();
         opener.focus();
         await userEvent.keyboard("{Enter}");
         await vi.waitFor(() => expect(document.activeElement).toBe(getByRole("menu")));
+        expect(queryByRole("menuitemcheckbox", { name: "Revision tools" })).toBeNull();
+        expect(queryByRole("menuitemcheckbox", { name: "Operation" })).toBeNull();
         await userEvent.keyboard("{End}");
         expect(document.activeElement).toBe(getByRole("menuitem", { name: "Reset layout" }));
         await userEvent.keyboard("{Escape}");

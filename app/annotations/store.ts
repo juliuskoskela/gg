@@ -195,4 +195,4 @@ export async function copyAnnotations(ids: string[]): Promise<boolean> {
 }
 
 /** a menu for things that aren't operands, such as lines in a diff */
-export let lineMenu = writable<{ x: number; y: number; heading: string | null; commands: Command[] } | null>(null);
+export let lineMenu = writable<{ x: number; y: number; heading: string | null; commands: Command[]; views?: boolean } | null>(null);

@@ -12,19 +12,17 @@
     import type { RevChange } from "../messages/RevChange";
     import LogPane from "../LogPane.svelte";
     import NeovimEditor from "../editor/NeovimEditor.svelte";
-    import RevisionTools from "../revision/RevisionTools.svelte";
     import SelectionReview from "../revision/SelectionReview.svelte";
     import RevisionChanges from "../revision/RevisionChanges.svelte";
     import FilesView from "../files/FilesView.svelte";
     import RevisionOverviewPanel from "../revision/RevisionOverviewPanel.svelte";
     import SelectionRecovery from "../revision/SelectionRecovery.svelte";
-    import { repoConfigEvent, repoStatusEvent, pickedRevisions, selectWorkingCopy } from "../stores";
+    import { repoConfigEvent, pickedRevisions, selectWorkingCopy } from "../stores";
     import { workspaceController } from "./state";
     import { dock, type PanelId } from "./dock";
     import EvolutionPanel from "../history/EvolutionPanel.svelte";
     import OperationHistory from "../history/OperationHistory.svelte";
     import AnnotationsPanel from "../annotations/AnnotationsPanel.svelte";
-    import OperationView from "./OperationView.svelte";
     import TerminalView from "../terminal/TerminalView.svelte";
     import SettingsPanel from "../shell/SettingsPanel.svelte";
 
@@ -74,7 +72,7 @@
     let file = $derived(selectedPath || changes[0]?.path.repo_path || "");
 </script>
 
-{#if id === "diff" && detail && !separate.length && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} onCompare={compare} placement /></ViewToolbar>{/if}
+{#if id === "diff" && detail && !separate.length && (changes.length || headers.length === 1)}<ViewToolbar label="Diff tools"><DiffTools {changes} {headers} selectedPath={file} onCompare={compare} placement /></ViewToolbar>{/if}
 
 {#if id.startsWith("plugin:")}
     <PluginPanel {id} />
@@ -108,14 +106,6 @@
             <RevisionOverviewPanel revs={detail} />
         {/if}
     </div>
-{:else if id === "revision-tools"}
-    {#if selection.type === "error"}
-        <p class="panel-status" role="alert">{selection.message}</p>
-    {:else if selection.type === "wait"}
-        <p class="panel-status" role="status">Loading revision…</p>
-    {:else}
-        <RevisionTools {headers} />
-    {/if}
 {:else if id === "diff"}
     {#if separate.length}<SelectionReview headers={separate} reason={detail?.range_unavailable ?? "Each selected change is reviewed against its own parents."} />
     {:else if detail}
@@ -135,8 +125,6 @@
     {:else}
         <NeovimEditor repository={$repoConfigEvent.absolute_path} commit={headers[0].id.commit.hex} path={file} visible={active} />
     {/if}
-{:else if id === "operation"}
-    <OperationView status={$repoStatusEvent} />
 {/if}
 
 <style>

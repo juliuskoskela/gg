@@ -139,11 +139,16 @@ in the configured external merge tool. Binary/submodule placeholders come from
 the existing backend. Highlighting grammars and themes are bundled locally, so
 diff viewing does not need a network connection.
 
-Repository actions live in the floating toolbar at the top of the workspace.
-Choose a remote, then Pull (fetch remote bookmarks), Push or Undo. The More menu
-contains Refresh, Redo, the immutability override, operation details and the full
-workspace path. Drag guidance appears only during drag operations; there is no
-permanent footer. The toolbar wraps instead of hiding actions at narrow widths.
+The topbar carries a menu bar (`app/shell/TopMenuBar.svelte`) with Repository,
+Revision, Bookmarks and Tools menus, built from the shared command registry by
+`app/commands/menus.ts`. It follows the ARIA menubar pattern and wraps onto its
+own row at 600px and below. The footer toolbar (`RepositoryToolbar.svelte`) holds
+the tools chosen in Settings for its left and right ends; by default the remote
+selector, Fetch and Push on the left, Undo and Redo on the right. The choice is
+stored in `localStorage` under `gg.ui.bottom-toolbar` and falls back to the
+default when the stored value is unreadable. The diff toolbar's Changes menu
+(`app/revision/FileActionsMenu.svelte`) holds the actions for the current file or
+hunk. Disabled entries always say why.
 
 The layout follows `.agents/skills/better-layout/SKILL.md`: primary content leads,
 related controls share a placement zone, secondary detail is disclosed, and

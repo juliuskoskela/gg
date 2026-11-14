@@ -66,8 +66,8 @@
 </div>
 
 <style>
-    .options { position: relative; display: inline-flex; }
-    .trigger { display: inline-flex; align-items: center; gap: 2px; min-height: var(--panel-control-size, 28px); padding: 0 4px 0 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
+    .options { position: relative; display: inline-flex; flex: none; }
+    .trigger { display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: var(--panel-control-size); min-height: var(--panel-control-size); padding: 0 4px 0 6px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); cursor: pointer; --icon-size: 16px; }
     .glyph { display: inline-flex; }
     .caret { display: inline-flex; --icon-size: 10px; }
     .trigger.open { background: var(--active); color: var(--text-strong); }

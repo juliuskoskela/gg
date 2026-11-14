@@ -2,12 +2,13 @@ import { afterEach, expect, it } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import SettingsPanel from "./SettingsPanel.svelte";
+import { bottomToolbar } from "./bottomToolbar";
 import { themePreference, themeFamily, darkDepth, colorVision } from "../display/theme";
 import { appZoom, nativeZoomEnabled } from "../display/zoom";
 import { currentMutation, ignoreToggled, repoStatusEvent } from "../stores";
 
 afterEach(() => {
-    cleanup(); themeFamily.sync(null); darkDepth.sync(null); colorVision.sync(null); nativeZoomEnabled.set(false); themePreference.sync(null); ignoreToggled.set(false); currentMutation.set(null);
+    cleanup(); themeFamily.sync(null); darkDepth.sync(null); colorVision.sync(null); nativeZoomEnabled.set(false); themePreference.sync(null); ignoreToggled.set(false); currentMutation.set(null); bottomToolbar.reset();
     localStorage.removeItem("gg.ui.theme"); localStorage.removeItem("gg.ui.theme.family"); localStorage.removeItem("gg.ui.theme.dark-depth"); localStorage.removeItem("gg.ui.theme.color-vision");
 });
 
@@ -72,4 +73,26 @@ it("chooses a colour vision palette independently of family and light level", as
     expect(get(themeFamily)).toBe("cold");
     colorVision.sync("not a vision");
     expect(get(colorVision)).toBe("typical");
+});
+
+it("adds, reorders, moves across sides, removes and resets bottom toolbar tools", async () => {
+    let view = render(SettingsPanel);
+    expect(get(bottomToolbar)).toEqual({ left: ["remote", "fetch", "push"], right: ["undo", "redo"] });
+    let picker = view.getByRole("combobox", { name: "Tool to add" }) as HTMLSelectElement;
+    await fireEvent.change(picker, { target: { value: "terminal" } });
+    await fireEvent.click(view.getByRole("button", { name: "Add right" }));
+    expect(get(bottomToolbar).right).toEqual(["undo", "redo", "terminal"]);
+
+    await fireEvent.click(view.getByRole("button", { name: "Move Terminal view to left" }));
+    expect(get(bottomToolbar).left).toEqual(["remote", "fetch", "push", "terminal"]);
+    expect(get(bottomToolbar).right).toEqual(["undo", "redo"]);
+
+    await fireEvent.click(view.getByRole("button", { name: "Move Terminal view earlier" }));
+    expect(get(bottomToolbar).left).toEqual(["remote", "fetch", "terminal", "push"]);
+
+    await fireEvent.click(view.getByRole("button", { name: "Remove Redo operation" }));
+    expect(get(bottomToolbar).right).toEqual(["undo"]);
+
+    await fireEvent.click(view.getByRole("button", { name: "Reset bottom toolbar" }));
+    expect(get(bottomToolbar)).toEqual({ left: ["remote", "fetch", "push"], right: ["undo", "redo"] });
 });

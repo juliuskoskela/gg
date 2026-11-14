@@ -8,10 +8,22 @@
     import SelectWidget from "../controls/SelectWidget.svelte";
     import ThemeFamilyPicker from "../display/ThemeFamilyPicker.svelte";
     import Icon from "../controls/Icon.svelte";
+    import { BOTTOM_TOOLS, bottomToolbar, bottomToolFor, isBottomToolId, isDefaultBottomToolbar, type BottomToolbarSide, type BottomToolId } from "./bottomToolbar";
 
     let busy = $derived(!!$currentMutation || $mutationPending);
     let zoom = $derived(zoomCommands($appZoom, $nativeZoomEnabled));
     let vision = $derived(colorVisions.find(option => option.id === $colorVision) ?? colorVisions[0]);
+    let availableTools = $derived(BOTTOM_TOOLS.filter(tool => !$bottomToolbar.left.includes(tool.id) && !$bottomToolbar.right.includes(tool.id)));
+    let selectedTool = $state<BottomToolId>("refresh");
+    $effect.pre(() => {
+        if (availableTools.length && !availableTools.some(tool => tool.id === selectedTool)) {
+            selectedTool = availableTools[0].id;
+        }
+    });
+
+    function addTool(side: BottomToolbarSide) {
+        if (isBottomToolId(selectedTool)) bottomToolbar.add(side, selectedTool);
+    }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (settings scroll independently of the dock) -->
@@ -56,6 +68,49 @@
                 <ToggleWidget tip="Override immutability" bind:checked={$ignoreToggled} disabled={busy} safe on="shield-off" off="shield" />
             </div>
         </section>
+        <section aria-labelledby="toolbar-heading">
+            <h2 id="toolbar-heading">Bottom toolbar</h2>
+            <p>Choose which quick actions sit on the left and right of the bottom bar.</p>
+            <div class="toolbar-sides">
+                {#each (["left", "right"] as const) as side}
+                    {@const items = $bottomToolbar[side]}
+                    {@const otherSide = side === "left" ? "right" : "left"}
+                    <div class="toolbar-side" role="group" aria-label="{side === 'left' ? 'Left' : 'Right'} toolbar tools">
+                        <h3>{side === "left" ? "Left" : "Right"}</h3>
+                        {#if items.length}
+                            <ul class="toolbar-list">
+                                {#each items as id, index (id)}
+                                    {@const tool = bottomToolFor(id)}
+                                    <li class="toolbar-item">
+                                        <span class="toolbar-item-name"><Icon name={tool.icon} /><span>{tool.settingLabel}</span></span>
+                                        <div class="toolbar-item-actions">
+                                            <button type="button" aria-label="Move {tool.settingLabel} earlier" title="Move earlier" disabled={index === 0} onclick={() => bottomToolbar.move(id, -1)}><Icon name="chevron-up" /></button>
+                                            <button type="button" aria-label="Move {tool.settingLabel} later" title="Move later" disabled={index === items.length - 1} onclick={() => bottomToolbar.move(id, 1)}><Icon name="chevron-down" /></button>
+                                            <button type="button" aria-label="Move {tool.settingLabel} to {otherSide}" title="Move to {otherSide}" onclick={() => bottomToolbar.moveToSide(id, otherSide)}><span class="side-arrow"><Icon name={side === "left" ? "arrow-right" : "arrow-left"} /></span></button>
+                                            <button type="button" aria-label="Remove {tool.settingLabel}" title="Remove from bottom toolbar" onclick={() => bottomToolbar.remove(id)}><Icon name="x" /></button>
+                                        </div>
+                                    </li>
+                                {/each}
+                            </ul>
+                        {:else}
+                            <p>No tools on the {side}.</p>
+                        {/if}
+                    </div>
+                {/each}
+            </div>
+            {#if availableTools.length}
+                <div class="toolbar-add">
+                    <div class="toolbar-add-select">
+                        <SelectWidget label="Tool to add" bind:value={selectedTool} options={availableTools.map(tool => ({ value: tool.id, label: `${tool.category}: ${tool.settingLabel}` }))}>{#snippet children({ option })}{option.label}{/snippet}</SelectWidget>
+                    </div>
+                    <button type="button" onclick={() => addTool("left")}><Icon name="plus" />Add left</button>
+                    <button type="button" onclick={() => addTool("right")}><Icon name="plus" />Add right</button>
+                </div>
+            {/if}
+            <div class="toolbar-reset">
+                <button type="button" onclick={() => bottomToolbar.reset()} disabled={isDefaultBottomToolbar($bottomToolbar)}>Reset bottom toolbar</button>
+            </div>
+        </section>
         <PluginSettings />
         <section aria-labelledby="operation-heading">
             <h2 id="operation-heading">Current operation</h2>
@@ -90,5 +145,20 @@
     .browser-hint { margin: 0; max-width: 62ch; }
     kbd { white-space: nowrap; font: inherit; color: var(--text); }
     .operation-description { margin: 0; user-select: text; }
+    .toolbar-sides { display: grid; gap: var(--gap-group); margin-block-start: var(--gap-group); }
+    .toolbar-side { display: grid; gap: var(--gap-row); min-width: 0; }
+    .toolbar-list { display: grid; gap: var(--gap-row); margin: 0; padding: 0; list-style: none; min-width: 0; }
+    .toolbar-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2); border: 1px solid var(--rule); border-radius: var(--radius-control); min-width: 0; }
+    .toolbar-item-name { display: inline-flex; align-items: center; gap: var(--control-gap); min-width: 0; font: var(--font-body); }
+    .toolbar-item-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .toolbar-item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-row); }
+    .toolbar-item-actions button { padding: var(--space-1); }
+    .toolbar-add { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-block-start: var(--gap-group); min-width: 0; }
+    .toolbar-add-select { flex: 1 1 180px; min-width: 0; }
+    .toolbar-add-select :global(select) { width: 100%; }
+    .toolbar-reset { margin-block-start: var(--gap-group); }
+    /* the toolbar mirrors in RTL, so moving to the other end points the other way */
+    .side-arrow { display: inline-flex; }
+    .side-arrow:dir(rtl) { transform: scaleX(-1); }
     @media (pointer: coarse), (max-width: 600px) { button { min-height: 44px; min-width: 44px; } .settings-content { padding-inline: 16px; } }
 </style>

@@ -4,9 +4,10 @@
     import TextField from "../controls/TextField.svelte";
     import type { RepoConfig } from "../messages/RepoConfig";
     import type { WorkspaceContext } from "../messages/WorkspaceContext";
-    import { nativeRepositoryCommands, type Command } from "../commands/registry";
+    import WorkspaceMutator, { siblingWorkspacePrefix } from "../mutators/WorkspaceMutator";
     import { isTauri, query } from "../ipc";
-    import { repoConfigEvent } from "../stores";
+    import { currentMutation, repoConfigEvent, repoStatusEvent } from "../stores";
+    import { mutationPending } from "../operations";
 
     interface Props {
         workspace: Extract<RepoConfig, { type: "Workspace" }>;
@@ -28,7 +29,6 @@
     let recentRequest = 0;
     let navigationRequest = 0;
     let native = isTauri();
-    let commands = nativeRepositoryCommands();
 
 
     onDestroy(() => { contextRequest++; recentRequest++; navigationRequest++; });
@@ -106,18 +106,47 @@
         else repoConfigEvent.set({ type: "LoadError", absolute_path: path, message: result.message });
     }
 
-    function execute(command: Command) {
+    function createWorkspace() {
+        let from = workspace.absolute_path;
+        let prefix = siblingWorkspacePrefix(from, context?.project_name);
         close(true);
-        if (!command.reason) command.execute();
+        if (get(currentMutation) || get(mutationPending)) return;
+        void WorkspaceMutator.add(prefix, () => !get(currentMutation) && !get(mutationPending) && workspace.absolute_path === from);
+    }
+
+    function renameWorkspace(name: string) {
+        let from = workspace.absolute_path;
+        close(true);
+        if (get(currentMutation) || get(mutationPending)) return;
+        new WorkspaceMutator(name, () => !get(currentMutation) && !get(mutationPending) && workspace.absolute_path === from).handle("rename");
+    }
+
+    async function refreshContext() {
+        let current = ++contextRequest;
+        let result = await query<WorkspaceContext>("query_workspace_context", null);
+        if (current !== contextRequest) return;
+        loading = false;
+        if (result.type === "data") { context = result.value; failed = false; }
+        else failed = true;
     }
 
     function pathName(path: string) { return path.split(/[\\/]/).filter(Boolean).pop() ?? path; }
     let folder = $derived(workspace.absolute_path.split(/[\\/]/).filter(Boolean).pop() ?? "Repository");
     let projectLabel = $derived.by(() => context?.project_name ?? folder);
     let workspaceLabel = $derived.by(() => context?.workspace_name ?? "default");
+    let lastPath = "";
+    let lastStatus = get(repoStatusEvent);
     $effect.pre(() => {
         let path = workspace.absolute_path;
-        untrack(() => void loadContext(path));
+        let status = $repoStatusEvent;
+        if (path !== lastPath) {
+            lastPath = path;
+            lastStatus = status;
+            untrack(() => void loadContext(path));
+        } else if (status !== lastStatus) {
+            lastStatus = status;
+            untrack(() => void refreshContext());
+        }
     });
 </script>
 
@@ -134,13 +163,7 @@
     {#if open}
         <div id="repository-navigation" class="place-menu" bind:this={panel} role="dialog" aria-label="Repository navigation" onkeydown={navigate} tabindex="-1">
             <p class="place-path" title={context?.repo_path ?? workspace.absolute_path}>{context?.repo_path ?? workspace.absolute_path}</p>
-            {#if native}
-                <div class="menu-group">
-                    {#each commands.filter(command => ["repository.open", "repository.init", "repository.clone"].includes(command.id)) as command}
-                        <button type="button" disabled={!!command.reason} title={command.reason ?? undefined} onclick={() => execute(command)}><span>{command.label}</span><small class="shortcut">{command.shortcut ?? ""}</small></button>
-                    {/each}
-                </div>
-            {:else}
+            {#if !native}
                 <form class="path-form" onsubmit={event => { event.preventDefault(); void openPath(pathField.trim()); }}>
                     <label for="repository-path">Open repository</label>
                     <div class="path-controls"><TextField id="repository-path" label="Repository path" placeholder="Path to a repository" bind:value={pathField} /><button type="submit" disabled={!pathField.trim()}>Open</button></div>
@@ -158,6 +181,10 @@
                 {:else}
                     <p class="place-note">{failed ? "Couldn’t list workspaces." : loading ? "Loading workspaces…" : "No other workspaces recorded."}</p>
                 {/if}
+                {#if context?.workspace_name}
+                    <button type="button" disabled={!!$currentMutation || $mutationPending} onclick={createWorkspace}><span>New workspace…</span></button>
+                    <button type="button" disabled={!!$currentMutation || $mutationPending} onclick={() => context && renameWorkspace(context.workspace_name)}><span>Rename current workspace…</span></button>
+                {/if}
             </section>
             <section class="menu-group" aria-label="Recent workspaces" aria-busy={recentLoading}>
                 <h2>Recent workspaces</h2>
@@ -167,19 +194,12 @@
                     <p class="place-note">{recentLoading ? "Loading recent workspaces…" : recentFailed ? "Couldn’t load recent workspaces." : "No recent workspaces."}</p>
                 {/each}
             </section>
-            {#if native}
-                <div class="menu-group">
-                    {#each commands.filter(command => ["repository.reopen", "repository.close"].includes(command.id)) as command}
-                        <button type="button" disabled={!!command.reason} title={command.reason ?? undefined} onclick={() => execute(command)}><span>{command.label}</span><small class="shortcut">{command.shortcut ?? ""}</small></button>
-                    {/each}
-                </div>
-            {/if}
         </div>
     {/if}
 </div>
 
 <style>
-    .place { position: relative; display: flex; flex: 1 1 160px; align-items: center; min-width: 0; }
+    .place { position: relative; display: flex; flex: 0 1 auto; align-items: center; min-width: 0; max-width: 100%; }
     /* workspace@repository is an address in jj's vocabulary, so it shares the code face with change ids */
     .place-button { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; min-height: 32px; padding: var(--space-1) var(--control-padding-inline); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: 500 var(--type-code)/20px var(--stack-code); text-align: start; cursor: pointer; }
     .place-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
@@ -198,9 +218,8 @@
     .location-heading small { flex: none; }
     .location-item[aria-current="page"] .location-heading > span { color: var(--brand); }
     .location-item[aria-current="page"]:is(:hover, :active, :focus-visible) .location-heading > span { color: var(--brand-on-pressed); }
-    .location-heading small, .location-path, .shortcut, .place-path, .place-note, h2 { color: var(--muted); font-size: var(--type-caption); font-weight: 400; }
+    .location-heading small, .location-path, .place-path, .place-note, h2 { color: var(--muted); font: var(--font-label); }
     .location-path, .place-path, .place-note { overflow-wrap: anywhere; }
-    .shortcut { flex: none; }
     .place-path, .place-note, h2 { margin: 0; padding: 4px 8px; }
     .path-form { padding: 6px 4px 10px; }
     .path-form label { display: block; margin: 0 4px 6px; color: var(--text); font-size: var(--type-ui); }
@@ -219,6 +238,6 @@
     }
     .place-button:active, .place-menu button:active:not(:disabled) { background: var(--interaction-pressed, var(--control-pressed)); }
     .place-menu button[aria-current="page"]:active:not(:disabled) { background: var(--interaction-selected-pressed, var(--control-pressed)); }
-    @media (max-width: 600px) { .shortcut { display: none; } }
+    @media (max-width: 600px) { .place { flex: 1 1 120px; } }
     @media (pointer: coarse), (max-width: 600px) { .place-button, .place-menu button, .path-form :global(.text-field) { min-height: 44px; } }
 </style>

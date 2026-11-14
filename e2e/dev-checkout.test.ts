@@ -83,25 +83,20 @@ describe("self-hosted development checkout", () => {
         ctx.page.on("pageerror", error => errors.push(error.stack ?? error.message));
         await ctx.page.setViewportSize({ width: 1440, height: 900 });
         await ctx.page.goto(server.resolvedUrls!.local[0]);
-        let filter = ctx.page.getByRole("textbox", { name: "Filter revisions with a revset" });
-        await filter.fill(oldId.commit.hex);
-        await filter.press("Tab");
-        await ctx.page.locator('.graph [id^="Revision-"]').first().click();
         let header = ctx.page.locator(".workspace-topbar");
         function generation() {
             return ctx.page.evaluate(() => document.querySelector(".workspace-view")?.getAttribute("data-source-generation"));
         }
-        await expect.poll(generation).toBe("current");
+        await expect.poll(generation, { timeout: 10000 }).toBe("current");
 
         for (let cycle = 0; cycle < 2; cycle++) {
+            let filter = ctx.page.getByRole("textbox", { name: "Filter revisions with a revset" });
+            await filter.fill(oldId.commit.hex);
+            await filter.press("Tab");
+            await ctx.page.locator(".graph").getByRole("option").filter({ hasText: oldId.change.hex.slice(0, 8) }).first().click();
             await expect.poll(() => ctx.page.locator(".description-panel .revision-id").textContent()).toContain(oldId.change.hex.slice(0, 8));
             await ctx.page.waitForLoadState("networkidle");
-            let tools = ctx.page.locator("#panel-tab-revision-tools");
-            if (!(await tools.count())) {
-                await ctx.page.getByRole("button", { name: "Views", exact: true }).click();
-                await ctx.page.getByRole("menuitemcheckbox", { name: "Revision tools", exact: true }).click();
-            } else await tools.click();
-            let edit = ctx.page.locator(".revision-tools").getByRole("button", { name: /^Edit as working copy/ });
+            let edit = ctx.page.getByRole("group", { name: "Timeline quick actions", exact: true }).getByRole("button", { name: "Edit as working copy", exact: true });
             await expect.poll(() => edit.isEnabled()).toBe(true);
             let checkout = ctx.page.waitForResponse(result => result.url().includes("/api/mutate/checkout_revision"));
             await edit.click();

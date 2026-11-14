@@ -67,7 +67,7 @@
     .references { display: flex; flex-wrap: wrap; align-items: start; gap: var(--gap-row) var(--gap-group); min-width: 0; }
     .reference { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; max-width: 100%; }
     /* a reference is as wide as its name, with its status beside it */
-    .reference> :global(*) { flex: 0 1 auto; width: auto; max-width: 100%; }
+    .references > :global(*), .reference > :global(*) { flex: 0 1 auto; width: auto; max-width: 100%; }
     .references :global(.chip) { max-width: 100%; height: auto; min-height: 24px; white-space: normal; overflow-wrap: anywhere; }
     .references :global(.chip svg) { flex-shrink: 0; }
     .references :global(.chip span) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }

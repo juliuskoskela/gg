@@ -32,7 +32,6 @@
 
     let selectedPath = $state("");
     let previousKey = $state("");
-    let routedOperation = $state(false);
 
     function selectFile(change: RevChange) {
         selectedPath = change.path.repo_path;
@@ -64,7 +63,6 @@
             if (view.panel) void reveal(view.panel);
             else if (view.destination === "history") void reveal("timeline");
             else if (view.destination === "inspect") void reveal("description");
-            else if (view.id === "operation") void reveal("operation");
         }
         window.addEventListener("gg:open-view", openView);
         return () => window.removeEventListener("gg:open-view", openView);
@@ -93,14 +91,6 @@
     });
     $effect.pre(() => {
         if (reviewKey) revisionReviewState.set(reviewKey, { path: selectedPath, scrollTop: revisionReviewState.get(reviewKey)?.scrollTop ?? 0 });
-    });
-    $effect.pre(() => {
-        let route = $workspaceController.routedTool;
-        untrack(() => {
-            if (route === "operation") {
-                if (!routedOperation) { routedOperation = true; dock.open("operation"); }
-            } else routedOperation = false;
-        });
     });
     let panels = $derived(openPanels($dock.root));
     let terminalDirectory = "";

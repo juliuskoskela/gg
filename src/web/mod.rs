@@ -45,12 +45,13 @@ use tokio::sync::{broadcast, oneshot};
 
 use crate::config::{self, GGSettings, read_config};
 use crate::messages::mutations::{
-    AbandonRevisions, AbandonSelectedRevisions, AdoptRevision, BackoutRevisions, CheckoutRevision,
-    CopyChanges, CopyHunk, CreateRef, CreateRevision, CreateRevisionBetween, DeleteRef,
-    DescribeRevision, DuplicateRevisions, ExternalDiff, ExternalResolve, ForgetWorkspace, GitFetch,
-    GitPush, InsertRevisions, MoveChanges, MoveHunk, MoveRef, MoveRevisions, MutationOptions,
-    MutationResult, OpenWorkspace, RebaseSelectedRevisions, RedoOperation, RenameBookmark,
-    RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark, WriteFile,
+    AbandonRevisions, AbandonSelectedRevisions, AddWorkspace, AdoptRevision, BackoutRevisions,
+    CheckoutRevision, CopyChanges, CopyHunk, CreateRef, CreateRevision, CreateRevisionBetween,
+    DeleteRef, DescribeRevision, DuplicateRevisions, ExternalDiff, ExternalResolve,
+    ForgetWorkspace, GitFetch, GitPush, InsertRevisions, MoveChanges, MoveHunk, MoveRef,
+    MoveRevisions, MutationOptions, MutationResult, OpenWorkspace, RebaseSelectedRevisions,
+    RedoOperation, RenameBookmark, RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark,
+    WriteFile,
 };
 use crate::worker::{Mutation, Session, SessionEvent, WorkerSession};
 use sink::{SseEvent, SseSink};
@@ -319,6 +320,7 @@ async fn handle_mutate(
         "git_fetch" => execute_mutation::<GitFetch>(&state, body),
         "external_diff" => execute_mutation::<ExternalDiff>(&state, body),
         "external_resolve" => execute_mutation::<ExternalResolve>(&state, body),
+        "add_workspace" => execute_mutation::<AddWorkspace>(&state, body),
         "forget_workspace" => execute_mutation::<ForgetWorkspace>(&state, body),
         "rename_workspace" => execute_mutation::<RenameWorkspace>(&state, body),
         // web mode has no windows to open, so we reload this one

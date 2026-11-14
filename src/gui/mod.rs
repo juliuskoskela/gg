@@ -33,7 +33,7 @@ use gg_lib::config::GGSettings;
 use gg_lib::messages::{
     self,
     mutations::{
-        AbandonRevisions, AbandonSelectedRevisions, AdoptRevision, BackoutRevisions,
+        AbandonRevisions, AbandonSelectedRevisions, AddWorkspace, AdoptRevision, BackoutRevisions,
         CheckoutRevision, CloneRepository, CopyChanges, CopyHunk, CreateRef, CreateRevision,
         CreateRevisionBetween, DeleteRef, DescribeRevision, DuplicateRevisions, ExternalDiff,
         ExternalResolve, ForgetWorkspace, GitFetch, GitPush, InitRepository, InsertRevisions,
@@ -389,6 +389,7 @@ pub fn run_gui(options: super::RunOptions) -> Result<()> {
             external_diff,
             external_resolve,
             open_workspace,
+            add_workspace,
             forget_workspace,
             rename_workspace,
             undo_operation,
@@ -1289,6 +1290,16 @@ fn open_workspace(
     });
 
     Ok(MutationResult::Unchanged)
+}
+
+#[tauri::command(async)]
+fn add_workspace(
+    window: Window,
+    app_state: State<AppState>,
+    mutation: AddWorkspace,
+    options: MutationOptions,
+) -> Result<MutationResult, InvokeError> {
+    try_mutate(window, app_state, mutation, options)
 }
 
 #[tauri::command(async)]

@@ -72,11 +72,11 @@ export function menuBehavior(menu: HTMLElement, initial: MenuBehavior) {
 export function menuPosition(
     point: { x: number; y: number },
     size: { width: number; height: number },
-    placement: "pointer" | "above-end" | "below-end",
+    placement: "pointer" | "above-end" | "below-end" | "below-start",
     viewport = { width: window.innerWidth, height: window.innerHeight },
 ) {
-    let left = placement === "pointer" ? point.x : point.x - size.width;
-    let top = placement === "above-end" ? point.y - size.height - 4 : placement === "below-end" ? point.y + 4 : point.y;
+    let left = placement === "pointer" || placement === "below-start" ? point.x : point.x - size.width;
+    let top = placement === "above-end" ? point.y - size.height - 4 : placement === "below-end" || placement === "below-start" ? point.y + 4 : point.y;
     return {
         left: Math.max(8, Math.min(left, viewport.width - size.width - 8)),
         top: Math.max(8, Math.min(top, viewport.height - size.height - 8)),
