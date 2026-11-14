@@ -140,14 +140,18 @@
 <style>
     .split, .tabs { height: 100%; min-width: 0; min-height: 0; }
     .split { display: grid; }
-    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; border-radius: var(--view-radius); background: var(--surface); }
+    /* every seam is drawn once, by the view before it: each view borders its trailing and bottom sides, and the
+       dock borders its own top and leading sides. borders snap to whole device pixels where gaps would smear */
+    .tabs { position: relative; isolation: isolate; display: flex; flex-direction: column; box-sizing: border-box; border-inline-end: var(--hairline) solid var(--view-edge); border-block-end: var(--hairline) solid var(--view-edge); border-radius: var(--view-radius); background: var(--surface); }
+    /* content clips inside the view, so the trace below can reach past the view's own box */
+    .tabs > :global(*) { overflow: hidden; }
     /* the focused view lifts above its neighbours so its trace can cover the seams around it */
     .tabs:focus-within { z-index: 3; }
     .tabs:focus { outline: none; }
-    /* seams draw the idle edges; the focused view traces its edge on top of them rather than beside them,
-       so it reads as one line. inset -1px reaches the seam pixel on every side */
-    .tabs::after { content: ""; position: absolute; inset: -1px; z-index: 10; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow var(--motion-feedback) ease-out; }
-    .tabs:focus-within::after { box-shadow: inset 0 0 0 1px var(--view-focus-ring); }
+    /* the focused view traces its edge on top of its seams rather than beside them, so it reads as one line.
+       a hairline outside its box lands on the neighbours' borders, and its own borders are inside the trace */
+    .tabs::after { content: ""; position: absolute; inset: calc(-1 * var(--hairline)); z-index: 10; pointer-events: none; border: var(--hairline) solid transparent; border-radius: inherit; transition: border-color var(--motion-feedback) ease-out; }
+    .tabs:focus-within::after { border-color: var(--view-focus-ring); }
     @media (prefers-reduced-motion: reduce) { .tabs::after { transition: none; } }
     .stack { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
     .panel-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -157,8 +161,11 @@
     .row > .separator { cursor: col-resize; }
     .split:not(.row) > .separator { cursor: row-resize; }
     .separator::before { content: ""; position: absolute; }
-    .row > .separator::before { inset-block: 0; inset-inline: -5px; }
-    .split:not(.row) > .separator::before { inset-inline: 0; inset-block: -5px; }
+    /* the seam takes no space, so the handle is a box straddling it over both views */
+    .row > .separator { margin-inline: calc(-1 * var(--splitter-reach)); }
+    .split:not(.row) > .separator { margin-block: calc(-1 * var(--splitter-reach)); }
+    .row > .separator::before { inset: 0; }
+    .split:not(.row) > .separator::before { inset: 0; }
     /* the seam is the dock showing through this gap, and the handle above it; a 2px line marks it in use */
     .separator::after { content: ""; position: absolute; border-radius: var(--radius-sm); background: transparent; pointer-events: none; transition: background var(--motion-feedback) ease-out; }
     .row > .separator::after { inset-block: 0; inset-inline-start: calc(50% - 1px); width: 2px; }
@@ -166,5 +173,5 @@
     .separator:focus-visible { outline: none; }
     .separator.dragging::after, .separator:focus-visible::after { background: var(--accent); }
     @media (hover: hover) { .separator:hover::after { background: var(--control-hover); } }
-    @media (pointer: coarse) { .row > .separator::before { inset-inline: -10px; } .split:not(.row) > .separator::before { inset-block: -10px; } }
+    @media (pointer: coarse) { .row > .separator::before { inset-inline: calc(-1 * var(--splitter-reach)); } .split:not(.row) > .separator::before { inset-block: calc(-1 * var(--splitter-reach)); } }
 </style>

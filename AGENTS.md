@@ -81,7 +81,7 @@ jj-lib and jj-cli dependencies are pinned to specific versions (see `Cargo.toml`
 
 Place view toggles at the top trailing corner of the view they affect, inside its header. Keep summary information together before the controls: for example, `Changes 27 files +10 −13`. Group independent toggles separately from exclusive choices, such as `[hide | wrap] [auto | side by side | stacked]`. When space is tight, wrap the controls onto their own trailing-aligned row. Keep the header outside the content's scroll area so the controls stay in place.
 
-Desktop views share one square sheet split by 1px seams (`--dock-gutter` in `--view-edge`), and one seam edges the sheet where it meets app chrome (topbar, navigation, footer); views draw no edge of their own at rest. Inside a view, title bars, toolbars and footers use the `--panel-header-bg` lightness step plus a much fainter `--view-inner-rule` where they meet content. Never use the view edge strength inside a view. The focused view brightens its edge to `--view-focus-ring` (`DockFrame`), so don't add focus outlines to view surfaces such as the terminal or editor.
+Desktop views share one square sheet with no gaps: each view borders its trailing and bottom sides with a `--hairline` seam in `--view-edge`, and the dock borders its top and leading sides; draw lines that must match with `--hairline`, not a 1px gap or offset. Inside a view, title bars, toolbars and footers use the `--panel-header-bg` lightness step plus a much fainter `--view-inner-rule` where they meet content. Never use the view edge strength inside a view. The focused view brightens its edge to `--view-focus-ring` (`DockFrame`), so don't add focus outlines to view surfaces such as the terminal or editor.
 
 ### Tree Merge Semantics
 

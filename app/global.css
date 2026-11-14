@@ -119,6 +119,8 @@
   --sheet-half: 50%;
   --sheet-handle-width: 32px;
   --sheet-handle-height: 4px;
+  /* the painted width of a 1px border; app/hairline.ts keeps it current as the display scale changes */
+  --hairline: 1px;
   --radius-sm: 3px;
   --radius-control: 4px;
   --radius-surface: 6px;
@@ -202,9 +204,11 @@
   --view-focus-ring: color-mix(in srgb, var(--text) 32%, var(--surface));
   /* a view's first pill and last tool sit this far from its sides and top */
   --view-bar-inset: 6px;
-  /* views meet square on a seam, so the gutter is the hairline itself */
+  /* views meet square: each draws its trailing and bottom seam as a border, so no gap separates them */
   --view-radius: 0px;
-  --dock-gutter: 1px;
+  --dock-gutter: 0px;
+  /* how far a splitter's handle reaches over each view beside its seam */
+  --splitter-reach: 5px;
   --control: var(--muted);
   --control-border: color-mix(in srgb, var(--text) 25%, var(--input-surface));
   --input-border: var(--control-border);

@@ -137,10 +137,10 @@
 
 <style>
     .workspace-dock { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
-    /* desktop views share one sheet; the dock's own colour shows through 1px gaps as seams, and through its
-       padding as the edge against the app chrome, so a focused view's trace can lie over both. a phone shows one view edge to edge */
-    .workspace-dock:not(.compact) { box-sizing: border-box; padding-block: var(--dock-gutter); padding-inline-start: var(--dock-gutter); background: var(--view-edge); }
-    .workspace-dock:not(.compact) > .empty-dock { background: var(--surface); }
+    /* desktop views share one sheet. the dock draws the seam against the topbar and navigation, and the views draw
+       the rest, including the one against the footer. it doesn't clip, so a focused view's trace can cover its
+       top and leading seams too. a phone shows one view edge to edge */
+    .workspace-dock:not(.compact) { box-sizing: border-box; overflow: visible; border-block-start: var(--hairline) solid var(--view-edge); border-inline-start: var(--hairline) solid var(--view-edge); }
     .workspace-dock > :global(.split), .workspace-dock > :global(.tabs) { flex: 1; }
     .empty-dock { display: grid; align-content: center; justify-items: start; gap: 12px; height: 100%; padding: 24px; }
     .empty-dock p { margin: 0; color: var(--muted); font-size: 13px; }

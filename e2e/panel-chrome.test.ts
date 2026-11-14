@@ -105,11 +105,14 @@ describe("shared panel chrome", () => {
 
         let edge = (id: string) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate(element => {
             let ring = getComputedStyle(element, "::after"), view = element.getBoundingClientRect(), title = element.querySelector(".panel-view-top")!.getBoundingClientRect();
-            return { shadow: ring.boxShadow, inset: ring.inset, titleInside: title.top === view.top };
+            return { shadow: ring.borderTopColor, inset: ring.inset, titleInside: title.top === view.top };
         });
         // views meet on one seam in the edge colour; only the focused view traces its own edge, over the seams
-        let seam = await ctx.page.getByRole("separator", { name: "Resize panels", exact: true }).first().evaluate(element => { let dock = element.closest(".workspace-dock")!; return { width: element.getBoundingClientRect().width, color: getComputedStyle(dock).backgroundColor }; });
-        expect(seam).toEqual({ width: 1, color: edgeColor });
+        // the leading view draws the seam as its trailing border; the dock draws the edge against the chrome
+        let seam = await ctx.page.locator("[data-panel-group=timeline]").evaluate(element => { let style = getComputedStyle(element); return { width: style.borderInlineEndWidth, color: style.borderInlineEndColor }; });
+        expect(seam).toEqual({ width: "1px", color: edgeColor });
+        let dockEdge = await ctx.page.locator(".workspace-dock").evaluate(element => { let style = getComputedStyle(element); return { width: style.borderBlockStartWidth, color: style.borderBlockStartColor }; });
+        expect(dockEdge).toEqual({ width: "1px", color: edgeColor });
         let focusColor = await ctx.page.evaluate(() => { let probe = document.createElement("span"); document.getElementById("shell")!.append(probe); probe.style.color = "var(--view-focus-ring)"; let value = getComputedStyle(probe).color; probe.remove(); return value; });
         let blank = (shadow: string) => !shadow.includes(focusColor);
         let point = (id: string, x: number, y: number) => ctx.page.locator(`[data-panel-group=${id}]`).evaluate((element, [x, y]) => { let r = element.getBoundingClientRect(); return { x: r.left + x, y: r.top + y }; }, [x, y]);
