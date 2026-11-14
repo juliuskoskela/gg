@@ -150,6 +150,19 @@ export async function mutate<T>(command: string, mutation: T, options?: { operat
 }
 
 /**
+ * call a mutation whose outcome the caller shows in place, without the shared progress and error dialogs
+ */
+export async function mutateInPlace<T>(command: string, mutation: T): Promise<ImmediateQuery<MutationResult>> {
+    try {
+        let value = await call<MutationResult>("mutate", command, { mutation, options: { ignore_immutable: false } });
+        return { type: "data", value };
+    } catch (error: any) {
+        console.error(error);
+        return { type: "error", message: error?.message ?? String(error) };
+    }
+}
+
+/**
  * utility function for composing IPCs with delayed loading states
  */
 export function delay<T>(): Promise<Query<T>> {
@@ -161,13 +174,13 @@ export function delay<T>(): Promise<Query<T>> {
 /**
  * not actually IPC, just opens a modal
  */
-export function getInput<const T extends string>(title: string, detail: string, fields: T[] | { label: T, choices: string[] }[]): Promise<{ [K in T]: string } | null> {
+export function getInput<const T extends string>(title: string, detail: string, fields: T[] | { label: T, choices: string[] }[], action?: string): Promise<{ [K in T]: string } | null> {
     return new Promise(resolve => {
         if (typeof fields[0] == "string") {
             fields = fields.map(f => ({ label: f, choices: [] } as { label: T, choices: string[] }));
         }
         currentInput.set({
-            title, detail, fields: fields as { label: T, choices: string[] }[], callback: response => {
+            title, detail, action, fields: fields as { label: T, choices: string[] }[], callback: response => {
                 currentInput.set(null);
                 resolve(response ? response.fields as any : null);
             }

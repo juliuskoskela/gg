@@ -103,7 +103,7 @@
         let result = await query<RepoConfig>("query_workspace", { path });
         if (current !== navigationRequest || workspace.absolute_path !== from || get(repoConfigEvent) !== config) return;
         if (result.type === "data") repoConfigEvent.set(result.value);
-        else repoConfigEvent.set({ type: "LoadError", absolute_path: path, message: result.message });
+        else repoConfigEvent.set({ type: "LoadError", absolute_path: path, message: result.message, kind: "Other" });
     }
 
     function createWorkspace() {

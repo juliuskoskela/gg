@@ -6,32 +6,33 @@ import { createContext, destroyContext, startGG, type TestContext } from "./harn
 
 describe("opening a Git-only checkout", () => {
     let ctx: TestContext, url: string;
+    let git = (...args: string[]) => execFileSync("git", ["-c", "user.name=Test", "-c", "user.email=test@example.com", ...args], { cwd: ctx.tempDir, stdio: "pipe" });
     beforeAll(async () => {
         ctx = await createContext();
-        execFileSync("git", ["init", "--quiet", ctx.tempDir]);
+        git("init", "--quiet");
+        await mkdir(join(ctx.tempDir, "docs"));
+        execFileSync("sh", ["-c", "echo hello > docs/readme.txt"], { cwd: ctx.tempDir });
+        git("add", ".");
+        git("commit", "--quiet", "-m", "Add the readme from Git");
         url = await startGG(ctx);
     });
     afterAll(async () => { if (ctx) await destroyContext(ctx); });
-    it("explains missing Jujutsu metadata, preserves the folder and handles another selected path", async () => {
+    it("offers to set up Jujutsu that keeps the Git history, then opens it", async () => {
         await ctx.page.setViewportSize({ width: 390, height: 900 });
         await ctx.page.goto(url);
-        let dialog = ctx.page.getByRole("dialog", { name: "Jujutsu setup needed" });
-        await dialog.waitFor();
-        expect(await dialog.innerText()).toContain("Git repository without a Jujutsu workspace");
-        expect(await dialog.getByLabel("Repository path").inputValue()).toBe(ctx.tempDir);
-        expect(await dialog.innerText()).toContain("jj git init --colocate");
+        let prompt = ctx.page.getByRole("region", { name: /^Set up Jujutsu in gg-test-/ });
+        await prompt.waitFor({ timeout: 15000 });
+        let text = await prompt.innerText();
+        expect(text).toContain("keeps its Git history");
+        expect(text).toContain("Git and jj stay in sync");
+        let colocate = prompt.getByRole("checkbox", { name: /Colocate with Git/ });
+        expect(await colocate.isChecked()).toBe(true);
         expect(await ctx.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await expect(access(join(ctx.tempDir, ".jj"))).rejects.toThrow();
-        await mkdir("e2e/results/workspace-load-error", { recursive: true });
-        await ctx.page.screenshot({ path: "e2e/results/workspace-load-error/phone.png", fullPage: true });
-        let other = join(ctx.tempDir, "another checkout");
-        await mkdir(other);
-        execFileSync("git", ["init", "--quiet", other]);
-        await dialog.getByLabel("Repository path").fill(other);
-        await dialog.getByRole("button", { name: "Open workspace", exact: true }).click();
-        await expect.poll(() => dialog.locator("code").first().textContent()).toBe(other);
-        await expect(access(join(other, ".jj"))).rejects.toThrow();
-        await ctx.page.setViewportSize({ width: 1440, height: 1000 });
-        await ctx.page.screenshot({ path: "e2e/results/workspace-load-error/desktop.png", fullPage: true });
+
+        await prompt.getByRole("button", { name: "Initialize repository" }).click();
+        // the phone layout shows the timeline as a tab; the commit from Git is in it either way
+        await expect.poll(() => ctx.page.locator("#shell").innerText(), { timeout: 15000 }).toContain("Add the readme from Git");
+        await access(join(ctx.tempDir, ".jj"));
     });
 });

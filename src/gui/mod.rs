@@ -552,7 +552,7 @@ fn forward_clone_url(window: Window, url: String) {
     menu::repo_clone_with_url(&window, url);
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn init_repository(
     window: Window,
     app_state: State<AppState>,
@@ -575,10 +575,15 @@ fn init_repository(
         })
         .map_err(InvokeError::from_error)?;
 
-    let initialized_path = call_rx
-        .recv()
-        .map_err(InvokeError::from_error)?
-        .map_err(InvokeError::from_anyhow)?;
+    // the folder was chosen by hand, so failures are the person's to fix rather than internal
+    let initialized_path = match call_rx.recv().map_err(InvokeError::from_error)? {
+        Ok(path) => path,
+        Err(err) => {
+            return Ok(MutationResult::PreconditionError {
+                message: format!("{err:#}"),
+            });
+        }
+    };
 
     let result = match try_reopen_repository(&window, initialized_path) {
         Ok(None) => MutationResult::Unchanged,

@@ -1,6 +1,6 @@
 import { chromium, Browser, Page } from "@playwright/test";
 import { spawn, ChildProcess, execSync } from "child_process";
-import { mkdtemp, rm } from "fs/promises";
+import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { fileURLToPath } from "url";
@@ -23,7 +23,27 @@ export async function createContext(): Promise<TestContext> {
     page.setDefaultTimeout(10_000);
     let tempDir = await mkdtemp(join(tmpdir(), "gg-test-"));
     let dataDir = await mkdtemp(join(tmpdir(), "gg-data-"));
-    return { browser, page, tempDir, dataDir, ggProcess: null };
+    let ctx: TestContext = { browser, page, tempDir, dataDir, ggProcess: null };
+    await writeUserConfig(ctx);
+    return ctx;
+}
+
+/** the jj user config GG reads, which also holds the recent workspaces; tests never see the developer's own */
+export function userConfigPath(ctx: TestContext): string {
+    return join(ctx.dataDir, "jj-config.toml");
+}
+
+export async function writeUserConfig(ctx: TestContext, recentWorkspaces: string[] = []): Promise<void> {
+    let lines = [
+        "[user]",
+        `name = "GG Test"`,
+        `email = "gg-test@example.com"`,
+        "",
+        "[gg.ui]",
+        `recent-workspaces = ${JSON.stringify(recentWorkspaces)}`,
+        "",
+    ];
+    await writeFile(userConfigPath(ctx), lines.join("\n"));
 }
 
 export async function closeView(page: Page, name: string): Promise<void> {
@@ -54,7 +74,7 @@ export function startGG(ctx: TestContext): Promise<string> {
     let ggProcess = spawn("cargo", ["run", "--", "web", ctx.tempDir, "--no-launch", "--foreground"], {
         cwd: PROJECT_ROOT,
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, GG_DATA_DIR: ctx.dataDir },
+        env: { ...process.env, GG_DATA_DIR: ctx.dataDir, JJ_CONFIG: userConfigPath(ctx) },
     });
 
     ctx.ggProcess = ggProcess;

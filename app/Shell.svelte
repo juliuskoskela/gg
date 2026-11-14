@@ -2,7 +2,7 @@
     import ReviewLifecycle from "./review/ReviewLifecycle.svelte";
     import { pluginHost } from "./plugins/runtime";
     import { focusModality } from "./display/focus";
-    import WorkspaceLoadError from "./shell/WorkspaceLoadError.svelte";
+    import StartPage from "./shell/StartPage.svelte";
     import { effectiveTheme, themeFamily, darkDepth, colorVision } from "./display/theme";
     import { selectionRecovery } from "./revision/recovery";
     import type { RevisionSelectionResult } from "./messages/RevisionSelectionResult";
@@ -18,7 +18,7 @@
     import type { RevsResult } from "./messages/RevsResult";
     import type { RepoConfig } from "./messages/RepoConfig";
     import type { RepoStatus } from "./messages/RepoStatus";
-    import { type Query, query, mutate, trigger, onEvent, isTauri, getInput } from "./ipc.js";
+    import { type Query, query, mutateInPlace, trigger, onEvent, isTauri } from "./ipc.js";
     import {
         currentMutation,
         currentContext,
@@ -43,7 +43,8 @@
     import ModalOverlay from "./shell/ModalOverlay.svelte";
     import ErrorDialog from "./shell/ErrorDialog.svelte";
     import ProgressDialog from "./shell/ProgressDialog.svelte";
-    import RecentWorkspaces from "./shell/RecentWorkspaces.svelte";
+    import RecentWorkspaceList from "./shell/RecentWorkspaceList.svelte";
+    import type { InitRepository } from "./messages/InitRepository";
     import { onMount, onDestroy, setContext, untrack, type Snippet } from "svelte";
     import InputDialog from "./shell/InputDialog.svelte";
     import type Settings from "./shell/Settings";
@@ -97,12 +98,26 @@
         } else {
             repoConfigEvent.set({
                 type: "LoadError",
-                absolute_path: "",
+                absolute_path: path ?? "",
                 message: result.message,
+                kind: "Other",
             });
         }
     }
     initialize();
+
+    // errors stay on the start page beside the folder they concern
+    async function initRepository(path: string, colocated: boolean): Promise<string | null> {
+        let result = await mutateInPlace<InitRepository>("init_repository", { path, colocated });
+        if (result.type === "error") return `GG lost contact with its backend: ${result.message}`;
+        let value = result.value;
+        switch (value.type) {
+            case "Reconfigured": repoConfigEvent.set(value.new_config); return null;
+            case "PreconditionError": return value.message;
+            case "InternalError": return value.message.lines.join(" ");
+            default: return null;
+        }
+    }
 
     let loadTimeout: number | null;
     onMount(() => {
@@ -339,19 +354,17 @@
                 {@render workspaceContent?.({ workspace: $repoConfigEvent, selection, })}
             </WorkspaceChrome>
         {:else if $repoConfigEvent.type == "LoadError"}
-            <ModalOverlay>
-                <WorkspaceLoadError config={$repoConfigEvent} desktop={isTauri()} {recentWorkspaces}
-                    onOpen={initialize}
-                    onChoose={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: false })}
-                    onInitialize={path => path ? new RepositoryMutator().handle({ type: "InitConfirm", path, has_git: true }) : trigger("forward_accelerator", { key: "n", ctrl: true, shift: true })}
-                    onClone={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: true })}
-                    onReopen={() => trigger("forward_accelerator", { key: "f5", ctrl: false, shift: false })} />
-            </ModalOverlay>
+            <StartPage config={$repoConfigEvent} desktop={isTauri()} {recentWorkspaces}
+                onOpen={initialize}
+                onInit={initRepository}
+                onChoose={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: false })}
+                onInitialize={() => trigger("forward_accelerator", { key: "n", ctrl: true, shift: true })}
+                onClone={() => trigger("forward_accelerator", { key: "o", ctrl: true, shift: true })} />
         {:else if $repoConfigEvent.type == "TimeoutError"}
             <ModalOverlay>
                 <ErrorDialog title="No workspace loaded" severe>
                     <p>GG+ lost contact with its backend. Restart GG+ to continue.</p>
-                    <RecentWorkspaces workspaces={recentWorkspaces} />
+                    <RecentWorkspaceList workspaces={recentWorkspaces} onOpen={initialize} />
                 </ErrorDialog>
             </ModalOverlay>
         {:else}
@@ -359,7 +372,7 @@
                 <ErrorDialog title="Lost contact with the backend." severe>
                     <p>{$repoConfigEvent.message}</p>
                     <p>Restart GG+ to continue.</p>
-                    <RecentWorkspaces workspaces={recentWorkspaces} />
+                    <RecentWorkspaceList workspaces={recentWorkspaces} onOpen={initialize} />
                 </ErrorDialog>
             </ModalOverlay>
         {/if}

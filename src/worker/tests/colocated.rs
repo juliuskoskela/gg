@@ -26,7 +26,7 @@ use crate::{
 async fn mkcolocated() -> Result<TempDir> {
     let dir = tempdir()?;
     WorkerSession::default()
-        .init_repository(&dir.path().to_owned(), true)
+        .init_repository(dir.path(), true)
         .await?;
     Ok(dir)
 }

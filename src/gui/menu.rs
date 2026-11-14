@@ -236,24 +236,18 @@ pub fn repo_reopen(window: &Window) -> Result<()> {
     Ok(())
 }
 
+// the chosen folder opens like any other; one that isn't a repository yet asks to initialize
 pub fn repo_init(window: &Window) {
     let window = window.clone();
-    window.dialog().file().pick_folder(move |picked| {
-        if let Some(FilePath::Path(cwd)) = picked {
-            let git_path = cwd.join(".git");
-
-            let payload = RepoEvent::InitConfirm {
-                path: cwd.to_string_lossy().to_string(),
-                has_git: git_path.exists(),
-            };
-
-            handler::nonfatal!(window.emit_to(
-                EventTarget::window(window.label()),
-                "gg://menu/repo",
-                payload
-            ));
-        }
-    });
+    window
+        .dialog()
+        .file()
+        .set_title("Choose a folder to initialize")
+        .pick_folder(move |picked| {
+            if let Some(FilePath::Path(wd)) = picked {
+                handler::nonfatal!(super::reopen_repository(&window, wd));
+            }
+        });
 }
 
 pub fn repo_clone(window: &Window) {

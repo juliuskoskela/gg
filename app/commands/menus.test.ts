@@ -7,6 +7,7 @@ import type { RevHeader } from "../messages/RevHeader";
 import { operationState } from "../operations";
 import { currentMutation, ignoreToggled, repoConfigEvent, repoStatusEvent } from "../stores";
 import { currentWorkspaceIdentity } from "./context";
+import { repositoryLocationCommands } from "./registry";
 import { buildFileActionsMenu, buildTopMenus, type DropdownMenu, type MenuEntry, type TopMenuInputs } from "./menus";
 
 let workspace: Extract<RepoConfig, { type: "Workspace" }> = {
@@ -91,6 +92,10 @@ describe("menu builders", () => {
         let [repository, revision, bookmarks] = buildTopMenus(inputs());
         expect(entry(repository, "repository.fetch").reason).toBe("No Git remote configured");
         expect(entry(repository, "repository.redo").reason).toBe("Nothing to redo");
+        // the browser initializes through the web server; cloning still needs the desktop folder dialog
+        let browser = repositoryLocationCommands(false);
+        expect(browser.find(command => command.id === "repository.init")?.reason).toBeNull();
+        expect(browser.find(command => command.id === "repository.clone")?.reason).toBe("Available in the desktop app");
         expect(revision.context).toBe("No revision selected");
         expect(entry(revision, "new_child").reason).toBe("Select a revision");
         expect(entry(revision, "view.evolution").reason).toBe("Select a revision");

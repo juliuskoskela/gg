@@ -262,13 +262,34 @@ pub enum RepoConfig {
     LoadError {
         absolute_path: DisplayPath,
         message: String,
+        /// what is at `absolute_path`; only `Uninitialized` may be offered initialization
+        kind: LoadErrorKind,
+        /// the Git checkout containing an uninitialized folder, which initialization reuses
         #[serde(skip_serializing_if = "Option::is_none")]
         #[cfg_attr(feature = "ts-rs", ts(optional))]
         git_root: Option<DisplayPath>,
+        /// lets the frontend shorten paths to `~`
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts-rs", ts(optional))]
+        home_dir: Option<DisplayPath>,
     },
     WorkerError {
         message: String,
     },
+}
+
+/// Why a workspace failed to load, judged from what is on disk.
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
+pub enum LoadErrorKind {
+    /// nothing exists at the path
+    NotFound,
+    /// the path is a file or something else that can't hold a workspace
+    NotADirectory,
+    /// an existing folder with no jj workspace in it or above it
+    Uninitialized,
+    /// a workspace that failed to load, or a path that couldn't be inspected
+    Other,
 }
 
 /// Current state of the repository after an operation.
@@ -280,14 +301,13 @@ pub struct RepoStatus {
     pub can_redo: bool,
 }
 
-/// Events requiring user interaction during clone/init flows.
+/// Events requiring user interaction during the clone flow.
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "type")]
 #[cfg_attr(feature = "ts-rs", derive(TS), ts(export, export_to = "app/messages/"))]
 pub enum RepoEvent {
     CloneURL,
     CloneConfirm { url: String, path: String },
-    InitConfirm { path: String, has_git: bool },
 }
 
 /// Bookmark or tag name with metadata.

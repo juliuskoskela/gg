@@ -36,7 +36,8 @@ mod tests;
 use std::env::{self, VarError};
 use std::fmt::Debug;
 use std::fs;
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Error, Result, anyhow};
@@ -51,23 +52,66 @@ use jj_lib::workspace::{DefaultWorkspaceLoaderFactory, Workspace, WorkspaceLoade
 use serde::Serialize;
 
 use crate::messages::mutations::{MutationOptions, MutationResult};
+use crate::messages::{LoadErrorKind, RepoConfig};
 use git_util::AuthContext;
 pub use gui_util::WorkspaceSession;
 pub use session::{Session, SessionEvent};
 
-/// A failed load can offer explicit initialization only for a Git checkout without jj metadata.
-pub fn workspace_load_error(path: PathBuf, message: String) -> crate::messages::RepoConfig {
-    let git_root = (!path.as_os_str().is_empty())
+/// Describes a failed load by what is on disk, so the frontend can offer initialization only for an
+/// existing folder outside any workspace.
+pub fn workspace_load_error(path: PathBuf, message: String) -> RepoConfig {
+    let kind = load_error_kind(&path);
+    let git_root = (kind == LoadErrorKind::Uninitialized)
         .then(|| gix::discover(&path).ok())
         .flatten()
         .and_then(|repo| repo.workdir().map(PathBuf::from))
         .filter(|root| !root.join(".jj").exists())
         .map(Into::into);
     log::warn!("load workspace {} failed: {message}", path.display());
-    crate::messages::RepoConfig::LoadError {
+    RepoConfig::LoadError {
         absolute_path: path.into(),
         message,
+        kind,
         git_root,
+        home_dir: etcetera::home_dir().ok().map(Into::into),
+    }
+}
+
+fn load_error_kind(path: &Path) -> LoadErrorKind {
+    if path.as_os_str().is_empty() {
+        return LoadErrorKind::Other;
+    }
+    match fs::metadata(path) {
+        Err(err)
+            if matches!(
+                err.kind(),
+                io::ErrorKind::NotFound | io::ErrorKind::NotADirectory
+            ) =>
+        {
+            LoadErrorKind::NotFound
+        }
+        Err(_) => LoadErrorKind::Other,
+        Ok(metadata) if !metadata.is_dir() => LoadErrorKind::NotADirectory,
+        Ok(_) => {
+            // relative paths have no ancestors above the cwd until resolved
+            let path = dunce::canonicalize(path).unwrap_or_else(|_| path.to_owned());
+            if path.ancestors().any(|dir| dir.join(".jj").is_dir()) {
+                LoadErrorKind::Other // jj metadata that didn't load
+            } else {
+                LoadErrorKind::Uninitialized
+            }
+        }
+    }
+}
+
+/// Paths typed by hand may start with `~`, which only a shell would expand.
+pub fn expand_home(path: PathBuf) -> PathBuf {
+    let Ok(rest) = path.strip_prefix("~") else {
+        return path;
+    };
+    match etcetera::home_dir() {
+        Ok(home) => home.join(rest),
+        Err(_) => path,
     }
 }
 
@@ -180,38 +224,82 @@ impl WorkerSession {
         }
     }
 
-    /// Initialize a new Jujutsu repository at `location`.
+    /// Initialize a new Jujutsu repository at `location`, an existing folder.
     ///
-    /// When `colocated` is `true` and a `.git/` directory already exists, the
-    /// new repo shares it; otherwise a fresh Git backend is created (either
-    /// colocated or internal depending on the flag). Returns the canonicalized
-    /// path on success.
-    pub async fn init_repository(&self, location: &PathBuf, colocated: bool) -> Result<PathBuf> {
-        // precondition: not already a jj repo
-        let jj_path = location.join(".jj");
-        if jj_path.exists() {
+    /// When `colocated` is `true`, jj shares the folder's `.git/`, creating one if needed;
+    /// otherwise the Git backend lives inside `.jj/`, which jj refuses when the folder already has
+    /// its own Git repository. Returns the canonicalized path on success. Errors are written for
+    /// the person who chose the folder.
+    pub async fn init_repository(&self, location: &Path, colocated: bool) -> Result<PathBuf> {
+        let location = expand_home(location.to_owned());
+        match fs::metadata(&location) {
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                return Err(anyhow!(
+                    "There is no folder at {}. It may have been moved or deleted.",
+                    location.display()
+                ));
+            }
+            Err(err) => {
+                return Err(
+                    Error::new(err).context(format!("Couldn't read {}", location.display()))
+                );
+            }
+            Ok(metadata) if !metadata.is_dir() => {
+                return Err(anyhow!(
+                    "{} is a file, not a folder. Choose the folder to initialize.",
+                    location.display()
+                ));
+            }
+            Ok(_) => (),
+        }
+
+        if location.join(".jj").exists() {
             return Err(anyhow!(
-                "A Jujutsu repository already exists in this directory"
+                "A Jujutsu repository already exists in this folder. Open it instead."
             ));
         }
 
-        let canonical_location = dunce::canonicalize(location)?;
-        let (settings, _, _, _) = crate::config::read_config(None)?;
-        let object_hash = read_object_hash(&settings)?;
+        let git_path = location.join(".git");
+        if !colocated && git_path.exists() {
+            return Err(anyhow!(
+                "This folder already has a Git repository. Keep \"Colocate with Git\" on to initialize with its history."
+            ));
+        }
 
-        let (workspace, _) = if colocated {
-            let git_path = location.join(".git");
-            if git_path.exists() {
-                Workspace::init_external_git(&settings, &canonical_location, &git_path).await? // existing .git/, create .jj
+        let init = async {
+            let canonical_location = dunce::canonicalize(&location)?;
+            let (settings, _, _, _) = crate::config::read_config(None)?;
+            let object_hash = read_object_hash(&settings)?;
+
+            let (workspace, _) = if colocated {
+                if git_path.exists() {
+                    Workspace::init_external_git(&settings, &canonical_location, &git_path).await? // existing .git/, create .jj
+                } else {
+                    Workspace::init_colocated_git(&settings, &canonical_location, object_hash)
+                        .await? // create .git/ and .jj/
+                }
             } else {
-                Workspace::init_colocated_git(&settings, &canonical_location, object_hash).await? // create .git/ and .jj/
-            }
-        } else {
-            Workspace::init_internal_git(&settings, &canonical_location, object_hash).await? // create .jj/ with a .git/ inside it
+                Workspace::init_internal_git(&settings, &canonical_location, object_hash).await? // create .jj/ with a .git/ inside it
+            };
+            gui_util::maybe_add_gitignore(&workspace)?;
+            anyhow::Ok(canonical_location)
         };
-        gui_util::maybe_add_gitignore(&workspace)?;
 
-        Ok(canonical_location)
+        init.await.map_err(|err| {
+            let denied = err.chain().any(|cause| {
+                cause
+                    .downcast_ref::<io::Error>()
+                    .is_some_and(|err| err.kind() == io::ErrorKind::PermissionDenied)
+            });
+            if denied {
+                err.context(format!(
+                    "GG can't write to {}. Check the folder's permissions, or choose another folder",
+                    location.display()
+                ))
+            } else {
+                err
+            }
+        })
     }
 
     /// Clone a remote repository into `location`.

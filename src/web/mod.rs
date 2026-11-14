@@ -6,7 +6,8 @@
 //!
 //! - Static assets (the embedded Svelte frontend) at `/` and `/assets/*`
 //! - Query endpoints at `/api/query/*`
-//! - Mutation endpoints at `/api/mutate/{command}` (POST, JSON body)
+//! - Mutation endpoints at `/api/mutate/{command}` (POST, JSON body), including
+//!   `init_repository`, which runs before any workspace is loaded
 //! - Trigger endpoints at `/api/trigger/*`
 //! - Server-Sent Events at `/api/events` for push updates (config changes,
 //!   progress, etc.)
@@ -48,10 +49,10 @@ use crate::messages::mutations::{
     AbandonRevisions, AbandonSelectedRevisions, AddWorkspace, AdoptRevision, BackoutRevisions,
     CheckoutRevision, CopyChanges, CopyHunk, CreateRef, CreateRevision, CreateRevisionBetween,
     DeleteRef, DescribeRevision, DuplicateRevisions, ExternalDiff, ExternalResolve,
-    ForgetWorkspace, GitFetch, GitPush, InsertRevisions, MoveChanges, MoveHunk, MoveRef,
-    MoveRevisions, MutationOptions, MutationResult, OpenWorkspace, RebaseSelectedRevisions,
-    RedoOperation, RenameBookmark, RenameWorkspace, TrackBookmark, UndoOperation, UntrackBookmark,
-    WriteFile,
+    ForgetWorkspace, GitFetch, GitPush, InitRepository, InsertRevisions, MoveChanges, MoveHunk,
+    MoveRef, MoveRevisions, MutationOptions, MutationResult, OpenWorkspace,
+    RebaseSelectedRevisions, RedoOperation, RenameBookmark, RenameWorkspace, TrackBookmark,
+    UndoOperation, UntrackBookmark, WriteFile,
 };
 use crate::worker::{Mutation, Session, SessionEvent, WorkerSession};
 use sink::{SseEvent, SseSink};
@@ -347,6 +348,41 @@ async fn handle_mutate(
                         Ok(new_config) => MutationResult::Reconfigured { new_config },
                         Err(err) => MutationResult::PreconditionError {
                             message: format!("{err:#}"),
+                        },
+                    }
+                }
+                Err(err) => MutationResult::PreconditionError {
+                    message: format!("{err:#}"),
+                },
+            };
+
+            Ok(Json(serde_json::to_value(result)?))
+        }
+        // like the desktop app, a successful init opens the new workspace in place
+        "init_repository" => {
+            #[derive(Deserialize)]
+            struct InitRepositoryRequest {
+                mutation: InitRepository,
+            }
+
+            let request: InitRepositoryRequest = serde_json::from_value(body)?;
+            let (tx, rx) = channel();
+            state.worker_tx.send(SessionEvent::InitWorkspace {
+                tx,
+                wd: request.mutation.path.into(),
+                colocated: request.mutation.colocated,
+            })?;
+
+            let result = match rx.recv()? {
+                Ok(wd) => {
+                    let (tx, rx) = channel();
+                    state
+                        .worker_tx
+                        .send(SessionEvent::OpenWorkspace { tx, wd: Some(wd) })?;
+                    match rx.recv()? {
+                        Ok(new_config) => MutationResult::Reconfigured { new_config },
+                        Err(err) => MutationResult::InternalError {
+                            message: (&*format!("{err:#}")).into(),
                         },
                     }
                 }

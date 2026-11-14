@@ -31,10 +31,12 @@
         title: string;
         detail: string;
         fields: InputField[];
+        /** names what confirming does, such as "Clone" */
+        action?: string;
         onResponse?: (response: InputResponse | null) => void;
     }
 
-    let { title, detail, fields, onResponse }: Props = $props();
+    let { title, detail, fields, action, onResponse }: Props = $props();
 
 
     onMount(() => {
@@ -115,7 +117,7 @@
     {/each}
     {#snippet commands()}
         {#if fields.length}<ActionWidget safe secondary onClick={onCancel}>Cancel</ActionWidget>{/if}
-        <ActionWidget safe primary onClick={onEnter}>{fields.length ? "Enter" : "OK"}</ActionWidget>
+        <ActionWidget safe primary onClick={onEnter}>{action ?? (fields.length ? "Enter" : "OK")}</ActionWidget>
     {/snippet}
 </ModalDialog>
 

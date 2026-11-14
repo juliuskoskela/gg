@@ -2,6 +2,7 @@ mod annotations;
 mod colocated;
 mod files;
 mod history;
+mod init;
 mod queries;
 mod review;
 mod review_delta;
@@ -332,9 +333,7 @@ async fn snapshot_respects_xdg_gitignore_colocated() -> Result<()> {
 
     let workspace_dir = tempdir()?;
     let mut session = WorkerSession::default();
-    session
-        .init_repository(&workspace_dir.path().to_owned(), true)
-        .await?;
+    session.init_repository(workspace_dir.path(), true).await?;
     let mut ws = session.load_workspace(workspace_dir.path()).await?;
 
     fs::write(workspace_dir.path().join("tracked.txt"), "hello")?;
@@ -373,9 +372,7 @@ async fn snapshot_respects_xdg_gitignore_internal() -> Result<()> {
 
     let workspace_dir = tempdir()?;
     let mut session = WorkerSession::default();
-    session
-        .init_repository(&workspace_dir.path().to_owned(), false)
-        .await?;
+    session.init_repository(workspace_dir.path(), false).await?;
     let mut ws = session.load_workspace(workspace_dir.path()).await?;
 
     fs::write(workspace_dir.path().join("tracked.txt"), "hello")?;

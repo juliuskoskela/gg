@@ -296,7 +296,7 @@ async function openWorkspacePath(path: string) {
     if (!trimmed) return;
     let result = await query<RepoConfig>("query_workspace", { path: trimmed });
     if (result.type === "data") repoConfigEvent.set(result.value);
-    else repoConfigEvent.set({ type: "LoadError", absolute_path: trimmed, message: result.message });
+    else repoConfigEvent.set({ type: "LoadError", absolute_path: trimmed, message: result.message, kind: "Other" });
 }
 
 export function repositoryLocationCommands(desktop = isTauri()): Command[] {
@@ -325,11 +325,17 @@ export function repositoryLocationCommands(desktop = isTauri()): Command[] {
                 await openWorkspacePath(path);
             },
         },
-        // the web server has no init or clone endpoints; those run in the desktop app's own process
+        // a chosen folder opens like any other; the start page asks before initializing one that needs it
         {
-            id: "repository.init", label: "Initialize repository…", icon: "plus-circle", scope: "Repository", shortcut: desktop ? "Ctrl/⌘ Shift N" : undefined, reason: busyReason ?? (desktop ? null : desktopOnly),
-            execute: () => { if (desktop) trigger("forward_accelerator", { key: "n", ctrl: true, shift: true }); },
+            id: "repository.init", label: "Initialize repository…", icon: "plus-circle", scope: "Repository", shortcut: desktop ? "Ctrl/⌘ Shift N" : undefined, reason: busyReason,
+            execute: async () => {
+                if (desktop) { trigger("forward_accelerator", { key: "n", ctrl: true, shift: true }); return; }
+                let answer = await getInput("Initialize repository", "Enter the folder to initialize. GG asks before changing anything.", ["Folder"], "Continue");
+                let path = answer?.Folder?.trim();
+                if (path) await openWorkspacePath(path);
+            },
         },
+        // cloning picks its destination with the desktop app's folder dialog
         {
             id: "repository.clone", label: "Clone repository…", icon: "download-cloud", scope: "Repository", shortcut: desktop ? "Ctrl/⌘ Shift O" : undefined, reason: busyReason ?? (desktop ? null : desktopOnly),
             execute: () => { if (desktop) trigger("forward_accelerator", { key: "o", ctrl: true, shift: true }); },

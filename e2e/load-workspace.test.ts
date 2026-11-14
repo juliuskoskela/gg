@@ -27,9 +27,9 @@ describe("`gg web` in a jj workspace", () => {
         // wait for content to load
         await ctx.page.waitForTimeout(2000);
 
-        // should NOT show the "No workspace loaded" error
-        let errorDialog = ctx.page.locator("text=No workspace loaded");
-        await expect(errorDialog.isVisible()).resolves.toBe(false);
+        // should NOT show the start page
+        let startPage = ctx.page.getByRole("heading", { name: "Open a repository" });
+        await expect(startPage.isVisible()).resolves.toBe(false);
 
         // the page should have a log pane
         let logPaneSelector = ctx.page.locator(".log-selector");

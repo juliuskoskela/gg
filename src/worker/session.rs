@@ -276,14 +276,15 @@ impl Session for WorkerSession {
                     tx.send(self.clone_repository(&source_url, &wd, colocated).await)?;
                 }
                 Ok(SessionEvent::OpenWorkspace { mut tx, mut wd }) => loop {
-                    let resolved_wd = match wd.clone().or(latest_wd) {
+                    let resolved_wd = match wd.clone().map(super::expand_home).or(latest_wd) {
                         Some(wd) => wd,
                         None => match self.get_cwd() {
                             Ok(wd) => wd,
                             Err(err) => {
                                 latest_wd = None;
+                                // a launch path that doesn't exist fails to canonicalize; name it anyway
                                 tx.send(Ok(super::workspace_load_error(
-                                    PathBuf::new(),
+                                    self.working_directory.clone().unwrap_or_default(),
                                     format!("{err:#}"),
                                 )))?;
                                 break;
